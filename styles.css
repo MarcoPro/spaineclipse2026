@@ -172,6 +172,104 @@ body {
     transform: scale(1.05);
 }
 
+.btn-location.active {
+    background: rgba(255, 204, 0, 0.2);
+    color: var(--accent-neon);
+    border-color: rgba(255, 204, 0, 0.4);
+}
+
+/* POI custom markers */
+.poi-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(18, 20, 28, 0.85);
+    border: 2px solid var(--accent-neon);
+    color: var(--accent-neon);
+    font-size: 0.8rem;
+    box-shadow: 0 0 10px rgba(255, 204, 0, 0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.poi-marker:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 16px rgba(255, 204, 0, 0.6);
+}
+
+/* Leaflet popup dark theme */
+.poi-popup .leaflet-popup-content-wrapper {
+    background: rgba(18, 20, 28, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    color: var(--text-main);
+    font-family: var(--font-main);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.poi-popup .leaflet-popup-content {
+    margin: 0.75rem 1rem;
+    line-height: 1.5;
+}
+
+.poi-popup .leaflet-popup-tip {
+    background: rgba(18, 20, 28, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.poi-popup .leaflet-popup-close-button {
+    color: var(--text-muted);
+}
+
+.poi-popup .leaflet-popup-close-button:hover {
+    color: var(--accent-neon);
+}
+
+.poi-popup-title {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+    color: var(--accent-neon);
+}
+
+.poi-popup-type {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.poi-popup-desc {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.poi-popup-btn {
+    display: inline-block;
+    margin-top: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 100px;
+    background: rgba(255, 204, 0, 0.15);
+    color: var(--accent-neon);
+    border: 1px solid rgba(255, 204, 0, 0.3);
+    font-size: 0.75rem;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+}
+
+.poi-popup-btn:hover {
+    background: rgba(255, 204, 0, 0.25);
+}
+
 .search-results {
     position: absolute;
     top: calc(100% + 0.5rem);
@@ -208,6 +306,131 @@ body {
 .res-name { font-weight: 500; font-size: 1rem; }
 .res-context { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem; }
 
+/* --- Countdown Badge --- */
+.countdown-badge {
+    position: absolute;
+    top: 5.5rem;
+    right: clamp(1rem, 3vw, 2rem);
+    padding: 0.6rem 1.2rem;
+    border-radius: 100px;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    pointer-events: auto;
+    animation: pulseGlow 3s ease-in-out infinite, fadeInDown 0.8s ease-out;
+    z-index: 11;
+    border: 1px solid rgba(255, 204, 0, 0.15);
+}
+
+.countdown-badge i {
+    color: var(--accent-neon);
+    filter: drop-shadow(0 0 4px rgba(255, 204, 0, 0.5));
+}
+
+.countdown-badge .cd-number {
+    font-weight: 700;
+    color: var(--accent-neon);
+    font-variant-numeric: tabular-nums;
+}
+
+.countdown-badge .cd-unit {
+    font-weight: 400;
+    color: var(--text-muted);
+    font-size: 0.8em;
+    margin-right: 0.15em;
+}
+
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+    0%, 100% { box-shadow: var(--glass-shadow); }
+    50% { box-shadow: var(--glass-shadow), 0 0 12px 2px rgba(255, 204, 0, 0.08); }
+}
+
+/* --- Shadow Animation Controls --- */
+.shadow-controls {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.6rem 1rem;
+    border-radius: 100px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    z-index: 12;
+    min-width: 360px;
+    pointer-events: auto;
+    animation: fadeInDown 0.4s ease-out;
+}
+
+.shadow-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    font-size: 0.85rem;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.shadow-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--accent-neon);
+}
+
+.shadow-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.15);
+    outline: none;
+    cursor: pointer;
+}
+
+.shadow-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent-neon);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(255, 204, 0, 0.5);
+}
+
+.shadow-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent-neon);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 8px rgba(255, 204, 0, 0.5);
+}
+
+.shadow-time {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    min-width: 5.5em;
+    text-align: center;
+}
+
 /* --- Info Panel --- */
 .info-panel {
     position: absolute;
@@ -215,6 +438,8 @@ body {
     left: 2rem;
     width: calc(100% - 4rem);
     max-width: 520px;
+    max-height: calc(100vh - 8rem);
+    overflow-y: auto;
     padding: 2rem;
     transform: translateY(0);
     opacity: 1;
@@ -272,12 +497,24 @@ body {
     font-size: 0.9rem;
 }
 
-.eclipse-summary {
+.eclipse-visual-row {
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 1.5rem;
     margin-bottom: 2rem;
+}
+
+#eclipse-canvas {
+    border-radius: 50%;
+    filter: drop-shadow(0 0 12px rgba(255, 204, 0, 0.3));
+}
+
+.eclipse-summary-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
 }
 
 .eclipse-phase-badge {
@@ -418,6 +655,104 @@ body {
     flex: 1;
 }
 
+/* Weather info */
+.weather-item { flex-wrap: wrap; }
+.weather-item i { font-size: 1.1rem; }
+.weather-content { flex: 1; display: flex; flex-direction: column; gap: 0.15rem; }
+.weather-main { display: flex; align-items: center; gap: 0.5rem; }
+.weather-source { font-size: 0.7rem; color: var(--text-muted); opacity: 0.7; font-style: italic; }
+.weather-good { color: #4cd964; }
+.weather-ok { color: var(--accent-neon); }
+.weather-bad { color: var(--danger); }
+
+/* Sun position */
+.sun-position {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    background: rgba(0,0,0,0.2);
+    padding: 1rem;
+    border-radius: 1rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.sun-compass {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+}
+
+.compass-ring {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.1);
+    position: relative;
+}
+
+.compass-dir {
+    position: absolute;
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.compass-dir.n { top: 2px; left: 50%; transform: translateX(-50%); }
+.compass-dir.s { bottom: 2px; left: 50%; transform: translateX(-50%); }
+.compass-dir.e { right: 4px; top: 50%; transform: translateY(-50%); }
+.compass-dir.w { left: 4px; top: 50%; transform: translateY(-50%); }
+
+.compass-needle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 2px;
+    height: 28px;
+    background: var(--accent-neon);
+    transform-origin: bottom center;
+    border-radius: 1px;
+    transform: translate(-50%, -100%) rotate(0deg);
+    transition: transform 0.6s ease-out;
+    box-shadow: 0 0 6px rgba(255,204,0,0.4);
+}
+
+.compass-sun-icon {
+    position: absolute;
+    font-size: 0.7rem;
+    color: var(--accent-neon);
+    filter: drop-shadow(0 0 4px rgba(255,204,0,0.6));
+    transition: all 0.6s ease-out;
+    pointer-events: none;
+}
+
+.sun-data { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
+
+.sun-data-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.sun-data-item i {
+    color: var(--accent-neon);
+    opacity: 0.7;
+    font-size: 0.8rem;
+    width: 16px;
+    text-align: center;
+}
+
+.sun-data-item .item-label { color: var(--text-muted); flex: none; }
+
+.direction-hint {
+    color: var(--accent-neon);
+    font-weight: 500;
+    font-size: 0.8rem;
+    margin-top: 0.15rem;
+}
+
 .sunset-warning {
     background: rgba(255, 71, 87, 0.1);
     border: 1px solid rgba(255, 71, 87, 0.3);
@@ -481,6 +816,187 @@ body {
     background: rgba(255,255,255,0.3);
 }
 
+/* --- Panel Footer / Compare Add Button --- */
+.panel-footer {
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.compare-add-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    color: var(--text-muted);
+    font-family: var(--font-main);
+    font-size: 0.85rem;
+    padding: 0.6rem 1.25rem;
+    border-radius: 100px;
+    cursor: pointer;
+    transition: var(--transition);
+    width: 100%;
+}
+
+.compare-add-btn:hover {
+    background: rgba(255, 204, 0, 0.1);
+    color: var(--accent-neon);
+    border-color: rgba(255, 204, 0, 0.3);
+}
+
+/* --- Comparison Panel --- */
+.compare-panel {
+    position: absolute;
+    top: 5.5rem;
+    right: clamp(1rem, 3vw, 2rem);
+    width: 320px;
+    max-height: calc(100vh - 8rem);
+    overflow-y: auto;
+    padding: 1.25rem;
+    border-radius: 1.25rem;
+    pointer-events: auto;
+    animation: fadeInDown 0.4s ease-out;
+    z-index: 11;
+}
+
+.compare-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.compare-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.compare-header h3 i {
+    color: var(--accent-neon);
+}
+
+.compare-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.compare-card {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 1rem;
+    padding: 1rem;
+    position: relative;
+    animation: fadeInDown 0.3s ease-out;
+}
+
+.compare-card-remove {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 2px 6px;
+    border-radius: 50%;
+    transition: var(--transition);
+}
+
+.compare-card-remove:hover {
+    color: var(--danger);
+    background: rgba(255, 71, 87, 0.15);
+}
+
+.compare-card-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+    padding-right: 1.5rem;
+}
+
+.compare-card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+}
+
+.compare-card-grid .cc-label {
+    color: var(--text-muted);
+}
+
+.compare-card-grid .cc-value {
+    text-align: right;
+    font-weight: 600;
+}
+
+.compare-card-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 100px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}
+
+.badge-total {
+    background: rgba(255, 204, 0, 0.15);
+    color: var(--accent-neon);
+    border: 1px solid rgba(255, 204, 0, 0.3);
+}
+
+.badge-partial {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* --- Heatmap Legend --- */
+.heatmap-legend {
+    position: absolute;
+    bottom: 2rem;
+    right: clamp(1rem, 3vw, 2rem);
+    padding: 0.75rem 1rem;
+    border-radius: 1rem;
+    pointer-events: auto;
+    z-index: 11;
+    animation: fadeInDown 0.4s ease-out;
+}
+
+.heatmap-legend h4 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.heatmap-scale {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.heatmap-scale-bar {
+    height: 10px;
+    flex: 1;
+    border-radius: 5px;
+    background: linear-gradient(to right, #3b82f6, #22c55e, #eab308, #f97316, #ef4444);
+}
+
+.heatmap-scale-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+}
+
 /* Responsiveness */
 @media (max-width: 600px) {
     .main-header {
@@ -511,8 +1027,28 @@ body {
         padding: 1rem 0.5rem;
     }
     
-    .eclipse-summary {
+    .eclipse-visual-row {
         flex-direction: column;
         gap: 1rem;
+    }
+
+    .countdown-badge {
+        top: auto;
+        bottom: auto;
+        position: relative;
+        margin: 0.5rem auto 0;
+        font-size: 0.8rem;
+        align-self: center;
+    }
+
+    .compare-panel {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        right: 0;
+        left: 0;
+        width: 100%;
+        max-height: 50vh;
+        border-radius: 1.25rem 1.25rem 0 0;
     }
 }

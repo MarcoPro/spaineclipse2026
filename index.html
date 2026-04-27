@@ -49,7 +49,34 @@
             <button class="btn-location" id="btn-geolocation" title="Usar mi ubicación actual">
                 <i class="fa-solid fa-location-crosshairs"></i>
             </button>
+            <button class="btn-location" id="btn-shadow-anim" title="Animar recorrido de la sombra">
+                <i class="fa-solid fa-play"></i>
+            </button>
+            <button class="btn-location" id="btn-pois" title="Puntos de observación">
+                <i class="fa-solid fa-binoculars"></i>
+            </button>
+            <button class="btn-location" id="btn-heatmap" title="Mapa de calor de duración">
+                <i class="fa-solid fa-temperature-high"></i>
+            </button>
         </header>
+
+        <!-- Countdown Badge -->
+        <div class="countdown-badge glass-panel" id="countdown-badge">
+            <i class="fa-regular fa-clock"></i>
+            <span id="countdown-text">Calculando...</span>
+        </div>
+
+        <!-- Shadow Animation Controls -->
+        <div class="shadow-controls glass-panel hidden" id="shadow-controls">
+            <button class="shadow-btn" id="shadow-play" title="Play/Pausa">
+                <i class="fa-solid fa-play" id="shadow-play-icon"></i>
+            </button>
+            <input type="range" id="shadow-slider" min="0" max="1000" value="0" class="shadow-slider">
+            <span class="shadow-time" id="shadow-time">18:20 UTC</span>
+            <button class="shadow-btn" id="shadow-close" title="Cerrar animación">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
 
         <!-- Information Panel -->
         <main class="info-panel glass-panel hidden" id="info-panel">
@@ -61,11 +88,14 @@
                 <span class="region-name" id="region-name">Región, País</span>
             </div>
             
-            <div class="eclipse-summary">
-                <div class="eclipse-phase-badge" id="eclipse-type">Fase Total</div>
-                <div class="obscuration" class="eclipse-obscuration">
-                    <span id="obscuration-value">100</span><span class="percent">%</span>
-                    <label>Oscurecimiento Máx</label>
+            <div class="eclipse-visual-row">
+                <canvas id="eclipse-canvas" width="120" height="120"></canvas>
+                <div class="eclipse-summary-col">
+                    <div class="eclipse-phase-badge" id="eclipse-type">Fase Total</div>
+                    <div class="obscuration">
+                        <span id="obscuration-value">100</span><span class="percent">%</span>
+                        <label>Oscurecimiento Máx</label>
+                    </div>
                 </div>
             </div>
 
@@ -107,6 +137,36 @@
                 </div>
             </div>
 
+            <!-- Sun position at peak -->
+            <div class="sun-position" id="sun-position">
+                <div class="sun-compass" id="sun-compass">
+                    <div class="compass-ring">
+                        <span class="compass-dir n">N</span>
+                        <span class="compass-dir e">E</span>
+                        <span class="compass-dir s">S</span>
+                        <span class="compass-dir w">O</span>
+                    </div>
+                    <div class="compass-needle" id="compass-needle"></div>
+                    <i class="fa-solid fa-sun compass-sun-icon" id="compass-sun-icon"></i>
+                </div>
+                <div class="sun-data">
+                    <div class="sun-data-item">
+                        <i class="fa-solid fa-arrows-up-to-line"></i>
+                        <span class="item-label">Altitud:</span>
+                        <strong id="sun-altitude">--°</strong>
+                    </div>
+                    <div class="sun-data-item">
+                        <i class="fa-solid fa-compass"></i>
+                        <span class="item-label">Azimut:</span>
+                        <strong id="sun-azimuth">--°</strong>
+                    </div>
+                    <div class="sun-data-item direction-hint">
+                        <i class="fa-solid fa-arrow-right"></i>
+                        <span id="sun-direction">Mirar al --</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="extra-info">
                 <div class="info-item">
                     <i class="fa-regular fa-clock"></i>
@@ -118,13 +178,41 @@
                     <span class="item-label">Duración Eclipse:</span>
                     <strong id="duration-total">--h --m</strong>
                 </div>
+
+                <div class="info-item weather-item hidden" id="weather-info">
+                    <i class="fa-solid fa-cloud-sun" id="weather-icon"></i>
+                    <div class="weather-content">
+                        <div class="weather-main">
+                            <span class="item-label">Nubes previstas:</span>
+                            <strong id="weather-clouds">--%</strong>
+                        </div>
+                        <span class="weather-source" id="weather-source"></span>
+                    </div>
+                </div>
                 
                 <div class="sunset-warning hidden" id="sunset-warning">
                     <i class="fa-solid fa-triangle-exclamation"></i>
                     <span>¡Atención! El eclipse estará en curso durante la puesta de sol en esta ubicación (<span id="sunset-time">--:--</span>).</span>
                 </div>
             </div>
+
+            <div class="panel-footer">
+                <button class="compare-add-btn" id="btn-add-compare">
+                    <i class="fa-solid fa-plus"></i> Añadir a comparación
+                </button>
+            </div>
         </main>
+
+        <!-- Comparison Panel -->
+        <div class="compare-panel glass-panel hidden" id="compare-panel">
+            <div class="compare-header">
+                <h3><i class="fa-solid fa-arrows-left-right"></i> Comparar localidades</h3>
+                <button class="close-btn" id="close-compare"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="compare-cards" id="compare-cards">
+                <!-- Cards injected via JS -->
+            </div>
+        </div>
         
         <div class="intro-message" id="intro-message">
             <div class="glass-panel intro-content" style="position: relative;">
@@ -147,6 +235,9 @@
 
     <!-- Eclipse True GeoJSON Data -->
     <script src="eclipse_data.js"></script>
+
+    <!-- POIs Data -->
+    <script src="pois.js"></script>
 
     <!-- Custom Logic -->
     <script src="app.js"></script>
