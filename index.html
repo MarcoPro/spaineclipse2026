@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eclipse Solar España 2026</title>
+    <meta name="description" content="Sigue la trayectoria e infórmate del espectacular eclipse solar total del 12 de Agosto de 2026 en España. Cálculos en tiempo real y mapas de precisión.">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- UI Overlay container -->
+    <div class="ui-container">
+        
+        <!-- Header & Search -->
+        <header class="glass-panel main-header">
+            <div class="logo">
+                <i class="fa-solid fa-eclipse"></i>
+                <h1>Eclipse <strong>2026</strong></h1>
+            </div>
+            
+            <div class="search-container">
+                <div class="search-input-wrapper">
+                    <i class="fa-solid fa-location-dot location-icon"></i>
+                    <input type="text" id="search-input" placeholder="Buscar tu localidad (ej. Burgos)..." autocomplete="off">
+                    <i class="fa-solid fa-circle-notch fa-spin loading-icon hidden" id="search-loading"></i>
+                </div>
+                <div class="search-results hidden" id="search-results">
+                    <!-- Results will be injected here via JS -->
+                </div>
+            </div>
+            
+            <button class="btn-location" id="btn-geolocation" title="Usar mi ubicación actual">
+                <i class="fa-solid fa-location-crosshairs"></i>
+            </button>
+        </header>
+
+        <!-- Information Panel -->
+        <main class="info-panel glass-panel hidden" id="info-panel">
+            <button class="close-btn" id="close-panel" title="Cerrar panel">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="info-header">
+                <h2 id="locality-name">Nombre Localidad</h2>
+                <span class="region-name" id="region-name">Región, País</span>
+            </div>
+            
+            <div class="eclipse-summary">
+                <div class="eclipse-phase-badge" id="eclipse-type">Fase Total</div>
+                <div class="obscuration" class="eclipse-obscuration">
+                    <span id="obscuration-value">100</span><span class="percent">%</span>
+                    <label>Oscurecimiento Máx</label>
+                </div>
+            </div>
+
+            <div class="eclipse-timeline">
+                <div class="timeline-step">
+                    <span class="contact-label">C1</span>
+                    <div class="time-details">
+                        <span class="time-label">Inicio Parcial</span>
+                        <span class="time-value" id="time-c1">--:--:--</span>
+                    </div>
+                </div>
+                <div class="timeline-step total-only" id="step-c2">
+                    <span class="contact-label">C2</span>
+                    <div class="time-details">
+                        <span class="time-label">Inicio Totalidad</span>
+                        <span class="time-value" id="time-c2">--:--:--</span>
+                    </div>
+                </div>
+                <div class="timeline-step highlight">
+                    <span class="contact-label"><i class="fa-solid fa-sun"></i></span>
+                    <div class="time-details">
+                        <span class="time-label">Máximo</span>
+                        <span class="time-value eclipse-peak" id="time-max">--:--:--</span>
+                    </div>
+                </div>
+                <div class="timeline-step total-only" id="step-c3">
+                    <span class="contact-label">C3</span>
+                    <div class="time-details">
+                        <span class="time-label">Fin Totalidad</span>
+                        <span class="time-value" id="time-c3">--:--:--</span>
+                    </div>
+                </div>
+                <div class="timeline-step">
+                    <span class="contact-label">C4</span>
+                    <div class="time-details">
+                        <span class="time-label">Fin Parcial</span>
+                        <span class="time-value" id="time-c4">--:--:--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="extra-info">
+                <div class="info-item">
+                    <i class="fa-regular fa-clock"></i>
+                    <span class="item-label">Duración Totalidad:</span>
+                    <strong id="duration-totality">--m --s</strong>
+                </div>
+                <div class="info-item">
+                    <i class="fa-solid fa-arrows-left-right"></i>
+                    <span class="item-label">Duración Eclipse:</span>
+                    <strong id="duration-total">--h --m</strong>
+                </div>
+                
+                <div class="sunset-warning hidden" id="sunset-warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>¡Atención! El eclipse estará en curso durante la puesta de sol en esta ubicación (<span id="sunset-time">--:--</span>).</span>
+                </div>
+            </div>
+        </main>
+        
+        <div class="intro-message" id="intro-message">
+            <div class="glass-panel intro-content" style="position: relative;">
+                <button class="close-btn" id="close-intro" title="Cerrar introducción" style="top: 0.5rem; right: 0.5rem;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <h2>El Gran Eclipse Español</h2>
+                <p>El <strong>12 de Agosto de 2026</strong>, España será testigo de un eclipse solar total. La sombra de la luna oscurecerá la península justo antes del atardecer.</p>
+                <p>Busca tu municipio o selecciona un punto en el mapa para descubrir los horarios precisos.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Astronomy Engine JS -->
+    <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+
+    <!-- Eclipse True GeoJSON Data -->
+    <script src="eclipse_data.js"></script>
+
+    <!-- Custom Logic -->
+    <script src="app.js"></script>
+
+</body>
+</html>
