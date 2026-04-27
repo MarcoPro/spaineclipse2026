@@ -178,6 +178,30 @@ body {
     border-color: rgba(255, 204, 0, 0.4);
 }
 
+.header-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.mobile-menu-btn {
+    display: none;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    place-items: center;
+    font-size: 1.1rem;
+    transition: var(--transition);
+}
+
+.mobile-menu-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--accent-neon);
+}
+
 /* POI custom markers */
 .poi-marker {
     display: flex;
@@ -284,6 +308,7 @@ body {
     max-height: 300px;
     overflow-y: auto;
     box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    z-index: 9999;
 }
 
 .search-result-item {
@@ -483,6 +508,7 @@ body {
 .info-header {
     text-align: center;
     margin-bottom: 1.5rem;
+    padding: 0 2rem;
 }
 
 .info-header h2 {
@@ -490,6 +516,7 @@ body {
     font-weight: 700;
     line-height: 1.2;
     margin-bottom: 0.25rem;
+    word-wrap: break-word;
 }
 
 .region-name {
@@ -998,7 +1025,7 @@ body {
 }
 
 /* Responsiveness */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
     .main-header {
         flex-direction: column;
         align-items: stretch;
@@ -1010,10 +1037,36 @@ body {
         margin-bottom: 0.5rem;
     }
     
-    .btn-location {
+    .header-controls {
+        display: none; /* hidden by default on mobile */
+        flex-direction: column;
+        position: absolute;
+        top: 100%;
+        right: 1rem;
+        background: rgba(18, 20, 28, 0.95);
+        backdrop-filter: blur(10px);
+        padding: 1rem;
+        border-radius: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        margin-top: 0.5rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        z-index: 1000;
+    }
+    
+    .header-controls.show {
+        display: flex;
+    }
+    
+    .mobile-menu-btn {
+        display: grid;
         position: absolute;
         top: 1rem;
         right: 1rem;
+    }
+    
+    #comparator-panel,
+    #btn-comparator {
+        display: none !important;
     }
     
     .info-panel, .intro-message {
@@ -1039,16 +1092,5 @@ body {
         margin: 0.5rem auto 0;
         font-size: 0.8rem;
         align-self: center;
-    }
-
-    .compare-panel {
-        position: fixed;
-        top: auto;
-        bottom: 0;
-        right: 0;
-        left: 0;
-        width: 100%;
-        max-height: 50vh;
-        border-radius: 1.25rem 1.25rem 0 0;
     }
 }

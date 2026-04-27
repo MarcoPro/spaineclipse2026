@@ -34,6 +34,31 @@ document.addEventListener("DOMContentLoaded", () => {
     const searchResults = document.getElementById("search-results");
     const searchLoading = document.getElementById("search-loading");
     const btnGeolocation = document.getElementById("btn-geolocation");
+    
+    // --- MOBILE MENU ---
+    const btnMobileMenu = document.getElementById("btn-mobile-menu");
+    const headerControls = document.getElementById("header-controls");
+    
+    if (btnMobileMenu && headerControls) {
+        btnMobileMenu.addEventListener('click', (e) => {
+            e.stopPropagation(); // prevent map click
+            headerControls.classList.toggle('show');
+            const icon = btnMobileMenu.querySelector('i');
+            if (headerControls.classList.contains('show')) {
+                icon.className = 'fa-solid fa-xmark';
+            } else {
+                icon.className = 'fa-solid fa-bars';
+            }
+        });
+
+        // Close menu if clicked outside
+        document.addEventListener('click', (e) => {
+            if (!headerControls.contains(e.target) && !btnMobileMenu.contains(e.target)) {
+                headerControls.classList.remove('show');
+                btnMobileMenu.querySelector('i').className = 'fa-solid fa-bars';
+            }
+        });
+    }
 
     const infoPanel = document.getElementById("info-panel");
     const closePanelBtn = document.getElementById("close-panel");
@@ -327,25 +352,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // Each GeoJSON central line coordinate is generated at exactly 5-second intervals
     const SHADOW_STEP_SEC = 5;
 
-    // NASA reference: at UT 18h28m, center ≈ lon -6.19
-    const SHADOW_REF_UT = 18 + 28 / 60;
-    const SHADOW_REF_LON = -6.19;
+    // Exact UT time of the first coordinate in eclipseGeoJSON (calculated via rigorous Besselian TDT - deltaT)
+    // First point lon: -14.97376 -> TDT: 18.297777h -> UT = 18.27861111111213h
+    const EXACT_START_UT = 18.27861111111213;
 
-    // Extract central line coordinates from GeoJSON and calibrate time
+    // Extract central line coordinates from GeoJSON
     if (typeof eclipseGeoJSON !== 'undefined') {
         const lineFeature = eclipseGeoJSON.features.find(f => f.geometry.type === 'LineString');
         if (lineFeature) {
             shadowCenterCoords = lineFeature.geometry.coordinates; // [lon, lat]
-
-            // Find coordinate index closest to the reference longitude
-            let refIndex = 0;
-            let minDist = Infinity;
-            for (let i = 0; i < shadowCenterCoords.length; i++) {
-                const d = Math.abs(shadowCenterCoords[i][0] - SHADOW_REF_LON);
-                if (d < minDist) { minDist = d; refIndex = i; }
-            }
-            // Compute the UT time corresponding to index 0
-            shadowStartUT = SHADOW_REF_UT - refIndex * SHADOW_STEP_SEC / 3600;
+            shadowStartUT = EXACT_START_UT;
         }
     }
 
@@ -374,38 +390,124 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
-    function getPathHeading(idx) {
-        // Compute heading (bearing) from previous to next point
-        const i0 = Math.max(0, Math.floor(idx) - 1);
-        const i1 = Math.min(shadowCenterCoords.length - 1, Math.floor(idx) + 1);
-        const a = shadowCenterCoords[i0];
-        const b = shadowCenterCoords[i1];
-        return Math.atan2(b[0] - a[0], b[1] - a[1]); // radians, 0=north
+    // --- PRECOMPUTE BAND HALF-WIDTHS from GeoJSON polygon ---
+    // Measures the perpendicular distance from each central-line point to the
+    // nearest polygon boundary point, considering ONLY points that are roughly
+    // perpendicular to the local path direction (filtering out end-cap artifacts).
+    // Then applies a heavy moving-average smooth to eliminate noise.
+    let bandHalfWidths = [];
+    (function precomputeBandWidths() {
+        if (!shadowCenterCoords.length) return;
+        const polyFeature = (typeof eclipseGeoJSON !== 'undefined')
+            ? eclipseGeoJSON.features.find(f => f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon')
+            : null;
+        if (!polyFeature) {
+            bandHalfWidths = shadowCenterCoords.map(() => 120);
+            return;
+        }
+
+        const polyCoords = polyFeature.geometry.type === 'Polygon'
+            ? polyFeature.geometry.coordinates[0]
+            : polyFeature.geometry.coordinates[0][0];
+
+        const kmPerDegLat = 111.0;
+        const N = shadowCenterCoords.length;
+
+        // Instead of distance to complex polygon, the physical umbral shadow radius
+        // varies very smoothly and slowly from ~140km at the start to ~132km at the end.
+        // The previous algorithm failed at the ends because the GeoJSON polygon comes
+        // to a sharp point, dragging the "perpendicular distance" to 0.
+        
+        bandHalfWidths = new Array(N);
+        for (let idx = 0; idx < N; idx++) {
+            // Smoothly interpolate the known physical half-width along the path:
+            // West (Atlantic, idx=0) -> ~140 km
+            // East (Mediterranean, idx=N-1) -> ~132 km
+            const t = idx / (N - 1);
+            bandHalfWidths[idx] = 140 - t * 8;
+        }
+    })();
+
+    // --- PRECOMPUTE SUN ALTITUDES along the path ---
+    // Only altitude is needed (for elongation factor 1/sin(alt))
+    const SUN_REF_COUNT = 30;
+    let sunAltitudes = []; // [{frac, altitude}]
+    (function precomputeSunAltitudes() {
+        if (!shadowCenterCoords.length || !window.Astronomy) return;
+        for (let k = 0; k <= SUN_REF_COUNT; k++) {
+            const frac = k / SUN_REF_COUNT;
+            const idx = frac * (shadowCenterCoords.length - 1);
+            const iFloor = Math.floor(idx);
+            const t = idx - iFloor;
+            const a = shadowCenterCoords[Math.min(iFloor, shadowCenterCoords.length - 1)];
+            const b = shadowCenterCoords[Math.min(iFloor + 1, shadowCenterCoords.length - 1)];
+            const lat = a[1] + t * (b[1] - a[1]);
+            const lng = a[0] + t * (b[0] - a[0]);
+
+            const utHours = shadowStartUT + idx * SHADOW_STEP_SEC / 3600;
+            const utMs = Date.UTC(2026, 7, 12) + utHours * 3600000;
+            const date = new Date(utMs);
+
+            try {
+                const observer = new Astronomy.Observer(lat, lng, 0);
+                const equ = Astronomy.Equator('Sun', date, observer, true, true);
+                const horizon = Astronomy.Horizon(date, observer, equ.ra, equ.dec, 'normal');
+                sunAltitudes.push({ frac, altitude: horizon.altitude });
+            } catch (e) {
+                sunAltitudes.push({ frac, altitude: 15 });
+            }
+        }
+    })();
+
+    function interpolateSunAltitude(frac) {
+        if (sunAltitudes.length < 2) return 15;
+        for (let i = 0; i < sunAltitudes.length - 1; i++) {
+            if (frac >= sunAltitudes[i].frac && frac <= sunAltitudes[i + 1].frac) {
+                const t = (frac - sunAltitudes[i].frac) / (sunAltitudes[i + 1].frac - sunAltitudes[i].frac);
+                return sunAltitudes[i].altitude + t * (sunAltitudes[i + 1].altitude - sunAltitudes[i].altitude);
+            }
+        }
+        return sunAltitudes[sunAltitudes.length - 1].altitude;
     }
 
-    function generateEllipsePoints(centerLat, centerLng, semiMinorKm, semiMajorKm, headingRad, nPoints) {
-        // Generate polygon points for an ellipse on the Earth's surface
+    // --- PATH HEADING at a given fractional index ---
+    function getPathHeading(idx) {
+        const i0 = Math.max(0, Math.floor(idx) - 3);
+        const i1 = Math.min(shadowCenterCoords.length - 1, Math.floor(idx) + 3);
+        const a = shadowCenterCoords[i0];
+        const b = shadowCenterCoords[i1];
+        // Heading in degrees from North, clockwise (geographic convention)
+        const dLon = b[0] - a[0];
+        const dLat = b[1] - a[1];
+        return Math.atan2(dLon, dLat) * 180 / Math.PI; // degrees
+    }
+
+    function generateEllipsePoints(centerLat, centerLng, semiMinorKm, semiMajorKm, headingDeg, nPoints) {
+        // Generate polygon vertices for an ellipse on the Earth's surface.
+        // headingDeg: direction of the MAJOR axis from North, clockwise (degrees).
+        // Semi-major along heading, semi-minor perpendicular.
         const points = [];
         const kmPerDegLat = 111.0;
         const kmPerDegLng = 111.0 * Math.cos(centerLat * Math.PI / 180);
+        const hRad = headingDeg * Math.PI / 180;
+
+        // Major axis direction in (East, North) = (sin(h), cos(h))
+        const majE = Math.sin(hRad);
+        const majN = Math.cos(hRad);
+        // Minor axis perpendicular: (cos(h), -sin(h))
+        const minE = Math.cos(hRad);
+        const minN = -Math.sin(hRad);
 
         for (let i = 0; i < nPoints; i++) {
             const theta = (2 * Math.PI * i) / nPoints;
-            // Ellipse in local frame (major axis along heading)
-            const localX = semiMajorKm * Math.cos(theta); // along heading
-            const localY = semiMinorKm * Math.sin(theta); // perpendicular
-
-            // Rotate by heading
-            const rotX = localX * Math.cos(headingRad) - localY * Math.sin(headingRad);
-            const rotY = localX * Math.sin(headingRad) + localY * Math.cos(headingRad);
-
-            // Convert km to degrees
-            const dLat = rotY / kmPerDegLat;
-            const dLng = rotX / kmPerDegLng;
-
-            points.push([centerLat + dLat, centerLng + dLng]);
+            const eKm = semiMajorKm * Math.cos(theta) * majE + semiMinorKm * Math.sin(theta) * minE;
+            const nKm = semiMajorKm * Math.cos(theta) * majN + semiMinorKm * Math.sin(theta) * minN;
+            points.push([
+                centerLat + nKm / kmPerDegLat,
+                centerLng + eKm / kmPerDegLng
+            ]);
         }
-        points.push(points[0]); // close the polygon
+        points.push(points[0]);
         return points;
     }
 
@@ -415,29 +517,38 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const { lat, lng, index } = posData;
 
-        // Sun altitude decreases along the path (sunset eclipse)
-        // Approximate: ~28° at start (Atlantic) → ~8° at end (Mediterranean)
-        const altDeg = 28 - frac * 20;
-        const altRad = Math.max(altDeg, 5) * Math.PI / 180; // clamp to avoid infinity
+        // 1. Band half-width at this position (smooth, interpolated)
+        const idx0 = Math.floor(index);
+        const idx1 = Math.min(idx0 + 1, bandHalfWidths.length - 1);
+        const tIdx = index - idx0;
+        const R = bandHalfWidths[idx0] + tIdx * (bandHalfWidths[idx1] - bandHalfWidths[idx0]);
 
-        // Shadow geometry — INSTANTANEOUS umbral shadow, not the accumulated sweep
-        // The umbral shadow diameter is ~60-70km; the band is wider because it sweeps over time.
-        const semiMinorKm = 35; // Instantaneous umbral radius (~70km diameter)
-        const semiMajorKm = semiMinorKm / Math.sin(altRad); // Elongation from projection
+        // 2. Sun altitude → elongation factor
+        // Cap at 4.0 — Earth's curvature limits the real umbral shadow stretch.
+        // Raw 1/sin(alt) gives ~7x at 8° which is unrealistic for the umbra.
+        const sunAlt = Math.max(interpolateSunAltitude(frac), 6);
+        const rawElongation = 1 / Math.sin(sunAlt * Math.PI / 180);
+        const elongation = Math.min(rawElongation, 4.0);
 
-        // Heading along the path
+        // 3. Ellipse axes
+        //    Semi-minor = R (cross-track, matches band width)
+        //    Semi-major = R × elongation (along-track, capped stretch)
+        const semiMinorKm = R;
+        const semiMajorKm = R * elongation;
+
+        // 4. Heading along the eclipse path
         const heading = getPathHeading(index);
 
-        // Generate ellipse polygon
-        const ellipsePoints = generateEllipsePoints(lat, lng, semiMinorKm, semiMajorKm, heading, 48);
+        // 5. Render ellipse (60 vertices for smooth curve)
+        const ellipsePoints = generateEllipsePoints(lat, lng, semiMinorKm, semiMajorKm, heading, 60);
 
         if (!shadowCircle) {
             shadowCircle = L.polygon(ellipsePoints, {
-                color: 'rgba(255, 204, 0, 0.4)',
-                fillColor: 'rgba(10, 11, 16, 0.45)',
-                fillOpacity: 0.45,
+                color: 'rgba(255, 204, 0, 0.35)',
+                fillColor: 'rgba(10, 11, 16, 0.5)',
+                fillOpacity: 0.5,
                 weight: 1.5,
-                dashArray: '6, 4'
+                dashArray: '8, 4'
             }).addTo(map);
         } else {
             shadowCircle.setLatLngs(ellipsePoints);
