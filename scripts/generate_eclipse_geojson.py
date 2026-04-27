@@ -43,7 +43,7 @@ MU_COEFFS = [88.74776, 15.003093]
 L2_CORRECTION = 0.0005  # Se resta de L2 (lo hace más negativo = sombra mayor)
 
 T0 = 18.0
-DELTA_T = 71.4
+DELTA_T = 69.10
 MU_CORRECTION = -DELTA_T * MU_COEFFS[1] / 3600.0
 
 FLATTENING = 1.0 / 298.257223563
