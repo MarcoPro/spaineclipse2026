@@ -40,7 +40,7 @@ MU_COEFFS = [88.74776, 15.003093]
 # Las webs profesionales (Xavier Jubier, timeanddate.com) usan el perfil real
 # del limbo lunar (Watts' charts), que amplía la sombra ~12-15%.
 # Calibrado contra 4 puntos de referencia oficiales (Bilbao, Galicia, Madrid, Cullera).
-L2_CORRECTION = 0.0002  # Se resta de L2 (lo hace más negativo = sombra mayor)
+L2_CORRECTION = 0.0003  # Se resta de L2 (lo hace más negativo = sombra mayor)
 
 T0 = 18.0
 DELTA_T = 69.10
