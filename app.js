@@ -883,7 +883,7 @@ document.addEventListener("DOMContentLoaded", () => {
         infoPanel.classList.remove('hidden');
     }
 
-    // --- WEATHER FETCH (Open-Meteo Climate API) ---
+    // --- WEATHER FETCH (Open-Meteo Historical API) ---
     async function fetchWeather(lat, lng) {
         const weatherEl = document.getElementById('weather-info');
         const cloudsEl = document.getElementById('weather-clouds');
@@ -894,24 +894,22 @@ document.addEventListener("DOMContentLoaded", () => {
         weatherEl.classList.add('hidden');
 
         try {
-            // Use Open-Meteo climate API for historical August averages
-            // (forecast won't be available until ~2 weeks before the eclipse)
-            const url = `https://climate-api.open-meteo.com/v1/climate?` +
+            // Use Open-Meteo Historical API for cloud cover from 1 year before the eclipse
+            // (real forecast won't be available until ~2 weeks before)
+            const url = `https://archive-api.open-meteo.com/v1/archive?` +
                 `latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}` +
-                `&start_date=1991-01-01&end_date=2020-12-31` +
-                `&models=EC_Earth3P_HR` +
-                `&monthly=cloud_cover_mean`;
+                `&start_date=2025-08-12&end_date=2025-08-12` +
+                `&hourly=cloudcover`;
 
             const response = await fetch(url);
             const data = await response.json();
 
-            if (data && data.monthly && data.monthly.cloud_cover_mean) {
-                // August is index 7 (0-based months)
-                const augustClouds = data.monthly.cloud_cover_mean[7];
-                if (augustClouds !== undefined && augustClouds !== null) {
-                    const pct = Math.round(augustClouds);
+            if (data && data.hourly && data.hourly.cloudcover) {
+                // Eclipse over Spain is around 18:00 UTC (index 18 in the hourly array)
+                const pct = Math.round(data.hourly.cloudcover[18]);
+                if (pct !== undefined && !isNaN(pct)) {
                     cloudsEl.textContent = `${pct}%`;
-                    sourceEl.textContent = `Media climatológica agosto (1991–2020)`;
+                    sourceEl.textContent = `Histórico 12 Agosto 2025 (18:00 UTC)`;
 
                     // Color code
                     iconEl.className = 'fa-solid ';
@@ -1145,6 +1143,76 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             if (heatmapLayer) map.removeLayer(heatmapLayer);
             if (heatmapLegend) heatmapLegend.style.display = 'none';
+        }
+    });
+
+    // --- HEATMAP OF CLOUD COVER ---
+    const btnCloudHeatmap = document.getElementById('btn-cloud-heatmap');
+    let cloudHeatmapLayer = null;
+    let cloudHeatmapLegend = null;
+    let cloudHeatmapVisible = false;
+
+    function generateCloudHeatmap() {
+        if (typeof cloudHeatmapData === 'undefined') {
+            console.warn('Cloud Heatmap: Data not loaded. Make sure cloud_heatmap.js is included.');
+            return;
+        }
+
+        cloudHeatmapLayer = L.layerGroup();
+
+        function cloudColor(pct) {
+            // 0-30% Green, 30-60% Yellow/Orange, 60-100% Gray/Red
+            if (pct <= 20) return '#4cd964';
+            if (pct <= 40) return '#8bd964';
+            if (pct <= 60) return '#ffcc00';
+            if (pct <= 80) return '#ff9900';
+            return '#8e8e93';
+        }
+
+        cloudHeatmapData.forEach(p => {
+            const color = cloudColor(p.cloudcover);
+            const circle = L.circleMarker([p.lat, p.lon], {
+                radius: 14,
+                color: 'transparent',
+                fillColor: color,
+                fillOpacity: 0.6,
+                weight: 0
+            });
+            circle.bindTooltip(`Nubes: ${Math.round(p.cloudcover)}%`, { permanent: false, direction: 'top' });
+            cloudHeatmapLayer.addLayer(circle);
+        });
+
+        cloudHeatmapLegend = document.createElement('div');
+        cloudHeatmapLegend.className = 'heatmap-legend glass-panel';
+        cloudHeatmapLegend.innerHTML = `
+            <h4><i class="fa-solid fa-cloud"></i> Nubosidad Promedio</h4>
+            <div class="heatmap-scale">
+                <div class="cloud-scale-bar"></div>
+            </div>
+            <div class="heatmap-scale-labels">
+                <span>0%</span>
+                <span>100%</span>
+            </div>
+            <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px; text-align: center;">Promedio 12 Ago (2015-2025)</div>
+        `;
+        document.querySelector('.ui-container').appendChild(cloudHeatmapLegend);
+        cloudHeatmapLayer.addTo(map);
+    }
+
+    btnCloudHeatmap.addEventListener('click', () => {
+        cloudHeatmapVisible = !cloudHeatmapVisible;
+        btnCloudHeatmap.classList.toggle('active', cloudHeatmapVisible);
+
+        if (cloudHeatmapVisible) {
+            if (!cloudHeatmapLayer) {
+                generateCloudHeatmap();
+            } else {
+                cloudHeatmapLayer.addTo(map);
+                if (cloudHeatmapLegend) cloudHeatmapLegend.style.display = '';
+            }
+        } else {
+            if (cloudHeatmapLayer) map.removeLayer(cloudHeatmapLayer);
+            if (cloudHeatmapLegend) cloudHeatmapLegend.style.display = 'none';
         }
     });
 

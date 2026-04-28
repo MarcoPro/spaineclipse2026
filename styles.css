@@ -1016,6 +1016,13 @@ body {
     background: linear-gradient(to right, #3b82f6, #22c55e, #eab308, #f97316, #ef4444);
 }
 
+.cloud-scale-bar {
+    height: 10px;
+    flex: 1;
+    border-radius: 5px;
+    background: linear-gradient(to right, #4cd964, #ffcc00, #ff9900, #8e8e93);
+}
+
 .heatmap-scale-labels {
     display: flex;
     justify-content: space-between;
