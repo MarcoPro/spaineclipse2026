@@ -34,11 +34,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const searchResults = document.getElementById("search-results");
     const searchLoading = document.getElementById("search-loading");
     const btnGeolocation = document.getElementById("btn-geolocation");
-    
+
     // --- MOBILE MENU ---
     const btnMobileMenu = document.getElementById("btn-mobile-menu");
     const headerControls = document.getElementById("header-controls");
-    
+
     if (btnMobileMenu && headerControls) {
         btnMobileMenu.addEventListener('click', (e) => {
             e.stopPropagation(); // prevent map click
@@ -365,7 +365,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const t = idx - i;
         const utHoursA = eclipseGeoJSON.shadow_times[Math.min(i, eclipseGeoJSON.shadow_times.length - 1)];
         const utHoursB = eclipseGeoJSON.shadow_times[Math.min(i + 1, eclipseGeoJSON.shadow_times.length - 1)];
-        
+
         const utHours = utHoursA + t * (utHoursB - utHoursA);
         const cestHours = utHours + 2; // CEST = UTC+2 in August
         const h = Math.floor(cestHours);
@@ -393,30 +393,30 @@ document.addEventListener("DOMContentLoaded", () => {
         if (points.length === 1) {
             return new Array(numPoints).fill([points[0][1], points[0][0]]);
         }
-        
+
         let totalLen = 0;
         const lengths = [0];
         for (let i = 0; i < points.length - 1; i++) {
-            const dx = points[i+1][0] - points[i][0];
-            const dy = points[i+1][1] - points[i][1];
-            const dist = Math.sqrt(dx*dx + dy*dy);
+            const dx = points[i + 1][0] - points[i][0];
+            const dy = points[i + 1][1] - points[i][1];
+            const dist = Math.sqrt(dx * dx + dy * dy);
             totalLen += dist;
             lengths.push(totalLen);
         }
-        
+
         const resampled = [];
         for (let i = 0; i < numPoints; i++) {
             const targetLen = (i / (numPoints - 1)) * totalLen;
             let seg = 0;
-            while (seg < lengths.length - 2 && targetLen > lengths[seg+1]) {
+            while (seg < lengths.length - 2 && targetLen > lengths[seg + 1]) {
                 seg++;
             }
             const segStartLen = lengths[seg];
-            const segEndLen = lengths[seg+1];
+            const segEndLen = lengths[seg + 1];
             const t = segEndLen === segStartLen ? 0 : (targetLen - segStartLen) / (segEndLen - segStartLen);
-            
-            const lng = points[seg][0] + t * (points[seg+1][0] - points[seg][0]);
-            const lat = points[seg][1] + t * (points[seg+1][1] - points[seg][1]);
+
+            const lng = points[seg][0] + t * (points[seg + 1][0] - points[seg][0]);
+            const lat = points[seg][1] + t * (points[seg + 1][1] - points[seg][1]);
             resampled.push([lat, lng]);
         }
         return resampled;
@@ -424,20 +424,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updateShadowPosition(frac) {
         if (!shadowFrames || shadowFrames.length === 0) return;
-        
+
         const idx = frac * (shadowFrames.length - 1);
         const i = Math.floor(idx);
         const t = idx - i;
-        
+
         const frameA = shadowFrames[Math.min(i, shadowFrames.length - 1)];
         const frameB = shadowFrames[Math.min(i + 1, shadowFrames.length - 1)];
-        
+
         if (!frameA || frameA.length === 0) {
             if (shadowCircle) shadowCircle.setLatLngs([]);
             shadowTimeEl.textContent = shadowTimeFromFraction(frac);
             return;
         }
-        
+
         let currentPoints = [];
         if (t === 0 || !frameB || frameB.length === 0) {
             currentPoints = frameA.map(p => [p[1], p[0]]);
@@ -450,7 +450,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 currentPoints.push([lat, lng]);
             }
         }
-        
+
         if (!shadowCircle) {
             shadowCircle = L.polygon(currentPoints, {
                 color: 'rgba(255, 204, 0, 0.35)',
@@ -462,7 +462,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             shadowCircle.setLatLngs(currentPoints);
         }
-        
+
         shadowTimeEl.textContent = shadowTimeFromFraction(frac);
     }
 
@@ -628,6 +628,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    function haversineDist(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Earth radius in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
     function renderEclipseInfo(eclipse, observer, name, context) {
         // Usar el polígono GeoJSON como fuente de verdad para la totalidad.
         // Astronomy Engine usa un modelo de sombra ligeramente diferente.
@@ -667,8 +678,67 @@ document.addEventListener("DOMContentLoaded", () => {
         // Calculate durations
         let phaseDurationObj = { m: '--', s: '--' };
         if (isLocallyTotal && eclipse.total_begin && eclipse.total_end) {
-            const diffMs = eclipse.total_end.time.date - eclipse.total_begin.time.date;
+            let diffMs = eclipse.total_end.time.date - eclipse.total_begin.time.date;
+
+            // --- CORRECCIÓN GEOMÉTRICA DE DURACIÓN EN LOS LÍMITES ---
+            // Astronomy Engine no conoce nuestra corrección L2 del limbo lunar y da ~10s extra en el borde.
+            // Ajustamos la duración para que caiga matemáticamente a 0 justo en la frontera de nuestro polígono.
+            if (shadowCenterCoords.length > 0 && totalityPolygon) {
+                let minDistToCenter = Infinity;
+                let closestCenterIdx = 0;
+                for (let i = 0; i < shadowCenterCoords.length; i++) {
+                    const c = shadowCenterCoords[i]; // [lng, lat]
+                    const dist = haversineDist(observer.latitude, observer.longitude, c[1], c[0]);
+                    if (dist < minDistToCenter) {
+                        minDistToCenter = dist;
+                        closestCenterIdx = i;
+                    }
+                }
+
+                const cLat = shadowCenterCoords[closestCenterIdx][1];
+                const cLng = shadowCenterCoords[closestCenterIdx][0];
+                let minDistToEdge = Infinity;
+                // Check distance to boundary
+                for (let i = 0; i < totalityPolygon.length; i++) {
+                    const p = totalityPolygon[i]; // [lng, lat]
+                    const dist = haversineDist(cLat, cLng, p[1], p[0]);
+                    if (dist < minDistToEdge) {
+                        minDistToEdge = dist;
+                    }
+                }
+
+                const d = minDistToCenter;
+                const R = minDistToEdge;
+
+                if (d >= R) {
+                    diffMs = 0;
+                } else {
+                    // Para NO recortar segundos en el interior de la franja,
+                    // conservamos el 100% de la duración de Astronomy Engine casi hasta el final.
+                    // Solo forzamos la caída a 0 en el último 5% de distancia hacia el límite.
+                    const threshold = 0.987;
+                    const ratio = d / R;
+                    if (ratio > threshold) {
+                        // Transición lineal de 1 a 0 en ese último 5%
+                        let fade = 1 - ((ratio - threshold) / (1 - threshold));
+                        fade = Math.min(3, fade);
+                        diffMs = diffMs * fade;
+                    }
+                    // Si ratio <= 0.95, diffMs se queda intacto.
+                }
+            }
+
             phaseDurationObj = formatDuration(diffMs);
+
+            // Si la duración cae a 0, actualizar las horas C2/C3 para coincidir con CMax
+            if (diffMs === 0 && eclipse.peak) {
+                const timeFmt = new Intl.DateTimeFormat('es-ES', {
+                    hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/Madrid'
+                });
+                const peakStr = timeFmt.format(eclipse.peak.time.date);
+                document.getElementById('time-c2').textContent = peakStr;
+                document.getElementById('time-c3').textContent = peakStr;
+            }
         }
 
         let totalDurationObj = { h: '--', m: '--' };
@@ -757,7 +827,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Human-readable direction (16-point compass)
             const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
-                          'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO'];
+                'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO'];
             const dirIndex = Math.round(az / 22.5) % 16;
             document.getElementById('sun-direction').textContent = `Mirar al ${dirs[dirIndex]}`;
 
