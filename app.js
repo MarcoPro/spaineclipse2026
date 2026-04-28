@@ -347,28 +347,26 @@ document.addEventListener("DOMContentLoaded", () => {
     let shadowPlaying = false;
     let shadowAnimFrame = null;
     let shadowCenterCoords = []; // [lon, lat] from GeoJSON
-    let shadowStartUT = 18.3; // Will be calibrated dynamically
-
-    // Each GeoJSON central line coordinate is generated at exactly 5-second intervals
-    const SHADOW_STEP_SEC = 5;
-
-    // Exact UT time of the first coordinate in eclipseGeoJSON (calculated via rigorous Besselian TDT - deltaT)
-    // First point lon: -14.97376 -> TDT: 18.297777h -> UT = 18.27861111111213h
-    const EXACT_START_UT = 18.27861111111213;
-
-    // Extract central line coordinates from GeoJSON
+    let shadowFrames = [];
     if (typeof eclipseGeoJSON !== 'undefined') {
         const lineFeature = eclipseGeoJSON.features.find(f => f.geometry.type === 'LineString');
         if (lineFeature) {
             shadowCenterCoords = lineFeature.geometry.coordinates; // [lon, lat]
-            shadowStartUT = EXACT_START_UT;
+        }
+        if (eclipseGeoJSON.shadow_frames) {
+            shadowFrames = eclipseGeoJSON.shadow_frames;
         }
     }
 
     function shadowTimeFromFraction(frac) {
-        // Compute actual UT from coordinate index, then convert to CEST (UTC+2)
-        const idx = frac * (shadowCenterCoords.length - 1);
-        const utHours = shadowStartUT + idx * SHADOW_STEP_SEC / 3600;
+        if (!eclipseGeoJSON.shadow_times || eclipseGeoJSON.shadow_times.length === 0) return "--:--:--";
+        const idx = frac * (eclipseGeoJSON.shadow_times.length - 1);
+        const i = Math.floor(idx);
+        const t = idx - i;
+        const utHoursA = eclipseGeoJSON.shadow_times[Math.min(i, eclipseGeoJSON.shadow_times.length - 1)];
+        const utHoursB = eclipseGeoJSON.shadow_times[Math.min(i + 1, eclipseGeoJSON.shadow_times.length - 1)];
+        
+        const utHours = utHoursA + t * (utHoursB - utHoursA);
         const cestHours = utHours + 2; // CEST = UTC+2 in August
         const h = Math.floor(cestHours);
         const m = Math.floor((cestHours - h) * 60);
@@ -390,160 +388,71 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
-    // --- PRECOMPUTE BAND HALF-WIDTHS from GeoJSON polygon ---
-    // Measures the perpendicular distance from each central-line point to the
-    // nearest polygon boundary point, considering ONLY points that are roughly
-    // perpendicular to the local path direction (filtering out end-cap artifacts).
-    // Then applies a heavy moving-average smooth to eliminate noise.
-    let bandHalfWidths = [];
-    (function precomputeBandWidths() {
-        if (!shadowCenterCoords.length) return;
-        const polyFeature = (typeof eclipseGeoJSON !== 'undefined')
-            ? eclipseGeoJSON.features.find(f => f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon')
-            : null;
-        if (!polyFeature) {
-            bandHalfWidths = shadowCenterCoords.map(() => 120);
-            return;
+    function resamplePolygon(points, numPoints) {
+        if (!points || points.length === 0) return [];
+        if (points.length === 1) {
+            return new Array(numPoints).fill([points[0][1], points[0][0]]);
         }
-
-        const polyCoords = polyFeature.geometry.type === 'Polygon'
-            ? polyFeature.geometry.coordinates[0]
-            : polyFeature.geometry.coordinates[0][0];
-
-        const kmPerDegLat = 111.0;
-        const N = shadowCenterCoords.length;
-
-        // Instead of distance to complex polygon, the physical umbral shadow radius
-        // varies very smoothly and slowly from ~140km at the start to ~132km at the end.
-        // The previous algorithm failed at the ends because the GeoJSON polygon comes
-        // to a sharp point, dragging the "perpendicular distance" to 0.
         
-        bandHalfWidths = new Array(N);
-        for (let idx = 0; idx < N; idx++) {
-            // Smoothly interpolate the known physical half-width along the path:
-            // West (Atlantic, idx=0) -> ~140 km
-            // East (Mediterranean, idx=N-1) -> ~132 km
-            const t = idx / (N - 1);
-            bandHalfWidths[idx] = 140 - t * 8;
+        let totalLen = 0;
+        const lengths = [0];
+        for (let i = 0; i < points.length - 1; i++) {
+            const dx = points[i+1][0] - points[i][0];
+            const dy = points[i+1][1] - points[i][1];
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            totalLen += dist;
+            lengths.push(totalLen);
         }
-    })();
-
-    // --- PRECOMPUTE SUN ALTITUDES along the path ---
-    // Only altitude is needed (for elongation factor 1/sin(alt))
-    const SUN_REF_COUNT = 30;
-    let sunAltitudes = []; // [{frac, altitude}]
-    (function precomputeSunAltitudes() {
-        if (!shadowCenterCoords.length || !window.Astronomy) return;
-        for (let k = 0; k <= SUN_REF_COUNT; k++) {
-            const frac = k / SUN_REF_COUNT;
-            const idx = frac * (shadowCenterCoords.length - 1);
-            const iFloor = Math.floor(idx);
-            const t = idx - iFloor;
-            const a = shadowCenterCoords[Math.min(iFloor, shadowCenterCoords.length - 1)];
-            const b = shadowCenterCoords[Math.min(iFloor + 1, shadowCenterCoords.length - 1)];
-            const lat = a[1] + t * (b[1] - a[1]);
-            const lng = a[0] + t * (b[0] - a[0]);
-
-            const utHours = shadowStartUT + idx * SHADOW_STEP_SEC / 3600;
-            const utMs = Date.UTC(2026, 7, 12) + utHours * 3600000;
-            const date = new Date(utMs);
-
-            try {
-                const observer = new Astronomy.Observer(lat, lng, 0);
-                const equ = Astronomy.Equator('Sun', date, observer, true, true);
-                const horizon = Astronomy.Horizon(date, observer, equ.ra, equ.dec, 'normal');
-                sunAltitudes.push({ frac, altitude: horizon.altitude });
-            } catch (e) {
-                sunAltitudes.push({ frac, altitude: 15 });
+        
+        const resampled = [];
+        for (let i = 0; i < numPoints; i++) {
+            const targetLen = (i / (numPoints - 1)) * totalLen;
+            let seg = 0;
+            while (seg < lengths.length - 2 && targetLen > lengths[seg+1]) {
+                seg++;
             }
+            const segStartLen = lengths[seg];
+            const segEndLen = lengths[seg+1];
+            const t = segEndLen === segStartLen ? 0 : (targetLen - segStartLen) / (segEndLen - segStartLen);
+            
+            const lng = points[seg][0] + t * (points[seg+1][0] - points[seg][0]);
+            const lat = points[seg][1] + t * (points[seg+1][1] - points[seg][1]);
+            resampled.push([lat, lng]);
         }
-    })();
-
-    function interpolateSunAltitude(frac) {
-        if (sunAltitudes.length < 2) return 15;
-        for (let i = 0; i < sunAltitudes.length - 1; i++) {
-            if (frac >= sunAltitudes[i].frac && frac <= sunAltitudes[i + 1].frac) {
-                const t = (frac - sunAltitudes[i].frac) / (sunAltitudes[i + 1].frac - sunAltitudes[i].frac);
-                return sunAltitudes[i].altitude + t * (sunAltitudes[i + 1].altitude - sunAltitudes[i].altitude);
-            }
-        }
-        return sunAltitudes[sunAltitudes.length - 1].altitude;
-    }
-
-    // --- PATH HEADING at a given fractional index ---
-    function getPathHeading(idx) {
-        const i0 = Math.max(0, Math.floor(idx) - 3);
-        const i1 = Math.min(shadowCenterCoords.length - 1, Math.floor(idx) + 3);
-        const a = shadowCenterCoords[i0];
-        const b = shadowCenterCoords[i1];
-        // Heading in degrees from North, clockwise (geographic convention)
-        const dLon = b[0] - a[0];
-        const dLat = b[1] - a[1];
-        return Math.atan2(dLon, dLat) * 180 / Math.PI; // degrees
-    }
-
-    function generateEllipsePoints(centerLat, centerLng, semiMinorKm, semiMajorKm, headingDeg, nPoints) {
-        // Generate polygon vertices for an ellipse on the Earth's surface.
-        // headingDeg: direction of the MAJOR axis from North, clockwise (degrees).
-        // Semi-major along heading, semi-minor perpendicular.
-        const points = [];
-        const kmPerDegLat = 111.0;
-        const kmPerDegLng = 111.0 * Math.cos(centerLat * Math.PI / 180);
-        const hRad = headingDeg * Math.PI / 180;
-
-        // Major axis direction in (East, North) = (sin(h), cos(h))
-        const majE = Math.sin(hRad);
-        const majN = Math.cos(hRad);
-        // Minor axis perpendicular: (cos(h), -sin(h))
-        const minE = Math.cos(hRad);
-        const minN = -Math.sin(hRad);
-
-        for (let i = 0; i < nPoints; i++) {
-            const theta = (2 * Math.PI * i) / nPoints;
-            const eKm = semiMajorKm * Math.cos(theta) * majE + semiMinorKm * Math.sin(theta) * minE;
-            const nKm = semiMajorKm * Math.cos(theta) * majN + semiMinorKm * Math.sin(theta) * minN;
-            points.push([
-                centerLat + nKm / kmPerDegLat,
-                centerLng + eKm / kmPerDegLng
-            ]);
-        }
-        points.push(points[0]);
-        return points;
+        return resampled;
     }
 
     function updateShadowPosition(frac) {
-        const posData = interpolatePath(frac);
-        if (!posData) return;
-
-        const { lat, lng, index } = posData;
-
-        // 1. Band half-width at this position (smooth, interpolated)
-        const idx0 = Math.floor(index);
-        const idx1 = Math.min(idx0 + 1, bandHalfWidths.length - 1);
-        const tIdx = index - idx0;
-        const R = bandHalfWidths[idx0] + tIdx * (bandHalfWidths[idx1] - bandHalfWidths[idx0]);
-
-        // 2. Sun altitude → elongation factor
-        // Cap at 4.0 — Earth's curvature limits the real umbral shadow stretch.
-        // Raw 1/sin(alt) gives ~7x at 8° which is unrealistic for the umbra.
-        const sunAlt = Math.max(interpolateSunAltitude(frac), 6);
-        const rawElongation = 1 / Math.sin(sunAlt * Math.PI / 180);
-        const elongation = Math.min(rawElongation, 4.0);
-
-        // 3. Ellipse axes
-        //    Semi-minor = R (cross-track, matches band width)
-        //    Semi-major = R × elongation (along-track, capped stretch)
-        const semiMinorKm = R;
-        const semiMajorKm = R * elongation;
-
-        // 4. Heading along the eclipse path
-        const heading = getPathHeading(index);
-
-        // 5. Render ellipse (60 vertices for smooth curve)
-        const ellipsePoints = generateEllipsePoints(lat, lng, semiMinorKm, semiMajorKm, heading, 60);
-
+        if (!shadowFrames || shadowFrames.length === 0) return;
+        
+        const idx = frac * (shadowFrames.length - 1);
+        const i = Math.floor(idx);
+        const t = idx - i;
+        
+        const frameA = shadowFrames[Math.min(i, shadowFrames.length - 1)];
+        const frameB = shadowFrames[Math.min(i + 1, shadowFrames.length - 1)];
+        
+        if (!frameA || frameA.length === 0) {
+            if (shadowCircle) shadowCircle.setLatLngs([]);
+            shadowTimeEl.textContent = shadowTimeFromFraction(frac);
+            return;
+        }
+        
+        let currentPoints = [];
+        if (t === 0 || !frameB || frameB.length === 0) {
+            currentPoints = frameA.map(p => [p[1], p[0]]);
+        } else {
+            const resA = resamplePolygon(frameA, 60);
+            const resB = resamplePolygon(frameB, 60);
+            for (let k = 0; k < 60; k++) {
+                const lat = resA[k][0] + t * (resB[k][0] - resA[k][0]);
+                const lng = resA[k][1] + t * (resB[k][1] - resA[k][1]);
+                currentPoints.push([lat, lng]);
+            }
+        }
+        
         if (!shadowCircle) {
-            shadowCircle = L.polygon(ellipsePoints, {
+            shadowCircle = L.polygon(currentPoints, {
                 color: 'rgba(255, 204, 0, 0.35)',
                 fillColor: 'rgba(10, 11, 16, 0.5)',
                 fillOpacity: 0.5,
@@ -551,9 +460,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 dashArray: '8, 4'
             }).addTo(map);
         } else {
-            shadowCircle.setLatLngs(ellipsePoints);
+            shadowCircle.setLatLngs(currentPoints);
         }
-
+        
         shadowTimeEl.textContent = shadowTimeFromFraction(frac);
     }
 

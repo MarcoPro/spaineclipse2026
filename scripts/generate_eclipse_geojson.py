@@ -50,9 +50,9 @@ FLATTENING = 1.0 / 298.257223563
 BA = 1.0 - FLATTENING
 E_SQ = 2 * FLATTENING - FLATTENING ** 2
 
-LON_RANGE = (-16.0, 8.0)        # Rango para la línea central
-POLY_LON_RANGE = (-14.0, 8.0)   # Rango para el polígono (evita latitudes polares)
-LAT_RANGE = (36.0, 50.0)        # Rango de latitud razonable
+LON_RANGE = (-14.0, 8.0)        # Rango para la línea central
+POLY_LON_RANGE = (-17.0, 8.0)   # Rango para el polígono (evita latitudes polares)
+LAT_RANGE = (30.0, 60.0)        # Rango de latitud razonable
 N_EDGE_SAMPLES = 720
 
 
@@ -195,10 +195,12 @@ def main():
             print(f"  ✅ UT {ut_h:.4f}h: ({lat:7.3f}°, {lon:7.3f}°) "
                   f"Δ={dist:.2f}km")
 
-    # ── PASO 1: Generar línea central ──
-    print("\nGenerando línea central...")
+    # ── PASO 1: Generar línea central y fotogramas ──
+    print("\nGenerando línea central y fotogramas...")
     dt = 5.0 / 3600.0
     center_coords = []
+    shadow_frames = []
+    center_times = []
     t = t_min
     while t <= t_max:
         result = central_line_point(t)
@@ -206,8 +208,19 @@ def main():
             lat, lon = result
             if LON_RANGE[0] <= lon <= LON_RANGE[1] and LAT_RANGE[0] <= lat <= LAT_RANGE[1]:
                 center_coords.append([round(lon, 5), round(lat, 5)])
+                center_times.append(t)
+                
+                edges = precompute_edge_at_time(t)
+                valid_edges = [pt for pt in edges if pt is not None]
+                if len(valid_edges) >= 3:
+                    step = max(1, len(valid_edges) // 60)
+                    sampled = valid_edges[::step]
+                    poly_coords = [[round(l, 4), round(la, 4)] for la, l in sampled]
+                    shadow_frames.append(poly_coords)
+                else:
+                    shadow_frames.append([])
         t += dt
-    print(f"  {len(center_coords)} puntos")
+    print(f"  {len(center_coords)} puntos y fotogramas")
 
     # ── PASO 2: Precalcular bordes umbrales para todos los instantes ──
     # IMPORTANTE: La sombra puede tocar la Tierra incluso cuando su CENTRO
@@ -237,7 +250,7 @@ def main():
                     approx_lon = sum(earth_lons) / len(earth_lons)
                 else:
                     approx_lon = 999  # no usar
-            all_edges.append((approx_lon, edges))
+            all_edges.append((t, approx_lon, edges))
         t += dt_scan
     print(f"  {len(all_edges)} instantes precalculados (incluye fase final)")
 
@@ -261,7 +274,7 @@ def main():
         overall_south = 90.0
         found = False
         
-        for c_lon, edges in all_edges:
+        for t_edge, c_lon, edges in all_edges:
             # Solo considerar instantes donde la sombra está cerca
             if abs(c_lon - target_lon) > LON_WINDOW:
                 continue
@@ -289,7 +302,7 @@ def main():
     # ── POST-PROCESADO: Recortar y suavizar ──
     # 1. Recortar extremos donde la franja se estrecha artificialmente
     #    (artefacto de la sombra despegándose al atardecer)
-    MIN_WIDTH_DEG = 0.5  # ~55 km mínimo para considerar válido
+    MIN_WIDTH_DEG = 0.1  # ~11 km mínimo para considerar válido
     trimmed_north = []
     trimmed_south = []
     for nc, sc in zip(north_coords, south_coords):
@@ -325,22 +338,89 @@ def main():
                   f"Ancho={width:.0f}km")
 
     # ── CONSTRUIR GeoJSON ──
-    # El polígono se construye como una forma de "almendra":
-    # punta oeste → borde norte (O→E) → punta este → borde sur (E→O) → cierre
-    # Las puntas son el punto medio entre el norte y sur en cada extremo.
-    if north_final and south_final:
-        # Punta oeste: punto medio entre el primer norte y primer sur
-        west_tip = [
-            north_final[0][0],  # misma longitud
-            round((north_final[0][1] + south_final[0][1]) / 2, 5)
-        ]
-        # Punta este: punto medio entre el último norte y último sur
-        east_tip = [
-            north_final[-1][0],
-            round((north_final[-1][1] + south_final[-1][1]) / 2, 5)
-        ]
-        # Almendra: punta_oeste → norte (O→E) → punta_este → sur invertido (E→O) → cierre
-        polygon_ring = [west_tip] + north_final + [east_tip] + south_final[::-1] + [west_tip]
+    def crop_polyline_by_plane(polyline, p_plane, dir_lonlat):
+        cropped = []
+        cos_lat = math.cos(math.radians(p_plane[1]))
+        nx = dir_lonlat[0] * cos_lat
+        ny = dir_lonlat[1]
+        
+        for i in range(len(polyline) - 1):
+            A = polyline[i]
+            B = polyline[i+1]
+            
+            dAx = (A[0] - p_plane[0]) * cos_lat
+            dAy = (A[1] - p_plane[1])
+            dA = dAx * nx + dAy * ny
+            
+            dBx = (B[0] - p_plane[0]) * cos_lat
+            dBy = (B[1] - p_plane[1])
+            dB = dBx * nx + dBy * ny
+            
+            if dA >= 0:
+                if not cropped or cropped[-1] != A:
+                    cropped.append(A)
+                    
+            if (dA < 0 and dB > 0) or (dA > 0 and dB < 0):
+                frac = dA / (dA - dB)
+                I = [A[0] + frac * (B[0] - A[0]), A[1] + frac * (B[1] - A[1])]
+                cropped.append([round(I[0], 5), round(I[1], 5)])
+                
+        if polyline:
+            last = polyline[-1]
+            d_last_x = (last[0] - p_plane[0]) * cos_lat
+            d_last_y = (last[1] - p_plane[1])
+            d_last = d_last_x * nx + d_last_y * ny
+            if d_last >= 0:
+                if not cropped or cropped[-1] != last:
+                    cropped.append(last)
+                    
+        return cropped
+
+    if north_final and south_final and len(center_coords) >= 2:
+        p_west = center_coords[0]
+        p_west_next = center_coords[1]
+        dir_west = [p_west_next[0] - p_west[0], p_west_next[1] - p_west[1]]
+        
+        north_final = crop_polyline_by_plane(north_final, p_west, dir_west)
+        south_final = crop_polyline_by_plane(south_final, p_west, dir_west)
+        
+        p_last = center_coords[-1]
+        p_prev = center_coords[-2]
+        dir_fwd = [p_last[0] - p_prev[0], p_last[1] - p_prev[1]]
+        
+        # Extrapolar la línea central hasta lon 5.0 para cubrir las Baleares enteras
+        target_lon = 5.0
+        if dir_fwd[0] > 0 and p_last[0] < target_lon:
+            frac = (target_lon - p_last[0]) / dir_fwd[0]
+            p_east = [round(target_lon, 5), round(p_last[1] + frac * dir_fwd[1], 5)]
+            center_coords.append(p_east)
+            
+            # Generar frame para p_east
+            t_last = center_times[-1]
+            t_prev = center_times[-2]
+            t_east = t_last + frac * (t_last - t_prev)
+            center_times.append(t_east)
+            
+            edges = precompute_edge_at_time(t_east)
+            valid_edges = [pt for pt in edges if pt is not None]
+            if len(valid_edges) >= 3:
+                step = max(1, len(valid_edges) // 60)
+                sampled = valid_edges[::step]
+                poly_coords = [[round(l, 4), round(la, 4)] for la, l in sampled]
+                shadow_frames.append(poly_coords)
+            else:
+                shadow_frames.append([])
+        else:
+            p_east = p_last
+            
+        dir_east = [-dir_fwd[0], -dir_fwd[1]]
+        
+        north_final = crop_polyline_by_plane(north_final, p_east, dir_east)
+        south_final = crop_polyline_by_plane(south_final, p_east, dir_east)
+        
+        polygon_ring = north_final + south_final[::-1]
+        if polygon_ring:
+            polygon_ring.append(polygon_ring[0])
     else:
         polygon_ring = []
 
@@ -376,6 +456,12 @@ def main():
             }
         ]
     }
+    
+    # Exportar tiempos en UT para sincronización exacta en la animación
+    shadow_times = [t - (69.10 / 3600.0) for t in center_times]
+    
+    feature_collection["shadow_frames"] = shadow_frames
+    feature_collection["shadow_times"] = shadow_times
 
     out_geojson = "/Users/marco/proyectos/eclipse/eclipse_2026.geojson"
     with open(out_geojson, "w") as f:
