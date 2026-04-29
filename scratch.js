@@ -1,13 +1,12 @@
-const fs = require('fs');
-global.window = {};
+const L2_COEFFS = [-0.008142, 0.0000935, -0.0000121];
+let t = 0.5; // somewhere in middle
+let l2_base = L2_COEFFS[0] + L2_COEFFS[1]*t + L2_COEFFS[2]*t*t;
+console.log("l2_base:", l2_base);
 
-const code = fs.readFileSync('besselian_calculator.js', 'utf8');
+let L2_CORRECTION_WIDER = 0.0004; // The original
+let l2_wider = l2_base - L2_CORRECTION_WIDER;
+console.log("l2_wider:", l2_wider, "abs:", Math.abs(l2_wider));
 
-const lat = 42.3439;
-const lon = -3.6969;
-
-const modCode = code.replace(/const L2_CORRECTION = [0-9.-]+;/, `const L2_CORRECTION = 0.00008;`);
-eval(modCode);
-const res = window.BesselianCalculator.calculateLocalCircumstances(lat, lon, 800);
-const dur2 = (res.total_end.time.date - res.total_begin.time.date) / 1000;
-console.log(`L2_CORRECTION=0.00008 -> Duration: ${dur2.toFixed(1)}s`);
+let L2_CORRECTION_TIGHT = 0.00005; // The new one for times
+let l2_tight = l2_base - L2_CORRECTION_TIGHT;
+console.log("l2_tight:", l2_tight, "abs:", Math.abs(l2_tight));
