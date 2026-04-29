@@ -79,6 +79,8 @@ body {
 
 /* --- Header & Search --- */
 .main-header {
+    position: relative;
+    z-index: 100;
     display: flex;
     align-items: center;
     gap: 1.5rem;
@@ -468,6 +470,7 @@ body {
     padding: 2rem;
     transform: translateY(0);
     opacity: 1;
+    z-index: 50;
     transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s;
     animation: slideUp 0.6s ease-out forwards;
 }
