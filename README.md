@@ -8,15 +8,20 @@ Permite a cualquier usuario buscar su localidad (o hacer clic en el mapa) y obte
 
 ## 🖥️ Demo
 
+**Prueba la aplicación interactiva aquí:** [https://marcopro.github.io/spaineclipse2026/](https://marcopro.github.io/spaineclipse2026/)
+
 ![Vista general del mapa con la franja de totalidad y panel informativo](https://img.shields.io/badge/Status-En%20desarrollo-yellow?style=for-the-badge)
 
 La aplicación muestra:
 
 - 🗺️ **Mapa interactivo** con la franja de totalidad superpuesta (polígono GeoJSON)
+- ☁️ **Mapa de nubes histórico** (Heatmap) basado en probabilidad estadística (2020-2024)
+- 🌑 **Simulación de la sombra (Umbra)** animada en tiempo real
 - 🔍 **Buscador de localidades** con autocompletado vía Nominatim (OpenStreetMap)
 - 📍 **Geolocalización** para detectar tu posición automáticamente
 - 📊 **Panel informativo** con tiempos de contacto (C1–C4), duración y oscurecimiento
 - 🌅 **Alerta de puesta de sol** si el eclipse coincide con el ocaso
+- 📱 **Diseño adaptado** para una visualización perfecta en dispositivos móviles
 
 ---
 
@@ -26,11 +31,13 @@ La aplicación muestra:
 eclipse/
 ├── index.html                  # Punto de entrada de la aplicación
 ├── styles.css                  # Estilos con glassmorphism y diseño dark mode
-├── app.js                      # Lógica del frontend (mapa, búsqueda, cálculos)
+├── app.js                      # Lógica principal del frontend (mapa, búsqueda, cálculos)
+├── cloud_heatmap.js            # Capa del mapa de probabilidad histórica de nubes
 ├── eclipse_data.js             # Datos GeoJSON de la franja de totalidad (generado)
 ├── eclipse_2026.geojson        # Datos GeoJSON puros (para uso externo/GIS)
 ├── scripts/
-│   └── generate_eclipse_geojson.py  # Generador de la franja desde Elementos Besselianos
+│   ├── generate_eclipse_geojson.py  # Generador de la franja desde Elementos Besselianos
+│   └── generate_cloud_heatmap.py    # Recopilador de datos de meteorología para el heatmap
 └── README.md
 ```
 
@@ -70,6 +77,11 @@ El script Python (`scripts/generate_eclipse_geojson.py`) calcula la geometría d
 4. **Post-procesado:** recorte de extremos con ancho < 0.5° y suavizado con media móvil de 5 puntos.
 
 **Precisión:** < 0.2 km vs tabla oficial NASA para la línea central.
+
+### Simulación de la Sombra y Meteorología
+
+- **Animación de la Umbra:** La aplicación incluye una simulación visual de la sombra umbral animada sobre el mapa. El tamaño y posición de la sombra se calculan de manera precisa desvinculando la renderización visual del cálculo exacto de la duración para asegurar sincronía con las horas reales de contacto locales.
+- **Mapa Histórico de Nubes (Heatmap):** El script `scripts/generate_cloud_heatmap.py` obtiene y promedia datos históricos de cobertura nubosa para el 12 de agosto a lo largo de 5 años (2020-2024), empleando técnicas de limitación de tasa (rate-limit) y backoff exponencial para interactuar con la API meteorológica. Este mapa sirve como guía de probabilidad para buscar zonas despejadas.
 
 ### Cálculos en el frontend
 
