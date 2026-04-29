@@ -138,6 +138,19 @@ Esto genera:
 - `eclipse_2026.geojson` — GeoJSON estándar
 - `eclipse_data.js` — Variable JS exportada para carga directa en el frontend
 
+### Regenerar los datos de Meteorología (Nubes)
+
+Si deseas actualizar o recalcular el historial de cobertura nubosa (por ejemplo, ampliando el rango de años):
+
+```bash
+python3 scripts/generate_cloud_heatmap.py
+```
+
+> **Aviso:** Este script realiza múltiples llamadas a la API histórica de Open-Meteo. Implementa pausas automáticas (rate-limit y backoff exponencial) para no exceder los límites gratuitos, por lo que su ejecución puede tardar unos minutos.
+
+Esto genera:
+- `cloud_heatmap.js` — Variable JS con los datos de probabilidad de nubes exportada para el frontend.
+
 ---
 
 ## 🎨 Diseño
