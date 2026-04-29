@@ -1,4 +1,11 @@
 document.addEventListener("DOMContentLoaded", () => {
+    // Configuración global para Astronomy Engine: 
+    // Forzar el valor Delta T para agosto de 2026 (69.10s) para sincronizar con el script de Python y Jubier
+    if (window.Astronomy) {
+        window.Astronomy.SetDeltaTFunction(function () {
+            return 69.10;
+        });
+    }
 
     // --- COUNTDOWN TIMER ---
     const ECLIPSE_DATE = new Date('2026-08-12T18:28:00Z'); // Approximate peak UTC
@@ -557,7 +564,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Start search for the eclipse from beginning of Aug 2026
         const searchDate = new Date('2026-08-01T00:00:00Z');
-        const observer = new window.Astronomy.Observer(lat, lng, 0);
+        const observer = new window.Astronomy.Observer(lat, lng, 800);
 
         const eclipse = window.Astronomy.SearchLocalSolarEclipse(searchDate, observer);
 
