@@ -15,7 +15,7 @@ Permite a cualquier usuario buscar su localidad (o hacer clic en el mapa) y obte
 La aplicación muestra:
 
 - 🗺️ **Mapa interactivo** con la franja de totalidad superpuesta (polígono GeoJSON)
-- ☁️ **Mapa de nubes histórico** (Heatmap) basado en probabilidad estadística (2020-2024)
+- ☁️ **Mapa de nubes histórico** (Heatmap) basado en probabilidad estadística (2015-2025)
 - 🌑 **Simulación de la sombra (Umbra)** animada en tiempo real
 - 🔍 **Buscador de localidades** con autocompletado vía Nominatim (OpenStreetMap)
 - 📍 **Geolocalización** para detectar tu posición automáticamente
@@ -68,6 +68,7 @@ El script Python (`scripts/generate_eclipse_geojson.py`) calcula la geometría d
 | `D_COEFFS` | Declinación del eje de la sombra |
 | `L2_COEFFS` | Radio del cono de sombra (penumbra exterior) |
 | `MU_COEFFS` | Ángulo horario del eje |
+| `DELTA_T` | Diferencia entre el Tiempo Terrestre (TT/TDT) y el Tiempo Universal (UT), fijado en **69.10 segundos** para ajustar la rotación de la Tierra. |
 
 **Método de cálculo:**
 
