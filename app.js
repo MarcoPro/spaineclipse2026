@@ -804,7 +804,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // --- WEATHER / CLIMATE DATA ---
-        fetchWeather(observer.latitude, observer.longitude);
+        updateWeatherData(observer.latitude, observer.longitude);
 
         // Save for comparison
         lastEclipseResult = {
@@ -820,8 +820,8 @@ document.addEventListener("DOMContentLoaded", () => {
         infoPanel.classList.remove('hidden');
     }
 
-    // --- WEATHER FETCH (Open-Meteo Historical API) ---
-    async function fetchWeather(lat, lng) {
+    // --- WEATHER CALCULATION (IDW Interpolation from Historical Data) ---
+    function updateWeatherData(lat, lng) {
         const weatherEl = document.getElementById('weather-info');
         const cloudsEl = document.getElementById('weather-clouds');
         const sourceEl = document.getElementById('weather-source');
@@ -830,40 +830,61 @@ document.addEventListener("DOMContentLoaded", () => {
         // Reset
         weatherEl.classList.add('hidden');
 
+        if (typeof window.cloudHeatmapData === 'undefined' || window.cloudHeatmapData.length === 0) {
+            console.warn('Weather data unavailable: cloudHeatmapData not loaded');
+            return;
+        }
+
         try {
-            // Use Open-Meteo Historical API for cloud cover from 1 year before the eclipse
-            // (real forecast won't be available until ~2 weeks before)
-            const url = `https://archive-api.open-meteo.com/v1/archive?` +
-                `latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}` +
-                `&start_date=2025-08-12&end_date=2025-08-12` +
-                `&hourly=cloudcover`;
+            // Calculate distances to all points
+            const pointsWithDist = window.cloudHeatmapData.map(p => ({
+                ...p,
+                dist: haversineDist(lat, lng, p.lat, p.lon)
+            }));
 
-            const response = await fetch(url);
-            const data = await response.json();
+            // Sort by distance
+            pointsWithDist.sort((a, b) => a.dist - b.dist);
 
-            if (data && data.hourly && data.hourly.cloudcover) {
-                // Eclipse over Spain is around 18:00 UTC (index 18 in the hourly array)
-                const pct = Math.round(data.hourly.cloudcover[18]);
-                if (pct !== undefined && !isNaN(pct)) {
-                    cloudsEl.textContent = `${pct}%`;
-                    sourceEl.textContent = `Histórico 12 Agosto 2025 (18:00 UTC)`;
-
-                    // Color code
-                    iconEl.className = 'fa-solid ';
-                    if (pct <= 30) {
-                        iconEl.className += 'fa-sun weather-good';
-                    } else if (pct <= 60) {
-                        iconEl.className += 'fa-cloud-sun weather-ok';
-                    } else {
-                        iconEl.className += 'fa-cloud weather-bad';
-                    }
-
-                    weatherEl.classList.remove('hidden');
+            // Take the 4 closest points for IDW (Inverse Distance Weighting) interpolation
+            const nearestPoints = pointsWithDist.slice(0, 4);
+            
+            let pct = 0;
+            
+            // If the closest point is extremely close (e.g. < 1km), just use its value
+            if (nearestPoints[0].dist < 1) {
+                pct = nearestPoints[0].cloudcover;
+            } else {
+                // IDW Formula
+                let sumWeights = 0;
+                let sumValues = 0;
+                for (const p of nearestPoints) {
+                    const weight = 1 / Math.pow(p.dist, 2);
+                    sumWeights += weight;
+                    sumValues += p.cloudcover * weight;
                 }
+                pct = sumValues / sumWeights;
+            }
+            
+            pct = Math.round(pct);
+
+            if (pct !== undefined && !isNaN(pct)) {
+                cloudsEl.textContent = `${pct}%`;
+                sourceEl.textContent = `Promedio 10 años (2015-2025)`;
+
+                // Color code
+                iconEl.className = 'fa-solid ';
+                if (pct <= 30) {
+                    iconEl.className += 'fa-sun weather-good';
+                } else if (pct <= 60) {
+                    iconEl.className += 'fa-cloud-sun weather-ok';
+                } else {
+                    iconEl.className += 'fa-cloud weather-bad';
+                }
+
+                weatherEl.classList.remove('hidden');
             }
         } catch (err) {
-            console.warn('Weather data unavailable:', err);
-            // Silently fail — weather is supplementary info
+            console.warn('Weather data calculation failed:', err);
         }
     }
 
