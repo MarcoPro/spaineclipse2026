@@ -40,10 +40,10 @@ MU_COEFFS = [88.74776, 15.003093]
 # Las webs profesionales (Xavier Jubier, timeanddate.com) usan el perfil real
 # del limbo lunar (Watts' charts), que amplía la sombra ~12-15%.
 # Calibrado contra 4 puntos de referencia oficiales (Bilbao, Galicia, Madrid, Cullera).
-L2_CORRECTION = 0.0004  # Se resta de L2 (lo hace más negativo = sombra mayor)
+L2_CORRECTION = 0.00005  # Valor calibrado empíricamente para reducir la duración ~4s respecto a 0.0004
 
 T0 = 18.0
-DELTA_T = 69.10
+DELTA_T = 69.11
 MU_CORRECTION = -DELTA_T * MU_COEFFS[1] / 3600.0
 
 FLATTENING = 1.0 / 298.257223563
@@ -458,7 +458,7 @@ def main():
     }
     
     # Exportar tiempos en UT para sincronización exacta en la animación
-    shadow_times = [t - (69.10 / 3600.0) for t in center_times]
+    shadow_times = [t - (DELTA_T / 3600.0) for t in center_times]
     
     feature_collection["shadow_frames"] = shadow_frames
     feature_collection["shadow_times"] = shadow_times

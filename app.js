@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Forzar el valor Delta T para agosto de 2026 (69.10s) para sincronizar con el script de Python y Jubier
     if (window.Astronomy) {
         window.Astronomy.SetDeltaTFunction(function () {
-            return 69.10;
+            return 69.11;
         });
     }
 
@@ -557,22 +557,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- ASTRONOMY CALCULATIONS ---
     function calculateEclipse(lat, lng, name, context) {
-        if (!window.Astronomy) {
-            console.error("Astronomy Engine no cargado.");
+        if (!window.Astronomy || !window.BesselianCalculator) {
+            console.error("Astronomy Engine o BesselianCalculator no cargados.");
             return;
         }
 
-        // Start search for the eclipse from beginning of Aug 2026
-        const searchDate = new Date('2026-08-01T00:00:00Z');
+        // Astronomy observer for sun position/sunset
         const observer = new window.Astronomy.Observer(lat, lng, 800);
 
-        const eclipse = window.Astronomy.SearchLocalSolarEclipse(searchDate, observer);
+        // Usar BesselianCalculator para las fases exactas sincronizadas con el mapa
+        const eclipse = window.BesselianCalculator.calculateLocalCircumstances(lat, lng, 800);
 
-        if (eclipse && eclipse.peak.time.date.getFullYear() === 2026) {
+        if (eclipse && eclipse.peak) {
             renderEclipseInfo(eclipse, observer, name, context);
         } else {
-            // Unlikely in ES but fallback just in case
-            alert("No hay eclipse significativo calculable en esta fecha para esta ubicación.");
+            alert("No hay eclipse total o parcial visible en esta fecha para esta ubicación.");
         }
     }
 
@@ -687,54 +686,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isLocallyTotal && eclipse.total_begin && eclipse.total_end) {
             let diffMs = eclipse.total_end.time.date - eclipse.total_begin.time.date;
 
-            // --- CORRECCIÓN GEOMÉTRICA DE DURACIÓN EN LOS LÍMITES ---
-            // Astronomy Engine no conoce nuestra corrección L2 del limbo lunar y da ~10s extra en el borde.
-            // Ajustamos la duración para que caiga matemáticamente a 0 justo en la frontera de nuestro polígono.
-            if (shadowCenterCoords.length > 0 && totalityPolygon) {
-                let minDistToCenter = Infinity;
-                let closestCenterIdx = 0;
-                for (let i = 0; i < shadowCenterCoords.length; i++) {
-                    const c = shadowCenterCoords[i]; // [lng, lat]
-                    const dist = haversineDist(observer.latitude, observer.longitude, c[1], c[0]);
-                    if (dist < minDistToCenter) {
-                        minDistToCenter = dist;
-                        closestCenterIdx = i;
-                    }
-                }
-
-                const cLat = shadowCenterCoords[closestCenterIdx][1];
-                const cLng = shadowCenterCoords[closestCenterIdx][0];
-                let minDistToEdge = Infinity;
-                // Check distance to boundary
-                for (let i = 0; i < totalityPolygon.length; i++) {
-                    const p = totalityPolygon[i]; // [lng, lat]
-                    const dist = haversineDist(cLat, cLng, p[1], p[0]);
-                    if (dist < minDistToEdge) {
-                        minDistToEdge = dist;
-                    }
-                }
-
-                const d = minDistToCenter;
-                const R = minDistToEdge;
-
-                if (d >= R) {
-                    diffMs = 0;
-                } else {
-                    // Para NO recortar segundos en el interior de la franja,
-                    // conservamos el 100% de la duración de Astronomy Engine casi hasta el final.
-                    // Solo forzamos la caída a 0 en el último 5% de distancia hacia el límite.
-                    const threshold = 0.987;
-                    const ratio = d / R;
-                    if (ratio > threshold) {
-                        // Transición lineal de 1 a 0 en ese último 5%
-                        let fade = 1 - ((ratio - threshold) / (1 - threshold));
-                        fade = Math.min(3, fade);
-                        diffMs = diffMs * fade;
-                    }
-                    // Si ratio <= 0.95, diffMs se queda intacto.
-                }
-            }
-
             phaseDurationObj = formatDuration(diffMs);
 
             // Si la duración cae a 0, actualizar las horas C2/C3 para coincidir con CMax
@@ -822,7 +773,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // --- SUN POSITION AT PEAK ---
         if (eclipse.peak && window.Astronomy) {
-            const peakTime = eclipse.peak.time;
+            const peakTime = eclipse.peak.time.date;
             // Get Sun's actual equatorial coordinates, then convert to horizontal
             const equ = window.Astronomy.Equator('Sun', peakTime, observer, true, true);
             const horizon = window.Astronomy.Horizon(peakTime, observer, equ.ra, equ.dec, 'normal');
@@ -1052,8 +1003,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const batch = gridPoints.slice(i, i + BATCH_SIZE);
             for (const pt of batch) {
                 try {
-                    const observer = new Astronomy.Observer(pt.lat, pt.lon, 0);
-                    const eclipse = Astronomy.SearchLocalSolarEclipse(searchDate, observer);
+                    const eclipse = window.BesselianCalculator.calculateLocalCircumstances(pt.lat, pt.lon, 0);
                     if (eclipse && eclipse.total_begin && eclipse.total_end) {
                         const durationSec = (eclipse.total_end.time.date - eclipse.total_begin.time.date) / 1000;
                         if (durationSec > 0 && durationSec < 300) {

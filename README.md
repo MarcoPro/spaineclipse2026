@@ -68,7 +68,7 @@ El script Python (`scripts/generate_eclipse_geojson.py`) calcula la geometría d
 | `D_COEFFS` | Declinación del eje de la sombra |
 | `L2_COEFFS` | Radio del cono de sombra (penumbra exterior) |
 | `MU_COEFFS` | Ángulo horario del eje |
-| `DELTA_T` | Diferencia entre el Tiempo Terrestre (TT/TDT) y el Tiempo Universal (UT), fijado en **69.10 segundos** para ajustar la rotación de la Tierra. |
+| `DELTA_T` | Diferencia entre el Tiempo Terrestre (TT/TDT) y el Tiempo Universal (UT), fijado en **69.11 segundos** para ajustar la rotación de la Tierra. |
 
 **Método de cálculo:**
 
