@@ -1,22 +1,23 @@
 window.BesselianCalculator = (function() {
     // Elementos Besselianos NASA/Espenak - Total Solar Eclipse 2026-08-12
     const T0 = 18.0;
-    const DELTA_T = 69.11; // Segundos (ajustado según IERS)
+    const DELTA_T = 69.1; // Segundos (ajustado según IERS)
     
-    const X_COEFFS = [0.475593, 0.5189288, -0.0000773, -0.0000088];
-    const Y_COEFFS = [0.771161, -0.2301664, -0.0001245, 0.0000037];
-    const D_COEFFS = [14.79667, -0.012065, -0.000003];
-    const L1_COEFFS = [0.537954, 0.0000940, -0.0000121];
-    const L2_COEFFS = [-0.008142, 0.0000935, -0.0000121];
-    const MU_COEFFS = [88.74776, 15.003093];
+    const X_COEFFS = [0.47551399, 0.51892489, -0.00007730, -0.00000804];
+    const Y_COEFFS = [0.77118301, -0.23016800, -0.00012460, 0.00000377];
+    const D_COEFFS = [14.79666996, -0.01206500, -0.00000300];
+    const L1_COEFFS = [0.53795499, 0.00009390, -0.00001210];
+    const L2_COEFFS = [-0.00814200, 0.00009350, -0.00001210];
+    const MU_COEFFS = [88.74778748, 15.00308990];
     
     // Corrección para el limbo lunar
-    // Un valor de 0.00008 ajusta la duración reduciéndola exactamente ~4 segundos,
-    // calibrando con las referencias sin recortar la franja drásticamente.
-    const L2_CORRECTION = 0.00005;
+    // Para encajar con los mapas profesionales, usamos una base y una pendiente.
+    // Pendiente negativa: ensancha al inicio (Galicia) y estrecha al final (Mediterráneo).
+    const L2_CORRECTION_BASE = 0.00011;
+    const L2_CORRECTION_SLOPE = -0.00015;
     
-    const TAN_F1 = 0.0046141;
-    const TAN_F2 = 0.0045911;
+    const TAN_F1 = 0.00461410;
+    const TAN_F2 = 0.00459110;
 
     // Constantes de la Tierra (WGS84)
     const FLATTENING = 1.0 / 298.257223563;
@@ -45,7 +46,9 @@ window.BesselianCalculator = (function() {
         const y = evalPoly(Y_COEFFS, t);
         const d = evalPoly(D_COEFFS, t) * Math.PI / 180.0;
         const l1 = evalPoly(L1_COEFFS, t);
-        const l2 = evalPoly(L2_COEFFS, t) - L2_CORRECTION;
+        
+        const l2_corr = L2_CORRECTION_BASE + L2_CORRECTION_SLOPE * t;
+        const l2 = evalPoly(L2_COEFFS, t) - l2_corr;
         
         const mu_corr = -DELTA_T * MU_COEFFS[1] / 3600.0;
         const mu = evalPoly(MU_COEFFS, t) + mu_corr; // en grados

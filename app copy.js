@@ -557,21 +557,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- ASTRONOMY CALCULATIONS ---
     function calculateEclipse(lat, lng, name, context) {
-        if (!window.Astronomy || !window.BesselianCalculator) {
-            console.error("Astronomy Engine o BesselianCalculator no cargados.");
+        if (!window.Astronomy) {
+            console.error("Astronomy Engine no cargado.");
             return;
         }
 
-        // Astronomy observer for sun position/sunset
+        // Start search for the eclipse from beginning of Aug 2026
+        const searchDate = new Date('2026-08-01T00:00:00Z');
         const observer = new window.Astronomy.Observer(lat, lng, 800);
 
-        // Usar BesselianCalculator para las fases exactas sincronizadas con el mapa
-        const eclipse = window.BesselianCalculator.calculateLocalCircumstances(lat, lng, 800);
+        const eclipse = window.Astronomy.SearchLocalSolarEclipse(searchDate, observer);
 
-        if (eclipse && eclipse.peak) {
+        if (eclipse && eclipse.peak.time.date.getFullYear() === 2026) {
             renderEclipseInfo(eclipse, observer, name, context);
         } else {
-            alert("No hay eclipse total o parcial visible en esta fecha para esta ubicación.");
+            // Unlikely in ES but fallback just in case
+            alert("No hay eclipse significativo calculable en esta fecha para esta ubicación.");
         }
     }
 
@@ -686,6 +687,54 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isLocallyTotal && eclipse.total_begin && eclipse.total_end) {
             let diffMs = eclipse.total_end.time.date - eclipse.total_begin.time.date;
 
+            // --- CORRECCIÓN GEOMÉTRICA DE DURACIÓN EN LOS LÍMITES ---
+            // Astronomy Engine no conoce nuestra corrección L2 del limbo lunar y da ~10s extra en el borde.
+            // Ajustamos la duración para que caiga matemáticamente a 0 justo en la frontera de nuestro polígono.
+            if (shadowCenterCoords.length > 0 && totalityPolygon) {
+                let minDistToCenter = Infinity;
+                let closestCenterIdx = 0;
+                for (let i = 0; i < shadowCenterCoords.length; i++) {
+                    const c = shadowCenterCoords[i]; // [lng, lat]
+                    const dist = haversineDist(observer.latitude, observer.longitude, c[1], c[0]);
+                    if (dist < minDistToCenter) {
+                        minDistToCenter = dist;
+                        closestCenterIdx = i;
+                    }
+                }
+
+                const cLat = shadowCenterCoords[closestCenterIdx][1];
+                const cLng = shadowCenterCoords[closestCenterIdx][0];
+                let minDistToEdge = Infinity;
+                // Check distance to boundary
+                for (let i = 0; i < totalityPolygon.length; i++) {
+                    const p = totalityPolygon[i]; // [lng, lat]
+                    const dist = haversineDist(cLat, cLng, p[1], p[0]);
+                    if (dist < minDistToEdge) {
+                        minDistToEdge = dist;
+                    }
+                }
+
+                const d = minDistToCenter;
+                const R = minDistToEdge;
+
+                if (d >= R) {
+                    diffMs = 0;
+                } else {
+                    // Para NO recortar segundos en el interior de la franja,
+                    // conservamos el 100% de la duración de Astronomy Engine casi hasta el final.
+                    // Solo forzamos la caída a 0 en el último 5% de distancia hacia el límite.
+                    const threshold = 0.987;
+                    const ratio = d / R;
+                    if (ratio > threshold) {
+                        // Transición lineal de 1 a 0 en ese último 5%
+                        let fade = 1 - ((ratio - threshold) / (1 - threshold));
+                        fade = Math.min(3, fade);
+                        diffMs = diffMs * fade;
+                    }
+                    // Si ratio <= 0.95, diffMs se queda intacto.
+                }
+            }
+
             phaseDurationObj = formatDuration(diffMs);
 
             // Si la duración cae a 0, actualizar las horas C2/C3 para coincidir con CMax
@@ -773,7 +822,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // --- SUN POSITION AT PEAK ---
         if (eclipse.peak && window.Astronomy) {
-            const peakTime = eclipse.peak.time.date;
+            const peakTime = eclipse.peak.time;
             // Get Sun's actual equatorial coordinates, then convert to horizontal
             const equ = window.Astronomy.Equator('Sun', peakTime, observer, true, true);
             const horizon = window.Astronomy.Horizon(peakTime, observer, equ.ra, equ.dec, 'normal');
@@ -804,7 +853,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // --- WEATHER / CLIMATE DATA ---
-        updateWeatherData(observer.latitude, observer.longitude);
+        fetchWeather(observer.latitude, observer.longitude);
 
         // Save for comparison
         lastEclipseResult = {
@@ -820,8 +869,8 @@ document.addEventListener("DOMContentLoaded", () => {
         infoPanel.classList.remove('hidden');
     }
 
-    // --- WEATHER CALCULATION (IDW Interpolation from Historical Data) ---
-    function updateWeatherData(lat, lng) {
+    // --- WEATHER FETCH (Open-Meteo Historical API) ---
+    async function fetchWeather(lat, lng) {
         const weatherEl = document.getElementById('weather-info');
         const cloudsEl = document.getElementById('weather-clouds');
         const sourceEl = document.getElementById('weather-source');
@@ -830,61 +879,40 @@ document.addEventListener("DOMContentLoaded", () => {
         // Reset
         weatherEl.classList.add('hidden');
 
-        if (typeof window.cloudHeatmapData === 'undefined' || window.cloudHeatmapData.length === 0) {
-            console.warn('Weather data unavailable: cloudHeatmapData not loaded');
-            return;
-        }
-
         try {
-            // Calculate distances to all points
-            const pointsWithDist = window.cloudHeatmapData.map(p => ({
-                ...p,
-                dist: haversineDist(lat, lng, p.lat, p.lon)
-            }));
+            // Use Open-Meteo Historical API for cloud cover from 1 year before the eclipse
+            // (real forecast won't be available until ~2 weeks before)
+            const url = `https://archive-api.open-meteo.com/v1/archive?` +
+                `latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}` +
+                `&start_date=2025-08-12&end_date=2025-08-12` +
+                `&hourly=cloudcover`;
 
-            // Sort by distance
-            pointsWithDist.sort((a, b) => a.dist - b.dist);
+            const response = await fetch(url);
+            const data = await response.json();
 
-            // Take the 4 closest points for IDW (Inverse Distance Weighting) interpolation
-            const nearestPoints = pointsWithDist.slice(0, 4);
+            if (data && data.hourly && data.hourly.cloudcover) {
+                // Eclipse over Spain is around 18:00 UTC (index 18 in the hourly array)
+                const pct = Math.round(data.hourly.cloudcover[18]);
+                if (pct !== undefined && !isNaN(pct)) {
+                    cloudsEl.textContent = `${pct}%`;
+                    sourceEl.textContent = `Histórico 12 Agosto 2025 (18:00 UTC)`;
 
-            let pct = 0;
+                    // Color code
+                    iconEl.className = 'fa-solid ';
+                    if (pct <= 30) {
+                        iconEl.className += 'fa-sun weather-good';
+                    } else if (pct <= 60) {
+                        iconEl.className += 'fa-cloud-sun weather-ok';
+                    } else {
+                        iconEl.className += 'fa-cloud weather-bad';
+                    }
 
-            // If the closest point is extremely close (e.g. < 1km), just use its value
-            if (nearestPoints[0].dist < 1) {
-                pct = nearestPoints[0].cloudcover;
-            } else {
-                // IDW Formula
-                let sumWeights = 0;
-                let sumValues = 0;
-                for (const p of nearestPoints) {
-                    const weight = 1 / Math.pow(p.dist, 2);
-                    sumWeights += weight;
-                    sumValues += p.cloudcover * weight;
+                    weatherEl.classList.remove('hidden');
                 }
-                pct = sumValues / sumWeights;
-            }
-
-            pct = Math.round(pct);
-
-            if (pct !== undefined && !isNaN(pct)) {
-                cloudsEl.textContent = `${pct}%`;
-                sourceEl.textContent = `Promedio 10 años (2015-2025)`;
-
-                // Color code
-                iconEl.className = 'fa-solid ';
-                if (pct <= 30) {
-                    iconEl.className += 'fa-sun weather-good';
-                } else if (pct <= 60) {
-                    iconEl.className += 'fa-cloud-sun weather-ok';
-                } else {
-                    iconEl.className += 'fa-cloud weather-bad';
-                }
-
-                weatherEl.classList.remove('hidden');
             }
         } catch (err) {
-            console.warn('Weather data calculation failed:', err);
+            console.warn('Weather data unavailable:', err);
+            // Silently fail — weather is supplementary info
         }
     }
 
@@ -1024,7 +1052,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const batch = gridPoints.slice(i, i + BATCH_SIZE);
             for (const pt of batch) {
                 try {
-                    const eclipse = window.BesselianCalculator.calculateLocalCircumstances(pt.lat, pt.lon, 0);
+                    const observer = new Astronomy.Observer(pt.lat, pt.lon, 0);
+                    const eclipse = Astronomy.SearchLocalSolarEclipse(searchDate, observer);
                     if (eclipse && eclipse.total_begin && eclipse.total_end) {
                         const durationSec = (eclipse.total_end.time.date - eclipse.total_begin.time.date) / 1000;
                         if (durationSec > 0 && durationSec < 300) {

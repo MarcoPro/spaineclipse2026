@@ -29,21 +29,24 @@ import math
 # ELEMENTOS BESSELIANOS OFICIALES NASA/ESPENAK
 # ============================================================================
 
-X_COEFFS = [0.475593, 0.5189288, -0.0000773, -0.0000088]
-Y_COEFFS = [0.771161, -0.2301664, -0.0001245, 0.0000037]
-D_COEFFS = [14.79667, -0.012065, -0.000003]
-L2_COEFFS = [-0.008142, 0.0000935, -0.0000121]
-MU_COEFFS = [88.74776, 15.003093]
+X_COEFFS = [0.47551399, 0.51892489, -0.00007730, -0.00000804]
+Y_COEFFS = [0.77118301, -0.23016800, -0.00012460, 0.00000377]
+D_COEFFS = [14.79666996, -0.01206500, -0.00000300]
+L2_COEFFS = [-0.00814200, 0.00009350, -0.00001210]
+MU_COEFFS = [88.74778748, 15.00308990]
 
-# Corrección al radio umbral para compensar el perfil real del limbo lunar.
-# Los Elementos Besselianos estándar (NASA/Espenak) asumen una Luna esférica.
-# Las webs profesionales (Xavier Jubier, timeanddate.com) usan el perfil real
-# del limbo lunar (Watts' charts), que amplía la sombra ~12-15%.
-# Calibrado contra 4 puntos de referencia oficiales (Bilbao, Galicia, Madrid, Cullera).
-L2_CORRECTION = 0.0004  # Usamos el margen original para dibujar la franja más ancha visualmente
+# Correcciones empíricas independientes para el límite NORTE y SUR.
+# Permite ensanchar/estrechar la franja de forma asimétrica (Watts charts).
+L2_NORTH_BASE = 0.0018
+L2_NORTH_SLOPE = -0.0018  # Fuerte ensanchamiento en el NW (Galicia/Bilbao)
+L2_NORTH_QUAD = -0.0015       # Curvatura cuadrática para el límite norte
+
+L2_SOUTH_BASE = 0.0020
+L2_SOUTH_SLOPE = -0.0018  # Ensancha el sur de Galicia
+L2_SOUTH_QUAD = -0.0015       # Curvatura cuadrática para el límite sur
 
 T0 = 18.0
-DELTA_T = 69.11
+DELTA_T = 69.1
 MU_CORRECTION = -DELTA_T * MU_COEFFS[1] / 3600.0
 
 FLATTENING = 1.0 / 298.257223563
@@ -66,7 +69,7 @@ def besselian_at(t_tdt):
         eval_poly(X_COEFFS, t),
         eval_poly(Y_COEFFS, t),
         math.radians(eval_poly(D_COEFFS, t)),
-        eval_poly(L2_COEFFS, t) - L2_CORRECTION,  # Ampliación del limbo lunar
+        eval_poly(L2_COEFFS, t),  # No aplicamos corrección global aquí
         eval_poly(MU_COEFFS, t) + MU_CORRECTION,
     )
 
@@ -124,10 +127,23 @@ def precompute_edge_at_time(t_tdt):
     Retorna lista de (lat, lon) o None para puntos fuera de la Tierra.
     """
     x, y, d, l2, mu = besselian_at(t_tdt)
-    r = abs(l2)
+    r_base = abs(l2)
     points = []
+    
+    t = t_tdt - T0
+    corr_n = L2_NORTH_BASE + L2_NORTH_SLOPE * t + L2_NORTH_QUAD * (t ** 2)
+    corr_s = L2_SOUTH_BASE + L2_SOUTH_SLOPE * t + L2_SOUTH_QUAD * (t ** 2)
+    
     for i in range(N_EDGE_SAMPLES):
         theta = 2.0 * math.pi * i / N_EDGE_SAMPLES
+        
+        # Interpolar suavemente entre corrección norte y sur según el ángulo
+        weight_north = (math.sin(theta) + 1.0) / 2.0
+        weight_south = 1.0 - weight_north
+        l2_corr = corr_n * weight_north + corr_s * weight_south
+        
+        r = r_base + l2_corr  # Sumamos la corrección al radio umbral absoluto
+        
         xi = x + r * math.cos(theta)
         eta = y + r * math.sin(theta)
         points.append(fundamental_to_geo(xi, eta, d, mu))
