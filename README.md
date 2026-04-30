@@ -74,7 +74,11 @@ El script Python (`scripts/generate_eclipse_geojson.py`) calcula la geometría d
 
 1. **Línea central:** proyección directa `(x, y) → (lat, lon)` sobre elipsoide WGS84.
 2. **Límites norte/sur:** para cada meridiano objetivo, se barren **todos los instantes** del eclipse. En cada instante se calcula dónde el borde del círculo umbral interseca ese meridiano. La latitud máxima encontrada es el límite norte real; la mínima es el límite sur.
-3. **Corrección de limbo lunar (`L2_CORRECTION`):** los Elementos Besselianos asumen una Luna esférica. Se aplica una corrección de +0.0005 al radio umbral calibrada contra 4 puntos de referencia oficiales (Bilbao, Galicia, Madrid, Cullera) para compensar el perfil real del limbo lunar (Watts' charts).
+3. **Corrección de limbo lunar (Efecto Embudo Asimétrico):** Los Elementos Besselianos clásicos asumen una Luna esférica perfecta, pero en la realidad, las montañas y valles del contorno lunar (Watts' profile) deforman la sombra proyectada. Para lograr replicar con máxima fidelidad los mapas astronómicos profesionales (como los de Xavier Jubier), hemos sustituido la clásica corrección fija de radio umbral (`L2`) por un motor de corrección matemático dinámico e independiente para los límites NORTE y SUR.
+   Cada límite se deforma mediante un polinomio de segundo grado gobernado por 3 variables:
+   - **`BASE`:** Determina el colchón de ensanchamiento o estrechamiento general.
+   - **`SLOPE` (Pendiente):** Genera el efecto de "embudo" lineal a lo largo de la trayectoria. Como el tiempo `t` a lo largo de España discurre desde `~0.42` en Galicia hasta `~0.55` en el Mediterráneo, una pendiente negativa provoca que el ensanchamiento sea agresivo en la entrada noroeste y se vaya estrechando progresivamente hacia la salida este.
+   - **`QUAD` (Curvatura Cuadrática):** Introduce una aceleración exponencial al embudo (`t²`), permitiendo crear límites cóncavos o convexos (por ejemplo, que la franja se estreche de golpe justo antes de salir al mar) para calcar con exactitud la topografía irregular del limbo lunar.
 4. **Post-procesado:** recorte de extremos con ancho < 0.5° y suavizado con media móvil de 5 puntos.
 
 **Precisión:** < 0.2 km vs tabla oficial NASA para la línea central.
