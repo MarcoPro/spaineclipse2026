@@ -1,20 +1,19 @@
 window.BesselianCalculator = (function() {
-    // Elementos Besselianos NASA/Espenak - Total Solar Eclipse 2026-08-12
-    const T0 = 18.0;
-    const DELTA_T = 69.1; // Segundos (ajustado según IERS)
+    // Leemos la configuración inyectada por config.js
+    const BC = window.EclipseConfig.besselian;
+
+    const T0 = BC.T0;
+    const DELTA_T = BC.DELTA_T;
     
-    const X_COEFFS = [0.47551399, 0.51892489, -0.00007730, -0.00000804];
-    const Y_COEFFS = [0.77118301, -0.23016800, -0.00012460, 0.00000377];
-    const D_COEFFS = [14.79666996, -0.01206500, -0.00000300];
-    const L1_COEFFS = [0.53795499, 0.00009390, -0.00001210];
-    const L2_COEFFS = [-0.00814200, 0.00009350, -0.00001210];
-    const MU_COEFFS = [88.74778748, 15.00308990];
+    const X_COEFFS = BC.X_COEFFS;
+    const Y_COEFFS = BC.Y_COEFFS;
+    const D_COEFFS = BC.D_COEFFS;
+    const L1_COEFFS = BC.L1_COEFFS;
+    const L2_COEFFS = BC.L2_COEFFS;
+    const MU_COEFFS = BC.MU_COEFFS;
     
-    // Corrección para el limbo lunar
-    // Para encajar con los mapas profesionales, usamos una base y una pendiente.
-    // Pendiente negativa: ensancha al inicio (Galicia) y estrecha al final (Mediterráneo).
-    const L2_CORRECTION_BASE = 0.00011;
-    const L2_CORRECTION_SLOPE = -0.00015;
+    const L2_CORRECTION_BASE = BC.limb_correction.frontend.base;
+    const L2_CORRECTION_SLOPE = BC.limb_correction.frontend.slope;
     
     const TAN_F1 = 0.00461410;
     const TAN_F2 = 0.00459110;
@@ -77,9 +76,9 @@ window.BesselianCalculator = (function() {
         if (t === null) return null;
         // t está en horas desde T0 (18.0) en Tiempo Dinámico Terrestre (TDT).
         // UT = TDT - DELTA_T
-        const ut_hours = 18.0 + t - (DELTA_T / 3600.0);
+        const ut_hours = BC.T0 + t - (DELTA_T / 3600.0);
         const ms = ut_hours * 3600000;
-        const baseDate = new Date('2026-08-12T00:00:00Z');
+        const baseDate = new Date(`${BC.eclipse_date}T00:00:00Z`);
         return new Date(baseDate.getTime() + ms);
     }
 

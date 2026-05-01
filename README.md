@@ -14,32 +14,41 @@ Permite a cualquier usuario buscar su localidad (o hacer clic en el mapa) y obte
 
 La aplicación muestra:
 
-- 🗺️ **Mapa interactivo** con la franja de totalidad superpuesta (polígono GeoJSON)
-- ☁️ **Mapa de nubes histórico** (Heatmap) basado en probabilidad estadística (2015-2025)
+- 🗺️ **Múltiples Mapas Base** interactivos (Estándar, Satélite y Relieve Topográfico)
+- ⛰️ **Análisis de Altitud 3D**, calculando el impacto de tu elevación (0-3000m) en los tiempos del eclipse
+- 📡 **Radar de Horizonte en Vivo**, generando gráficas de perfiles montañosos cruzados con la trayectoria del sol
+- ☁️ **Mapa de nubes histórico** (Heatmap) basado en probabilidad estadística (2010-2024)
 - 🌑 **Simulación de la sombra (Umbra)** animada en tiempo real
 - 🔍 **Buscador de localidades** con autocompletado vía Nominatim (OpenStreetMap)
 - 📍 **Geolocalización** para detectar tu posición automáticamente
-- 📊 **Panel informativo** con tiempos de contacto (C1–C4), duración y oscurecimiento
-- 🌅 **Alerta de puesta de sol** si el eclipse coincide con el ocaso
+- 📊 **Panel informativo** con tiempos de contacto (C1–C4) ajustados a la curvatura terrestre
+- 🌅 **Alertas de visibilidad**: puesta de sol y montañas bloqueando la totalidad
 - 📱 **Diseño adaptado** para una visualización perfecta en dispositivos móviles
 
 ---
 
-## 🏗️ Arquitectura
+## 🏗️ Estructura del Proyecto
 
-```
-eclipse/
-├── index.html                  # Punto de entrada de la aplicación
-├── styles.css                  # Estilos con glassmorphism y diseño dark mode
-├── app.js                      # Lógica principal del frontend (mapa, búsqueda, cálculos)
-├── cloud_heatmap.js            # Capa del mapa de probabilidad histórica de nubes
-├── eclipse_data.js             # Datos GeoJSON de la franja de totalidad (generado)
-├── eclipse_2026.geojson        # Datos GeoJSON puros (para uso externo/GIS)
-├── scripts/
-│   ├── generate_eclipse_geojson.py  # Generador de la franja desde Elementos Besselianos
-│   └── generate_cloud_heatmap.py    # Recopilador de datos de meteorología para el heatmap
-└── README.md
-```
+### Archivos del Frontend (Web App)
+- `index.html`: Punto de entrada principal. Contiene la estructura DOM, el modal de información y el contenedor del mapa.
+- `app.js`: Motor principal de la aplicación. Maneja el mapa Leaflet, la geolocalización, la búsqueda, la animación de la sombra, el gráfico de horizonte y la interfaz.
+- `besselian_calculator.js`: Motor matemático puro. Utiliza los elementos besselianos para calcular el instante exacto, duración y oscurecimiento con precisión de sub-segundos corrigiendo la altitud terrestre.
+- `config.js`: Archivo de configuración centralizado (única fuente de la verdad). Almacena los elementos besselianos, deltas de tiempo, y parámetros de conexión para APIs y capas topográficas.
+- `styles.css`: Hoja de estilos principal con diseño *glassmorphism*, dark mode y diseño responsive para móviles.
+- `pois.js`: Base de datos local con Puntos de Interés (miradores, ciudades clave) para autocompletado y marcadores sugeridos en el mapa.
+- `sw.js`: *Service Worker*. Cachea todos los archivos de la app para que funcione 100% offline (sin internet) el día del eclipse.
+- `manifest.json`: Archivo de manifiesto que permite instalar la web como una app nativa en el móvil (PWA).
+
+### Archivos de Datos (Generados)
+- `eclipse_data.js`: Contiene el polígono WGS84 de la franja de totalidad, ajustado por los algoritmos asimétricos del limbo lunar.
+- `cloud_heatmap.js`: Matriz estadística con la probabilidad de nubes en cada coordenada de la franja de totalidad.
+- `topography_data.js`: Cuadrícula con las altitudes locales (modelo SRTM) utilizada para los cálculos matemáticos de fase y precisión.
+- `eclipse_2026.geojson`: El archivo crudo GeoJSON de la franja, ideal para exportar a QGIS o herramientas GIS de terceros.
+
+### Scripts de Backend (Python)
+- `scripts/generate_eclipse_geojson.py`: Motor de geometría espacial. Lee los elementos besselianos, genera la franja en WGS84 aplicando un modelo polinómico avanzado para los límites norte y sur, y crea el GeoJSON.
+- `scripts/generate_topography_gee.py`: Se conecta a Google Earth Engine, escanea la franja del eclipse sobre el modelo SRTM de la Tierra y exporta la cuadrícula de altitudes.
+- `scripts/generate_cloud_heatmap_gee.py`: Extrae y promedia 15 años de datos climáticos del modelo ERA5 (Copernicus) a través de Google Earth Engine para construir el mapa de probabilidad de nubes.
 
 ### Flujo de datos
 
@@ -83,10 +92,14 @@ El script Python (`scripts/generate_eclipse_geojson.py`) calcula la geometría d
 
 **Precisión:** < 0.2 km vs tabla oficial NASA para la línea central.
 
-### Simulación de la Sombra y Meteorología
+### Topografía y Detección de Horizonte (Sistema Híbrido)
 
-- **Animación de la Umbra:** La aplicación incluye una simulación visual de la sombra umbral animada sobre el mapa. El tamaño y posición de la sombra se calculan de manera precisa desvinculando la renderización visual del cálculo exacto de la duración para asegurar sincronía con las horas reales de contacto locales.
-- **Mapa Histórico de Nubes (Heatmap):** El script `scripts/generate_cloud_heatmap.py` obtiene y promedia datos históricos de cobertura nubosa para el 12 de agosto a lo largo de 5 años (2020-2024), empleando técnicas de limitación de tasa (rate-limit) y backoff exponencial para interactuar con la API meteorológica. Este mapa sirve como guía de probabilidad para buscar zonas despejadas.
+- **Precisión Altimétrica Offline (`topography_data.js`)**: El script `scripts/generate_topography_gee.py` extrae un mapa offline con la altitud sobre el nivel del mar a partir del modelo digital de elevaciones (SRTM). Al hacer clic en un valle o una montaña alta (ej. 2.500m), la aplicación introduce matemáticamente esa ganancia de altitud en las ecuaciones geométricas de Bessel para arrojar el segundo exacto en el que el cono de sombra de la Luna barrerá físicamente tu ubicación (en las alturas los contactos suceden fracciones de segundo antes).
+- **Radar de Horizonte en Tiempo Real (Open-Meteo)**: Un sofisticado motor de *ray-casting* direccional. Al hacer clic, se calcula la posición del sol en el cielo (Azimut y Elevación). Acto seguido, dispara 20 trazadores a lo largo de 20 km sobre la superficie terrestre en la dirección óptica del Sol. Obtiene el perfil del terreno usando la API en vivo de Open-Meteo Elevation, corrige la curvatura de la Tierra de las montañas, y grafica un perfil del terreno contra la línea de visión del Sol informando de forma visual (y mediante alertas) si la montaña cortará el eclipse o no.
+
+### Meteorología Estadística
+
+- **Mapa Histórico de Nubes (Heatmap):** El script `scripts/generate_cloud_heatmap_gee.py` obtiene y promedia datos históricos de cobertura nubosa exacta para el 12 de agosto a las 18:00 UTC a lo largo de 15 años (2010-2024). Utiliza el motor de Google Earth Engine para extraer información del modelo climático global ERA5 del ECMWF.
 
 ### Cálculos en el frontend
 
@@ -142,18 +155,21 @@ Esto genera:
 - `eclipse_2026.geojson` — GeoJSON estándar
 - `eclipse_data.js` — Variable JS exportada para carga directa en el frontend
 
-### Regenerar los datos de Meteorología (Nubes)
+### Regenerar los datos de Meteorología y Relieve
 
-Si deseas actualizar o recalcular el historial de cobertura nubosa (por ejemplo, ampliando el rango de años):
+Si deseas actualizar o recalcular el historial de cobertura nubosa (ampliando el rango de años) o reconstruir la base topográfica de España:
 
+**Generar Nubes:**
 ```bash
-python3 scripts/generate_cloud_heatmap.py
+python3 scripts/generate_cloud_heatmap_gee.py
 ```
+> **⚖️ Fuentes y Atribución (Open Data):** Los datos climáticos utilizan el modelo de reanálisis horario ERA5 (Copernicus/ECMWF). Procesados a través de **Google Earth Engine**. Produce el archivo `cloud_heatmap.js`.
 
-> **Aviso:** Este script realiza múltiples llamadas a la API histórica de Open-Meteo. Implementa pausas automáticas (rate-limit y backoff exponencial) para no exceder los límites gratuitos, por lo que su ejecución puede tardar unos minutos.
-
-Esto genera:
-- `cloud_heatmap.js` — Variable JS con los datos de probabilidad de nubes exportada para el frontend.
+**Generar Topografía:**
+```bash
+python3 scripts/generate_topography_gee.py
+```
+> **ℹ️ Nota:** Usa el modelo SRTM90_V4 vía Google Earth Engine. Produce la matriz base de cálculo `topography_data.js`.
 
 ---
 

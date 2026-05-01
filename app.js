@@ -73,18 +73,39 @@ document.addEventListener("DOMContentLoaded", () => {
     const closeIntroBtn = document.getElementById("close-intro");
 
     let currentMarker = null;
+    let currentSunLine = null;
 
     // --- LEAFLET MAP INITIALIZATION ---
     // Madrid center as default
     const map = L.map('map', { zoomControl: false }).setView([40.4168, -3.7038], 6);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Standard OpenStreetMap tiles for better visibility of physical features
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Capas base
+    const standardMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
         subdomains: 'abc',
         maxZoom: 19
-    }).addTo(map);
+    });
+
+    const topoMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        maxZoom: 17,
+        attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+    });
+
+    const satelliteMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    });
+
+    // Añadir topográfico por defecto porque ahora el relieve es vital
+    topoMap.addTo(map);
+
+    // Control de capas
+    const baseMaps = {
+        "Mapa Topográfico (Relieve)": topoMap,
+        "Mapa Estándar": standardMap,
+        "Satélite": satelliteMap
+    };
+    L.control.layers(baseMaps).addTo(map);
 
     // --- GEOJSON ASTRONOMICAL PATH REPRESENTATION (WGS84) ---
     // Load rigorous topologic data calculated directly from Ephemerides on backend.
@@ -556,23 +577,66 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('shadow-close').addEventListener('click', stopShadowAnimation);
 
     // --- ASTRONOMY CALCULATIONS ---
+    function getElevation(lat, lng) {
+        if (!window.topographyData || window.topographyData.length === 0) return 0;
+        let nearest = null;
+        let minDist = Infinity;
+        for (const pt of window.topographyData) {
+            const dist = haversineDist(lat, lng, pt.lat, pt.lng);
+            if (dist < minDist) {
+                minDist = dist;
+                nearest = pt;
+            }
+        }
+        if (minDist > 10) return 0;
+        return nearest.alt || 0;
+    }
+
     function calculateEclipse(lat, lng, name, context) {
         if (!window.Astronomy || !window.BesselianCalculator) {
             console.error("Astronomy Engine o BesselianCalculator no cargados.");
             return;
         }
 
+        const localElev = getElevation(lat, lng);
+
         // Astronomy observer for sun position/sunset
-        const observer = new window.Astronomy.Observer(lat, lng, 800);
+        const observer = new window.Astronomy.Observer(lat, lng, localElev);
 
         // Usar BesselianCalculator para las fases exactas sincronizadas con el mapa
-        const eclipse = window.BesselianCalculator.calculateLocalCircumstances(lat, lng, 800);
+        const eclipse = window.BesselianCalculator.calculateLocalCircumstances(lat, lng, localElev);
 
         if (eclipse && eclipse.peak) {
-            renderEclipseInfo(eclipse, observer, name, context);
+            drawSunDirection(lat, lng, eclipse.peak.time.date, localElev);
+            renderEclipseInfo(eclipse, observer, name, context, localElev);
+            checkHorizonBlockage(lat, lng, localElev, eclipse.peak.time.date, observer);
         } else {
+            if (currentSunLine) map.removeLayer(currentSunLine);
             alert("No hay eclipse total o parcial visible en esta fecha para esta ubicación.");
         }
+    }
+
+    function drawSunDirection(lat, lng, peakDate, elev) {
+        if (currentSunLine) map.removeLayer(currentSunLine);
+
+        const observer = new window.Astronomy.Observer(lat, lng, elev);
+        const equ_peak = window.Astronomy.Equator('Sun', peakDate, observer, true, true);
+        const hor_peak = window.Astronomy.Horizon(peakDate, observer, equ_peak.ra, equ_peak.dec, 'normal');
+        
+        const sunAzimuth = hor_peak.azimuth;
+
+        // Trazamos una línea de 20km (la misma distancia que escanea el radar del horizonte)
+        const dest = calculateDestinationPoint(lat, lng, 20, sunAzimuth);
+
+        currentSunLine = L.polyline([
+            [lat, lng],
+            [dest.lat, dest.lng]
+        ], {
+            color: '#f1c40f',
+            weight: 3,
+            dashArray: '5, 8',
+            opacity: 0.9
+        }).addTo(map);
     }
 
     // --- ECLIPSE DISC VISUALIZATION ---
@@ -645,7 +709,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return R * c;
     }
 
-    function renderEclipseInfo(eclipse, observer, name, context) {
+    function renderEclipseInfo(eclipse, observer, name, context, localElev) {
         // Usar el polígono GeoJSON como fuente de verdad para la totalidad.
         // Astronomy Engine usa un modelo de sombra ligeramente diferente.
         const inBand = isInsideTotalityBand(observer.latitude, observer.longitude);
@@ -726,6 +790,16 @@ document.addEventListener("DOMContentLoaded", () => {
         // Update DOM
         document.getElementById('locality-name').textContent = name;
         document.getElementById('region-name').textContent = context || 'España';
+        
+        const elevBadge = document.getElementById('elevation-badge');
+        const elevValue = document.getElementById('elevation-value');
+        if (localElev > 0) {
+            elevValue.textContent = localElev;
+            elevBadge.classList.remove('hidden');
+        } else {
+            elevBadge.classList.add('hidden');
+        }
+
         document.getElementById('eclipse-type').textContent = `Fase ${eclipseTypeStr}`;
 
         document.getElementById('obscuration-value').textContent = obscurationPercent;
@@ -820,6 +894,295 @@ document.addEventListener("DOMContentLoaded", () => {
         infoPanel.classList.remove('hidden');
     }
 
+    // --- HORIZON BLOCKAGE ---
+    async function checkHorizonBlockage(lat, lng, observerElev, peakTime, observer) {
+        const horizonWarning = document.getElementById('horizon-warning');
+        const horizonContainer = document.getElementById('horizon-container');
+        const horizonSpinner = document.getElementById('horizon-spinner');
+        const canvas = document.getElementById('horizon-canvas');
+
+        if (!horizonWarning || !horizonContainer || !horizonSpinner || !canvas) return;
+        
+        horizonWarning.classList.add('hidden');
+        horizonContainer.classList.add('hidden');
+        
+        // Limpiar el canvas preventivamente
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Calcula posición del sol en el máximo
+        const equ_peak = window.Astronomy.Equator('Sun', peakTime, observer, true, true);
+        const hor_peak = window.Astronomy.Horizon(peakTime, observer, equ_peak.ra, equ_peak.dec, 'normal');
+        
+        const sunAzimuth = hor_peak.azimuth;
+        const sunAltitude = hor_peak.altitude;
+
+        // Si el sol ya está muy alto o se ha puesto
+        if (sunAltitude > 15 || sunAltitude < 0) return;
+
+        // Mostrar contenedor y spinner
+        horizonContainer.classList.remove('hidden');
+        horizonSpinner.classList.remove('hidden');
+
+        // Generar 20 puntos a lo largo del azimut (1km a 20km)
+        const points = [];
+        // Insertamos el punto de origen (el observador) como el primer punto
+        points.push({ lat: lat, lng: lng });
+        for (let d = 1; d <= 20; d++) {
+            points.push(calculateDestinationPoint(lat, lng, d, sunAzimuth));
+        }
+
+        const lats = points.map(p => p.lat.toFixed(4)).join(',');
+        const lons = points.map(p => p.lng.toFixed(4)).join(',');
+
+        try {
+            const apiEndpoint = window.EclipseConfig.topography ? window.EclipseConfig.topography.api_endpoint : "https://api.open-meteo.com/v1/elevation";
+            const url = `${apiEndpoint}?latitude=${lats}&longitude=${lons}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data && data.elevation) {
+                let isBlocked = false;
+                // La elevación real del observador según la misma API (evita fallos si la local es 0)
+                const apiObserverElev = data.elevation[0];
+                const adjustedElevations = [apiObserverElev]; // Para la gráfica
+
+                for (let i = 1; i < data.elevation.length; i++) {
+                    const distKm = i; // Porque el índice 0 es el observador
+                    const mountainElev = data.elevation[i];
+                    
+                    // Corrección de la curvatura de la tierra aprox: h_drop = (d^2) / (2R)
+                    const earthDrop = (distKm * distKm) / (2 * 6371) * 1000; 
+                    const apparentMountainElev = mountainElev - earthDrop;
+                    adjustedElevations.push(apparentMountainElev);
+
+                    if (mountainElev > apiObserverElev) {
+                        const deltaH = mountainElev - apiObserverElev;
+                        const effectiveDeltaH = deltaH - earthDrop;
+                        
+                        const mountainAngle = Math.atan2(effectiveDeltaH, distKm * 1000) * (180 / Math.PI);
+                        
+                        if (mountainAngle >= sunAltitude) {
+                            isBlocked = true;
+                        }
+                    }
+                }
+
+                if (isBlocked) {
+                    horizonWarning.classList.remove('hidden');
+                }
+
+                drawHorizonProfile(canvas, adjustedElevations, apiObserverElev, sunAltitude, data.elevation);
+            }
+        } catch (e) {
+            console.error("Error al comprobar horizonte:", e);
+        } finally {
+            horizonSpinner.classList.add('hidden');
+        }
+    }
+
+    function drawHorizonProfile(canvas, elevations, observerElev, sunAltitude, rawElevations) {
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width;
+        const H = canvas.height;
+
+        ctx.clearRect(0, 0, W, H);
+        if (!elevations || elevations.length === 0) return;
+
+        // Calcular el perfil de la montaña vs la línea del sol
+        let minElev = Math.min(...elevations);
+        
+        // Rayo del sol a lo largo de 20 km
+        const sunRayElevations = [];
+        for (let i = 0; i < elevations.length; i++) {
+            const distKm = i;
+            const rayElev = observerElev + (distKm * 1000) * Math.tan(sunAltitude * Math.PI / 180);
+            sunRayElevations.push(rayElev);
+        }
+
+        let maxElev = Math.max(...elevations, ...sunRayElevations);
+        
+        let rawRange = maxElev - minElev;
+        if (rawRange < 100) rawRange = 100; // Evitar gráficos planos sin escala
+        
+        // Margen visual proporcional
+        minElev = minElev - (rawRange * 0.20) - 10;
+        maxElev = maxElev + (rawRange * 0.10) + 50;
+        const range = maxElev - minElev;
+
+        // --- Layout parameters ---
+        const padLeft = 35;
+        const padBottom = 20;
+        const padTop = 15;
+        const padRight = 10;
+        const w = W - padLeft - padRight;
+        const h = H - padTop - padBottom;
+
+        const getY = (elev) => padTop + h - ((elev - minElev) / range) * h;
+        const getX = (index) => padLeft + (index / (elevations.length - 1)) * w;
+
+        // --- 1. Dibujar Cuadrícula y Ejes ---
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.font = '9px Arial';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+
+        // Grid Y (Altitud)
+        const yStepOptions = [50, 100, 200, 500, 1000, 2000, 5000];
+        let yStep = yStepOptions[yStepOptions.length - 1];
+        for (const step of yStepOptions) {
+            if (range / step <= 5) {
+                yStep = step;
+                break;
+            }
+        }
+        
+        let startY = Math.ceil(minElev / yStep) * yStep;
+        for (let yVal = startY; yVal <= maxElev; yVal += yStep) {
+            const py = getY(yVal);
+            // linea
+            ctx.beginPath();
+            ctx.moveTo(padLeft, py);
+            ctx.lineTo(W - padRight, py);
+            ctx.stroke();
+            // texto
+            ctx.fillText(`${yVal}m`, padLeft - 4, py);
+        }
+
+        // Grid X (Distancia)
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        for (let xKm = 0; xKm <= 20; xKm += 5) { // 0, 5, 10, 15, 20
+            const px = getX(xKm);
+            // linea
+            ctx.beginPath();
+            ctx.moveTo(px, padTop);
+            ctx.lineTo(px, H - padBottom);
+            ctx.stroke();
+            // texto
+            ctx.fillText(`${xKm}km`, px, H - padBottom + 4);
+        }
+
+        // Ejes X e Y sólidos
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.beginPath();
+        // Eje Y
+        ctx.moveTo(padLeft, padTop);
+        ctx.lineTo(padLeft, H - padBottom);
+        // Eje X
+        ctx.lineTo(W - padRight, H - padBottom);
+        ctx.stroke();
+
+
+        // --- 2. Dibujar el Sol y su rayo ---
+        ctx.beginPath();
+        ctx.moveTo(getX(0), getY(sunRayElevations[0]));
+        ctx.lineTo(getX(elevations.length - 1), getY(sunRayElevations[sunRayElevations.length - 1]));
+        ctx.strokeStyle = 'rgba(241, 196, 15, 0.8)'; // Amarillo sol
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Dibujar el sol al final del rayo
+        const sunX = getX(elevations.length - 1);
+        const sunY = getY(sunRayElevations[sunRayElevations.length - 1]);
+        ctx.beginPath();
+        ctx.arc(sunX - 10, sunY, 8, 0, Math.PI * 2);
+        ctx.fillStyle = '#f1c40f';
+        ctx.fill();
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#f1c40f';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // --- 3. Dibujar el perfil del terreno ---
+        ctx.beginPath();
+        ctx.moveTo(getX(0), H - padBottom); 
+        for (let i = 0; i < elevations.length; i++) {
+            ctx.lineTo(getX(i), getY(elevations[i]));
+        }
+        ctx.lineTo(getX(elevations.length - 1), H - padBottom);
+        ctx.closePath();
+        
+        // Degradado montaña
+        const grad = ctx.createLinearGradient(0, padTop, 0, H - padBottom);
+        grad.addColorStop(0, '#27ae60'); 
+        grad.addColorStop(1, '#2c3e50'); 
+        
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.strokeStyle = '#2ecc71';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // --- 4. Dibujar al observador ---
+        const obsX = getX(0);
+        const obsY = getY(observerElev);
+        
+        ctx.beginPath();
+        ctx.arc(obsX, obsY, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#e74c3c';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(`Tú (${Math.round(observerElev)}m)`, obsX + 6, obsY - 4);
+
+        // --- 5. Dibujar pico más alto ---
+        if (rawElevations && rawElevations.length > 1) {
+            let maxRaw = -Infinity;
+            let peakIndex = -1;
+            // Solo buscamos picos delante nuestra (distancia > 0)
+            for (let i = 1; i < rawElevations.length; i++) {
+                if (rawElevations[i] > maxRaw) {
+                    maxRaw = rawElevations[i];
+                    peakIndex = i;
+                }
+            }
+
+            if (peakIndex > 0) {
+                const peakX = getX(peakIndex);
+                const peakY = getY(elevations[peakIndex]); // La gráfica usa las elevaciones ajustadas
+                
+                ctx.beginPath();
+                ctx.arc(peakX, peakY, 3, 0, Math.PI * 2);
+                ctx.fillStyle = '#f39c12';
+                ctx.fill();
+
+                ctx.fillStyle = '#f1f2f6';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(`${Math.round(maxRaw)}m`, peakX, peakY - 4);
+                ctx.textAlign = 'left'; // resetear
+            }
+        }
+    }
+
+    function calculateDestinationPoint(lat, lng, distKm, bearingDeg) {
+        const R = 6371; // radio Tierra km
+        const d = distKm / R;
+        const brng = bearingDeg * Math.PI / 180;
+        const lat1 = lat * Math.PI / 180;
+        const lon1 = lng * Math.PI / 180;
+
+        const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brng));
+        const lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2));
+
+        return {
+            lat: lat2 * 180 / Math.PI,
+            lng: lon2 * 180 / Math.PI
+        };
+    }
+
     // --- WEATHER CALCULATION (IDW Interpolation from Historical Data) ---
     function updateWeatherData(lat, lng) {
         const weatherEl = document.getElementById('weather-info');
@@ -869,7 +1232,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (pct !== undefined && !isNaN(pct)) {
                 cloudsEl.textContent = `${pct}%`;
-                sourceEl.textContent = `Promedio 10 años (2015-2025)`;
+                const hc = window.EclipseConfig.heatmap;
+                sourceEl.textContent = `Promedio ${hc.day_start}-${hc.day_end} Ago (${hc.year_start}-${hc.year_end})`;
 
                 // Color code
                 iconEl.className = 'fa-solid ';
@@ -1118,12 +1482,21 @@ document.addEventListener("DOMContentLoaded", () => {
         cloudHeatmapLayer = L.layerGroup();
 
         function cloudColor(pct) {
-            // 0-30% Green, 30-60% Yellow/Orange, 60-100% Gray/Red
-            if (pct <= 20) return '#4cd964';
-            if (pct <= 40) return '#8bd964';
-            if (pct <= 60) return '#ffcc00';
-            if (pct <= 80) return '#ff9900';
-            return '#8e8e93';
+            // Interpolación matemática continua (sin saltos)
+            // pct va de 0 a 100. Lo convertimos a un valor t de 0.0 a 1.0
+            const t = Math.max(0, Math.min(100, pct)) / 100;
+
+            if (t < 0.5) {
+                // De 0% a 50%: Transición muy suave de Verde (Hue 130) a Amarillo (Hue 55)
+                const h = 130 - (t * 2 * 75);
+                return `hsl(${h}, 75%, 55%)`;
+            } else {
+                // De 50% a 100%: Transición suave de Amarillo (Hue 55) a Naranja/Rojizo (Hue 10)
+                // y oscureciendo un poco para simular "nubarrones" o mal tiempo
+                const h = 55 - ((t - 0.5) * 2 * 45);
+                const l = 55 - ((t - 0.5) * 2 * 10); // Baja la luminosidad del 55% al 45%
+                return `hsl(${h}, 85%, ${l}%)`;
+            }
         }
 
         cloudHeatmapData.forEach(p => {
@@ -1150,7 +1523,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span>0%</span>
                 <span>100%</span>
             </div>
-            <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px; text-align: center;">Promedio 12 Ago (2015-2025)</div>
+            <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px; text-align: center;">Promedio ${window.EclipseConfig.heatmap.day_start}-${window.EclipseConfig.heatmap.day_end} Ago (${window.EclipseConfig.heatmap.year_start}-${window.EclipseConfig.heatmap.year_end})</div>
         `;
         document.querySelector('.ui-container').appendChild(cloudHeatmapLegend);
         cloudHeatmapLayer.addTo(map);

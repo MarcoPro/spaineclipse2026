@@ -19,6 +19,18 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="styles.css">
+    <style>
+        .custom-spinner {
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid #f1c40f;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
 <body>
 
@@ -94,7 +106,10 @@
             </button>
             <div class="info-header">
                 <h2 id="locality-name">Nombre Localidad</h2>
-                <span class="region-name" id="region-name">Región, País</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+                    <span class="region-name" id="region-name">Región, País</span>
+                    <span class="elevation-badge hidden" id="elevation-badge" title="Altitud sobre el nivel del mar" style="font-size: 0.8rem; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 12px;"><i class="fa-solid fa-mountain"></i> <span id="elevation-value">--</span> m</span>
+                </div>
             </div>
             
             <div class="eclipse-visual-row">
@@ -203,6 +218,19 @@
                     <i class="fa-solid fa-triangle-exclamation"></i>
                     <span>¡Atención! El eclipse estará en curso durante la puesta de sol en esta ubicación (<span id="sunset-time">--:--</span>).</span>
                 </div>
+                
+                <div class="sunset-warning hidden" id="horizon-warning" style="background-color: rgba(231, 76, 60, 0.15); border-left-color: #e74c3c; margin-top: 10px;">
+                    <i class="fa-solid fa-mountain-sun" style="color: #e74c3c;"></i>
+                    <span style="color: #f1f2f6;">¡Peligro! Las montañas al oeste podrían <strong>bloquear la vista</strong> del eclipse en la fase principal.</span>
+                </div>
+                
+                <div class="horizon-profile-container hidden" id="horizon-container" style="margin-top: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 0.85rem; color: #a4b0be;"><i class="fa-solid fa-chart-area"></i> Perfil de Horizonte (20km)</span>
+                        <div id="horizon-spinner" class="custom-spinner hidden"></div>
+                    </div>
+                    <canvas id="horizon-canvas" width="400" height="150" style="width: 100%; height: 150px; display: block; border-radius: 4px; background: #1e272e; border: 1px solid rgba(255,255,255,0.1);"></canvas>
+                </div>
             </div>
 
             <div class="panel-footer">
@@ -242,6 +270,9 @@
     <!-- Astronomy Engine JS -->
     <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
 
+    <!-- Configuración unificada -->
+    <script src="config.js"></script>
+
     <!-- Eclipse True GeoJSON Data -->
     <script src="eclipse_data.js"></script>
 
@@ -250,6 +281,9 @@
 
     <!-- Cloud Heatmap Data -->
     <script src="cloud_heatmap.js"></script>
+
+    <!-- Topography Data (Offline DEM) -->
+    <script src="topography_data.js"></script>
 
     <!-- Besselian Calculator (Custom Math) -->
     <script src="besselian_calculator.js"></script>

@@ -24,29 +24,41 @@ Ref: https://eclipse.gsfc.nasa.gov/SEbeselm/SEbeselm2001/SE2026Aug12Tbeselm.html
 
 import json
 import math
+import os
+
+CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.js")
+with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+    js_content = f.read()
+    # Extraer el JSON del string (quitando "window.EclipseConfig = " y el ";" final)
+    json_str = js_content.split("=", 1)[1].strip()
+    if json_str.endswith(";"):
+        json_str = json_str[:-1]
+    CONFIG = json.loads(json_str)
+
+B_CONF = CONFIG["besselian"]
 
 # ============================================================================
 # ELEMENTOS BESSELIANOS OFICIALES NASA/ESPENAK
 # ============================================================================
 
-X_COEFFS = [0.47551399, 0.51892489, -0.00007730, -0.00000804]
-Y_COEFFS = [0.77118301, -0.23016800, -0.00012460, 0.00000377]
-D_COEFFS = [14.79666996, -0.01206500, -0.00000300]
-L2_COEFFS = [-0.00814200, 0.00009350, -0.00001210]
-MU_COEFFS = [88.74778748, 15.00308990]
+X_COEFFS = B_CONF["X_COEFFS"]
+Y_COEFFS = B_CONF["Y_COEFFS"]
+D_COEFFS = B_CONF["D_COEFFS"]
+L2_COEFFS = B_CONF["L2_COEFFS"]
+MU_COEFFS = B_CONF["MU_COEFFS"]
 
 # Correcciones empíricas independientes para el límite NORTE y SUR.
 # Permite ensanchar/estrechar la franja de forma asimétrica (Watts charts).
-L2_NORTH_BASE = 0.0018
-L2_NORTH_SLOPE = -0.0018  # Fuerte ensanchamiento en el NW (Galicia/Bilbao)
-L2_NORTH_QUAD = -0.0015       # Curvatura cuadrática para el límite norte
+L2_NORTH_BASE = B_CONF["limb_correction"]["north"]["base"]
+L2_NORTH_SLOPE = B_CONF["limb_correction"]["north"]["slope"]
+L2_NORTH_QUAD = B_CONF["limb_correction"]["north"]["quad"]
 
-L2_SOUTH_BASE = 0.0020
-L2_SOUTH_SLOPE = -0.0018  # Ensancha el sur de Galicia
-L2_SOUTH_QUAD = -0.0015       # Curvatura cuadrática para el límite sur
+L2_SOUTH_BASE = B_CONF["limb_correction"]["south"]["base"]
+L2_SOUTH_SLOPE = B_CONF["limb_correction"]["south"]["slope"]
+L2_SOUTH_QUAD = B_CONF["limb_correction"]["south"]["quad"]
 
-T0 = 18.0
-DELTA_T = 69.1
+T0 = B_CONF["T0"]
+DELTA_T = B_CONF["DELTA_T"]
 MU_CORRECTION = -DELTA_T * MU_COEFFS[1] / 3600.0
 
 FLATTENING = 1.0 / 298.257223563
@@ -488,7 +500,7 @@ def main():
         f.write("const eclipseGeoJSON = ")
         json.dump(feature_collection, f, indent=2)
         f.write(";\n")
-
+        
     print(f"\n✅ {out_geojson}")
     print(f"   {out_js}")
 
