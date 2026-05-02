@@ -36,14 +36,14 @@ window.EclipseConfig = {
     ],
     "limb_correction": {
       "north": {
-        "base": 0.0018,
-        "slope": -0.0018,
-        "quad": -0.0015
+        "base": 0.00265,
+        "slope": -0.0030,
+        "quad": -0.0029
       },
       "south": {
-        "base": 0.002,
-        "slope": -0.0018,
-        "quad": -0.0015
+        "base": 0.0029,
+        "slope": -0.0026,
+        "quad": -0.0027
       },
       "frontend": {
         "base": 0.00011,

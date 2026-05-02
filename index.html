@@ -69,7 +69,7 @@
                     <i class="fa-solid fa-binoculars"></i>
                 </button>
                 <button class="btn-location" id="btn-heatmap" title="Mapa de calor de duración">
-                    <i class="fa-solid fa-temperature-high"></i>
+                    <i class="fa-solid fa-stopwatch"></i>
                 </button>
                 <button class="btn-location" id="btn-cloud-heatmap" title="Mapa de previsión de nubes">
                     <i class="fa-solid fa-cloud"></i>
@@ -112,6 +112,44 @@
                 </div>
             </div>
             
+            <div class="safety-warning" id="safety-warning" style="margin-top: 15px; margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2);">
+                <div style="background: rgba(230, 126, 34, 0.2); padding: 8px 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);" id="safety-header">
+                    <i class="fa-solid fa-shield-halved" style="color: #e67e22;" id="safety-shield-icon"></i>
+                    <span style="color: #e67e22; font-weight: bold; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;" id="safety-header-text">Seguridad Visual</span>
+                </div>
+                <div style="padding: 12px; display: flex; align-items: center; gap: 12px;">
+                    <div style="background: rgba(255,255,255,0.05); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" id="safety-icon-bg">
+                        <i class="fa-solid fa-glasses" id="safety-glasses-icon" style="font-size: 1.4rem; color: #f1f2f6;"></i>
+                    </div>
+                    <div style="font-size: 0.85rem; color: #dcdde1; line-height: 1.4;">
+                        <strong style="color: #f1f2f6; display: block; margin-bottom: 3px; font-size: 0.95rem;" id="safety-title">Uso Obligatorio de Gafas</strong>
+                        <span id="safety-desc">Las gafas deben usarse en todo momento.</span>
+                    </div>
+                </div>
+                <div style="padding: 0 12px 12px 12px;" id="safety-timeline-container">
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 5px; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 30%;">
+                            <i class="fa-solid fa-glasses" style="color: #e74c3c; font-size: 1.1rem;"></i>
+                            <span style="font-size: 0.65rem; color: #a4b0be; text-transform: uppercase; text-align: center;">Fase Parcial<br><strong style="color: #e74c3c;">Gafas SÍ</strong></span>
+                        </div>
+                        
+                        <i class="fa-solid fa-chevron-right" style="color: rgba(255,255,255,0.2); font-size: 0.8rem;"></i>
+                        
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 30%;">
+                            <i class="fa-solid fa-eye" style="color: #2ecc71; font-size: 1.1rem;" id="safety-timeline-mid-icon"></i>
+                            <span style="font-size: 0.65rem; color: #a4b0be; text-transform: uppercase; text-align: center;" id="safety-timeline-mid-text">Totalidad<br><strong style="color: #2ecc71;">Gafas NO</strong></span>
+                        </div>
+                        
+                        <i class="fa-solid fa-chevron-right" style="color: rgba(255,255,255,0.2); font-size: 0.8rem;"></i>
+                        
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 30%;">
+                            <i class="fa-solid fa-glasses" style="color: #e74c3c; font-size: 1.1rem;"></i>
+                            <span style="font-size: 0.65rem; color: #a4b0be; text-transform: uppercase; text-align: center;">Fase Parcial<br><strong style="color: #e74c3c;">Gafas SÍ</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="eclipse-visual-row">
                 <canvas id="eclipse-canvas" width="120" height="120"></canvas>
                 <div class="eclipse-summary-col">
@@ -229,7 +267,7 @@
                         <span style="font-size: 0.85rem; color: #a4b0be;"><i class="fa-solid fa-chart-area"></i> Perfil de Horizonte (20km)</span>
                         <div id="horizon-spinner" class="custom-spinner hidden"></div>
                     </div>
-                    <canvas id="horizon-canvas" width="400" height="150" style="width: 100%; height: 150px; display: block; border-radius: 4px; background: #1e272e; border: 1px solid rgba(255,255,255,0.1);"></canvas>
+                    <canvas id="horizon-canvas" width="400" height="150" style="width: 100%; height: auto; display: block; border-radius: 4px; background: #1e272e; border: 1px solid rgba(255,255,255,0.1);"></canvas>
                 </div>
             </div>
 

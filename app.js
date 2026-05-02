@@ -845,6 +845,73 @@ document.addEventListener("DOMContentLoaded", () => {
             badge.style.borderColor = 'rgba(255, 255, 255, 0.1)';
         }
 
+        // --- SAFETY WARNING (GLASSES) ---
+        const safetyHeader = document.getElementById('safety-header');
+        const safetyShieldIcon = document.getElementById('safety-shield-icon');
+        const safetyHeaderText = document.getElementById('safety-header-text');
+        const safetyIconBg = document.getElementById('safety-icon-bg');
+        const safetyGlassesIcon = document.getElementById('safety-glasses-icon');
+        const safetyTitle = document.getElementById('safety-title');
+        const safetyDesc = document.getElementById('safety-desc');
+        
+        const safetyTimelineContainer = document.getElementById('safety-timeline-container');
+
+        if (isLocallyTotal) {
+            safetyHeader.style.background = 'rgba(46, 204, 113, 0.2)';
+            safetyShieldIcon.style.color = '#2ecc71';
+            safetyHeaderText.style.color = '#2ecc71';
+            safetyIconBg.style.background = 'rgba(46, 204, 113, 0.1)';
+            safetyGlassesIcon.style.color = '#2ecc71';
+            safetyTitle.textContent = 'Gafas durante fase parcial';
+            safetyDesc.innerHTML = 'Las gafas hay que usarlas durante todo el eclipse <strong>salvo en los minutos de totalidad</strong>.';
+            
+            if(safetyTimelineContainer) {
+                safetyTimelineContainer.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 5px; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 30%;">
+                            <i class="fa-solid fa-glasses" style="color: #e74c3c; font-size: 1.1rem;"></i>
+                            <span style="font-size: 0.65rem; color: #a4b0be; text-transform: uppercase; text-align: center;">Fase Parcial<br><strong style="color: #e74c3c;">Gafas SÍ</strong></span>
+                        </div>
+                        <i class="fa-solid fa-chevron-right" style="color: rgba(255,255,255,0.2); font-size: 0.8rem;"></i>
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 30%;">
+                            <i class="fa-solid fa-eye" style="color: #2ecc71; font-size: 1.1rem;"></i>
+                            <span style="font-size: 0.65rem; color: #a4b0be; text-transform: uppercase; text-align: center;">Totalidad<br><strong style="color: #2ecc71;">Gafas NO</strong></span>
+                        </div>
+                        <i class="fa-solid fa-chevron-right" style="color: rgba(255,255,255,0.2); font-size: 0.8rem;"></i>
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 30%;">
+                            <i class="fa-solid fa-glasses" style="color: #e74c3c; font-size: 1.1rem;"></i>
+                            <span style="font-size: 0.65rem; color: #a4b0be; text-transform: uppercase; text-align: center;">Fase Parcial<br><strong style="color: #e74c3c;">Gafas SÍ</strong></span>
+                        </div>
+                    </div>
+                `;
+            }
+        } else {
+            safetyHeader.style.background = 'rgba(231, 76, 60, 0.2)';
+            safetyShieldIcon.style.color = '#e74c3c';
+            safetyHeaderText.style.color = '#e74c3c';
+            safetyIconBg.style.background = 'rgba(231, 76, 60, 0.1)';
+            safetyGlassesIcon.style.color = '#e74c3c';
+            safetyTitle.textContent = 'Uso permanente de gafas';
+            safetyDesc.innerHTML = 'Al ser un eclipse parcial, las gafas deberían usarse <strong>durante todo el eclipse</strong> sin quitárselas en ningún momento.';
+            
+            if(safetyTimelineContainer) {
+                safetyTimelineContainer.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; padding: 12px 5px; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                            <div style="display: flex; gap: 15px; align-items: center;">
+                                <i class="fa-solid fa-glasses" style="color: #e74c3c; font-size: 1.2rem;"></i>
+                                <i class="fa-solid fa-chevron-right" style="color: rgba(231, 76, 60, 0.5); font-size: 0.9rem;"></i>
+                                <i class="fa-solid fa-glasses" style="color: #e74c3c; font-size: 1.2rem;"></i>
+                                <i class="fa-solid fa-chevron-right" style="color: rgba(231, 76, 60, 0.5); font-size: 0.9rem;"></i>
+                                <i class="fa-solid fa-glasses" style="color: #e74c3c; font-size: 1.2rem;"></i>
+                            </div>
+                            <span style="font-size: 0.75rem; color: #a4b0be; text-transform: uppercase; text-align: center; letter-spacing: 0.5px; margin-top: 2px;">Durante todo el eclipse: <strong style="color: #e74c3c;">Gafas SÍ</strong></span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
         // --- SUN POSITION AT PEAK ---
         if (eclipse.peak && window.Astronomy) {
             const peakTime = eclipse.peak.time.date;
