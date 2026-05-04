@@ -17,7 +17,7 @@ La aplicación muestra:
 - 🗺️ **Múltiples Mapas Base** interactivos (Estándar, Satélite y Relieve Topográfico)
 - ⛰️ **Análisis de Altitud 3D**, calculando el impacto de tu elevación (0-3000m) en los tiempos del eclipse
 - 📡 **Radar de Horizonte en Vivo**, generando gráficas de perfiles montañosos cruzados con la trayectoria del sol
-- ☁️ **Mapa de nubes histórico** (Heatmap) basado en probabilidad estadística (2010-2024)
+- ☁️ **Mapa de nubes histórico** (Heatmap) basado en probabilidad estadística interactivo (Acumulado y desglosado por año, 2008-2025)
 - 🌑 **Simulación de la sombra (Umbra)** animada en tiempo real
 - 🔍 **Buscador de localidades** con autocompletado vía Nominatim (OpenStreetMap)
 - 📍 **Geolocalización** para detectar tu posición automáticamente
@@ -99,7 +99,7 @@ El script Python (`scripts/generate_eclipse_geojson.py`) calcula la geometría d
 
 ### Meteorología Estadística
 
-- **Mapa Histórico de Nubes (Heatmap):** El script `scripts/generate_cloud_heatmap_gee.py` obtiene y promedia datos históricos de cobertura nubosa exacta para el 12 de agosto a las 18:00 UTC a lo largo de 15 años (2010-2024). Utiliza el motor de Google Earth Engine para extraer información del modelo climático global ERA5 del ECMWF.
+- **Mapa Histórico de Nubes Interactivo (Heatmap):** El script `scripts/generate_cloud_heatmap_gee.py` obtiene datos históricos de cobertura nubosa exacta para el 12 de agosto a las 18:00 UTC a lo largo de un amplio rango de años (2008-2025). Utiliza el motor de Google Earth Engine para extraer información del modelo climático global ERA5 del ECMWF, devolviendo tanto una media ponderada como los datos precisos de cada año, que el usuario puede explorar visualmente mediante un control de línea de tiempo (slider) en la aplicación.
 
 ### Cálculos en el frontend
 

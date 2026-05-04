@@ -1567,7 +1567,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         cloudHeatmapData.forEach(p => {
-            const color = cloudColor(p.cloudcover);
+            // Compatibilidad hacia atrás: si no existe 'accumulated', intentamos 'cloudcover'
+            const basePct = p.accumulated !== undefined ? p.accumulated : p.cloudcover;
+            const color = cloudColor(basePct);
             const circle = L.circleMarker([p.lat, p.lon], {
                 radius: 14,
                 color: 'transparent',
@@ -1575,14 +1577,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 fillOpacity: 0.6,
                 weight: 0
             });
-            circle.bindTooltip(`Nubes: ${Math.round(p.cloudcover)}%`, { permanent: false, direction: 'top' });
+            circle.bindTooltip(`Nubes: ${Math.round(basePct)}%`, { permanent: false, direction: 'top' });
+            
+            // Guardamos los datos en la propia capa para actualizarlos dinámicamente
+            circle.cloudData = p;
+            
             cloudHeatmapLayer.addLayer(circle);
         });
+
+        const minYear = window.EclipseConfig.heatmap.year_start;
+        const maxYear = window.EclipseConfig.heatmap.year_end;
 
         cloudHeatmapLegend = document.createElement('div');
         cloudHeatmapLegend.className = 'heatmap-legend glass-panel';
         cloudHeatmapLegend.innerHTML = `
-            <h4><i class="fa-solid fa-cloud"></i> Nubosidad Promedio</h4>
+            <h4><i class="fa-solid fa-cloud"></i> Previsión Nubosidad</h4>
             <div class="heatmap-scale">
                 <div class="cloud-scale-bar"></div>
             </div>
@@ -1590,10 +1599,52 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span>0%</span>
                 <span>100%</span>
             </div>
-            <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px; text-align: center;">Promedio ${window.EclipseConfig.heatmap.day_start}-${window.EclipseConfig.heatmap.day_end} Ago (${window.EclipseConfig.heatmap.year_start}-${window.EclipseConfig.heatmap.year_end})</div>
+            <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px; text-align: center;">${window.EclipseConfig.heatmap.day_start}-${window.EclipseConfig.heatmap.day_end} de Agosto</div>
+            
+            <div class="cloud-year-slider-container">
+                <div class="cloud-year-label" id="cloud-year-display">Acumulado (${minYear}-${maxYear})</div>
+                <input type="range" id="cloud-year-slider" class="cloud-year-slider" min="${minYear - 1}" max="${maxYear}" step="1" value="${minYear - 1}">
+            </div>
         `;
         document.querySelector('.ui-container').appendChild(cloudHeatmapLegend);
         cloudHeatmapLayer.addTo(map);
+
+        // Añadir interactividad al slider
+        const yearSlider = document.getElementById('cloud-year-slider');
+        const yearDisplay = document.getElementById('cloud-year-display');
+        
+        yearSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            const isAccumulated = val < minYear;
+            
+            if (isAccumulated) {
+                yearDisplay.textContent = `Acumulado (${minYear}-${maxYear})`;
+            } else {
+                yearDisplay.textContent = `Año ${val}`;
+            }
+            
+            cloudHeatmapLayer.eachLayer(layer => {
+                if (layer.cloudData) {
+                    // Calculamos qué porcentaje mostrar
+                    let pct;
+                    if (isAccumulated) {
+                        pct = layer.cloudData.accumulated !== undefined ? layer.cloudData.accumulated : layer.cloudData.cloudcover;
+                    } else {
+                        // Si existen los años y ese año en concreto
+                        if (layer.cloudData.years && layer.cloudData.years[val] !== undefined) {
+                            pct = layer.cloudData.years[val];
+                        } else {
+                            // Si no hay datos de ese año para este punto (nulo en GEE)
+                            pct = 0; 
+                        }
+                    }
+                    
+                    // Actualizamos el color y tooltip del círculo
+                    layer.setStyle({ fillColor: cloudColor(pct) });
+                    layer.setTooltipContent(`Nubes: ${Math.round(pct)}%`);
+                }
+            });
+        });
     }
 
     btnCloudHeatmap.addEventListener('click', () => {

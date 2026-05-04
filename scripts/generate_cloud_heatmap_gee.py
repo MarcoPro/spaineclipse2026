@@ -142,19 +142,21 @@ def main():
                     .filter(ee.Filter.calendarRange(hora, hora, 'hour'))
                     
         # TRUCO DE MEMORIA: Promediamos inmediatamente esos días en una sola imagen.
-        imagenes_anuales.append(col_year.mean())
+        img_mean = col_year.mean().select(['total_cloud_cover'], [f'y{year}'])
+        imagenes_anuales.append(img_mean)
         
-    # Ahora solo tenemos una colección de N imágenes ligeras (los promedios de cada año)
-    coleccion = ee.ImageCollection(imagenes_anuales)
+    # Calculamos la media global (el promedio de los promedios) a través del mean
+    coleccion_para_media = ee.ImageCollection([img.rename('total_cloud_cover') for img in imagenes_anuales])
+    probabilidad_historica = coleccion_para_media.mean().rename('accumulated')
 
-    # Calculamos la media global (el promedio de los promedios) y CORTAMOS (.clip)
-    probabilidad_historica = coleccion.select('total_cloud_cover').mean().clip(roi).rename('probabilidad_nubes')
+    # Creamos una única imagen multi-banda que contiene todos los años + acumulado y CORTAMOS (.clip)
+    multi_band_image = ee.Image(imagenes_anuales).addBands(probabilidad_historica).clip(roi)
 
     # 4. Extraer la cuadrícula de datos directamente de GEE (getRegion)
     print("Descargando cuadrícula de datos desde GEE (puede tardar unos segundos)...")
     
     # getRegion es un método de ImageCollection (no de Image).
-    coleccion_temporal = ee.ImageCollection([probabilidad_historica])
+    coleccion_temporal = ee.ImageCollection([multi_band_image])
     
     # getRegion extrae todos los píxeles de la imagen que caen dentro del ROI al scale indicado.
     datos_brutos = coleccion_temporal.getRegion(
@@ -162,7 +164,7 @@ def main():
         scale=scale_m 
     ).getInfo()
 
-    # datos_brutos es una lista de listas: [["id", "longitude", "latitude", "time", "probabilidad_nubes"], [...]]
+    # datos_brutos es una lista de listas: [["id", "longitude", "latitude", "time", "y2008", ..., "accumulated"], [...]]
     if not datos_brutos or len(datos_brutos) < 2:
         print("Error: No se obtuvieron datos de GEE.")
         return
@@ -170,24 +172,43 @@ def main():
     headers = datos_brutos[0]
     lon_idx = headers.index("longitude")
     lat_idx = headers.index("latitude")
-    val_idx = headers.index("probabilidad_nubes")
+    acc_idx = headers.index("accumulated")
+    
+    year_indices = {year: headers.index(f"y{year}") for year in range(y_start, y_end + 1) if f"y{year}" in headers}
 
     results = []
     print("Filtrando puntos para ajustarlos al polígono de la totalidad...")
     
     for row in datos_brutos[1:]:
-        val = row[val_idx]
-        if val is not None:
+        val_acc = row[acc_idx]
+        
+        # Filtramos puntos que tengan datos válidos
+        if val_acc is not None:
             lon = row[lon_idx]
             lat = row[lat_idx]
             
             # Comprobación estricta para asegurar que el punto está dentro de la franja (Ray Casting)
             if is_point_in_polygon(lon, lat, poly_coords):
-                results.append({
-                    "lat": round(lat, 4),
-                    "lon": round(lon, 4),
-                    "cloudcover": round(val * 100) 
-                })
+                
+                # Diccionario con valores por año
+                years_data = {}
+                valid_data = True
+                
+                for year, idx in year_indices.items():
+                    val = row[idx]
+                    if val is None:
+                        valid_data = False
+                        break
+                    years_data[str(year)] = round(val * 100)
+                
+                # Si todos los años son válidos, lo incluimos
+                if valid_data:
+                    results.append({
+                        "lat": round(lat, 4),
+                        "lon": round(lon, 4),
+                        "accumulated": round(val_acc * 100),
+                        "years": years_data
+                    })
 
     print(f"Se procesaron {len(results)} puntos válidos de nubosidad dentro de la franja.")
 

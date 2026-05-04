@@ -55,9 +55,9 @@ window.EclipseConfig = {
     "eclipse_month": 8,
     "eclipse_hour_utc": 18,
     "year_start": 2008,
-    "year_end": 2024,
-    "day_start": 5,
-    "day_end": 15,
+    "year_end": 2025,
+    "day_start": 8,
+    "day_end": 14,
     "scale_meters": 15000
   },
   "topography": {
