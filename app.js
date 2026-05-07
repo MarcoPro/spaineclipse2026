@@ -328,6 +328,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     closePanelBtn.addEventListener('click', () => {
         infoPanel.classList.add('hidden');
+        // Hide score tooltip (it lives in body, outside the panel)
+        const tooltip = document.getElementById('score-tooltip');
+        if (tooltip) tooltip.classList.remove('visible');
     });
 
     closeIntroBtn.addEventListener('click', () => {
