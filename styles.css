@@ -1353,11 +1353,20 @@ body {
 
 #horizon-3d-loading {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: var(--text-muted);
-    font-size: 0.9rem;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    background: rgba(0, 0, 0, 0.75);
+    color: var(--accent-neon);
+    font-size: 0.95rem;
+    font-weight: 500;
+    z-index: 10;
+    letter-spacing: 0.3px;
 }
 
 .simulation-desc {
@@ -1367,6 +1376,209 @@ body {
     line-height: 1.4;
     text-align: center;
 }
+
+/* --- Beads Help Button & Modal --- */
+.modal-header-actions {
+    display: flex;
+    align-items: center;
+    margin-right: 25px;
+}
+
+.beads-help-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-muted);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: var(--transition);
+    display: grid;
+    place-items: center;
+    font-size: 0.9rem;
+}
+
+.beads-help-btn:hover {
+    background: rgba(255, 204, 0, 0.12);
+    border-color: rgba(255, 204, 0, 0.35);
+    color: var(--accent-neon);
+    transform: scale(1.1);
+    box-shadow: 0 0 12px rgba(255, 204, 0, 0.15);
+}
+
+.beads-help-modal {
+    z-index: 1001;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.beads-help-content {
+    overflow-y: auto;
+    padding: 0.25rem 0.25rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.beads-help-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.beads-help-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.beads-help-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+}
+
+.help-section {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: var(--transition);
+}
+
+.help-section:hover {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.help-section-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 204, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--accent-neon);
+    font-size: 1rem;
+}
+
+.help-section-icon.diamond-icon {
+    background: rgba(180, 200, 255, 0.1);
+    color: #b4c8ff;
+}
+
+.help-section-icon.warning-icon {
+    background: rgba(231, 76, 60, 0.15);
+    color: #e74c3c;
+    font-size: 1.1rem;
+}
+
+.help-section-body h4 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+    color: var(--text-main);
+}
+
+.help-section-body p {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+    margin: 0;
+}
+
+.help-section-body p strong {
+    color: var(--text-main);
+}
+
+.help-section-warning {
+    border-color: rgba(231, 76, 60, 0.2);
+    background: rgba(231, 76, 60, 0.06);
+}
+
+.help-section-warning:hover {
+    border-color: rgba(231, 76, 60, 0.35);
+    background: rgba(231, 76, 60, 0.1);
+}
+
+.help-section-warning h4 {
+    color: #ff6b6b;
+}
+
+.help-safety-rule {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 0.5rem;
+    border: 1px solid rgba(231, 76, 60, 0.15);
+    font-size: 0.8rem;
+    color: #dcdde1;
+    line-height: 1.5;
+}
+
+.help-safety-rule i {
+    color: #e67e22;
+    font-size: 1rem;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.help-safety-rule strong {
+    color: #f1f2f6;
+}
+
+.help-safety-timeline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.85rem;
+    padding: 0.75rem 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.safety-phase {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+    font-size: 0.65rem;
+    color: #a4b0be;
+    text-transform: uppercase;
+    min-width: 65px;
+}
+
+.safety-phase i {
+    font-size: 1.1rem;
+}
+
+.safety-phase.danger i {
+    color: #e74c3c;
+}
+
+.safety-phase.danger strong {
+    color: #e74c3c;
+}
+
+.safety-phase.safe i {
+    color: #2ecc71;
+}
+
+.safety-phase.safe strong {
+    color: #2ecc71;
+}
+
+.safety-arrow {
+    color: rgba(255, 255, 255, 0.15);
+    font-size: 0.7rem;
+}
+
 
 /* New buttons in info-panel footer */
 .panel-footer {

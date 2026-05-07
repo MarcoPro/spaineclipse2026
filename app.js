@@ -1736,6 +1736,19 @@ document.addEventListener("DOMContentLoaded", () => {
         if (window.Horizon3D) window.Horizon3D.hide();
     });
 
+    // Baily's Beads Help Modal
+    const btnBeadsHelp = document.getElementById('btn-beads-help');
+    const beadsHelpModal = document.getElementById('beads-help-modal');
+    const closeBeadsHelp = document.getElementById('close-beads-help');
+
+    btnBeadsHelp.addEventListener('click', () => {
+        beadsHelpModal.classList.remove('hidden');
+    });
+
+    closeBeadsHelp.addEventListener('click', () => {
+        beadsHelpModal.classList.add('hidden');
+    });
+
     // --- VERSION & CHANGELOG ---
     const versionBadge = document.getElementById('version-badge');
     const versionText = document.getElementById('version-text');
@@ -1748,140 +1761,61 @@ document.addEventListener("DOMContentLoaded", () => {
         versionText.textContent = `v${window.EclipseConfig.version}`;
     }
 
-    // Changelog data (embebido para evitar fetch en file://)
-    const changelogData = [
-        {
-            version: '2.0.0',
-            date: '2026-05-07',
-            sections: [
-                {
-                    title: '✨ Añadido',
-                    items: [
-                        'Simulador de Perlas de Baily con datos LOLA/SLDEM2015 reales (NASA LRO)',
-                        'Perfil de limbo lunar de 720 puntos con libración específica del eclipse',
-                        'Slider interactivo T-10s a T+10s con efecto Corona y Anillo de Diamante',
-                        'Simulador de Horizonte 3D con Three.js (WebGL)',
-                        'Relieve 3D local con trayectoria solar proyectada',
-                        'Número de versión visible en la app con acceso al changelog'
-                    ]
+    async function loadAndRenderChangelog() {
+        try {
+            const response = await fetch('CHANGELOG.md');
+            if (!response.ok) throw new Error('No se pudo cargar el archivo');
+            const markdown = await response.text();
+            
+            const versions = [];
+            const blocks = markdown.split(/\n##\s+/).slice(1);
+            
+            blocks.forEach(block => {
+                const lines = block.split('\n');
+                const headerMatch = lines[0].match(/\[(.*?)\]\s*—\s*(.*)/);
+                if (!headerMatch) return;
+                
+                const version = headerMatch[1];
+                const date = headerMatch[2];
+                const sections = [];
+                let currentSection = null;
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line.startsWith('### ')) {
+                        currentSection = { title: line.replace('### ', ''), items: [] };
+                        sections.push(currentSection);
+                    } else if (line.startsWith('- ') && currentSection) {
+                        currentSection.items.push(line.replace('- ', ''));
+                    }
                 }
-            ]
-        },
-        {
-            version: '1.5.0',
-            date: '2026-05-06',
-            sections: [
-                {
-                    title: '✨ Añadido',
-                    items: [
-                        'Migración del buscador a Photon API (OpenStreetMap)',
-                        'El marcador persiste al cerrar el panel de información'
-                    ]
-                }
-            ]
-        },
-        {
-            version: '1.4.0',
-            date: '2026-05-04',
-            sections: [
-                {
-                    title: '✨ Añadido',
-                    items: [
-                        'Mapa de nubes interactivo por año (slider 2008-2025)',
-                        'Script GEE actualizado para extracción multi-año'
-                    ]
-                }
-            ]
-        },
-        {
-            version: '1.3.0',
-            date: '2026-05-02',
-            sections: [
-                {
-                    title: '✨ Añadido',
-                    items: [
-                        'Aviso de seguridad visual contextual (total vs parcial)',
-                        'Timeline de fases con indicación de uso de gafas'
-                    ]
-                },
-                {
-                    title: '🔧 Cambiado',
-                    items: [
-                        'Icono del heatmap corregido',
-                        'Layout del perfil montañoso en móvil arreglado'
-                    ]
-                }
-            ]
-        },
-        {
-            version: '1.2.0',
-            date: '2026-05-01',
-            sections: [
-                {
-                    title: '✨ Añadido',
-                    items: [
-                        'Radar de Horizonte en Vivo (perfil topográfico 20km)',
-                        'Alertas de bloqueo orográfico',
-                        'Mapa de calor de duración de totalidad',
-                        'Control de capas de mapa'
-                    ]
-                }
-            ]
-        },
-        {
-            version: '1.1.0',
-            date: '2026-04-29',
-            sections: [
-                {
-                    title: '✨ Añadido',
-                    items: [
-                        'Motor Besseliano propio con corrección de altitud',
-                        'Corrección asimétrica de limbo lunar (modelo polinómico)',
-                        'Interpolación espacial de meteorología (10 años)'
-                    ]
-                }
-            ]
-        },
-        {
-            version: '1.0.0',
-            date: '2026-04-25',
-            sections: [
-                {
-                    title: '✨ Lanzamiento',
-                    items: [
-                        'Mapa Leaflet con franja de totalidad GeoJSON',
-                        'Tiempos de contacto C1-C4 con Astronomy Engine',
-                        'Animación de sombra umbral',
-                        'Buscador, geolocalización y comparador',
-                        'PWA con soporte offline',
-                        'Diseño glassmorphism responsive'
-                    ]
-                }
-            ]
-        }
-    ];
+                versions.push({ version, date, sections });
+            });
 
-    function renderChangelog() {
-        changelogContent.innerHTML = changelogData.map(v => `
-            <div class="changelog-version">
-                <div class="changelog-version-header">
-                    <span class="changelog-version-tag">v${v.version}</span>
-                    <span class="changelog-version-date">${v.date}</span>
-                </div>
-                ${v.sections.map(s => `
-                    <div class="changelog-section">
-                        <div class="changelog-section-title">${s.title}</div>
-                        <ul>${s.items.map(item => `<li>${item}</li>`).join('')}</ul>
+            changelogContent.innerHTML = versions.map(v => `
+                <div class="changelog-version">
+                    <div class="changelog-version-header">
+                        <span class="changelog-version-tag">v${v.version}</span>
+                        <span class="changelog-version-date">${v.date}</span>
                     </div>
-                `).join('')}
-            </div>
-        `).join('');
+                    ${v.sections.map(s => `
+                        <div class="changelog-section">
+                            <div class="changelog-section-title">${s.title}</div>
+                            <ul>${s.items.map(item => `<li>${item}</li>`).join('')}</ul>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+            
+        } catch (e) {
+            console.error('Error loading changelog:', e);
+            changelogContent.innerHTML = '<p style="text-align:center; padding:2rem; opacity:0.6;">No se pudo cargar el historial de cambios dinámicamente.</p>';
+        }
+        
+        changelogModal.classList.remove('hidden');
     }
 
-    versionBadge.addEventListener('click', () => {
-        renderChangelog();
-        changelogModal.classList.remove('hidden');
-    });
+    versionBadge.addEventListener('click', loadAndRenderChangelog);
 
     closeChangelog.addEventListener('click', () => {
         changelogModal.classList.add('hidden');

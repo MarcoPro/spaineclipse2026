@@ -6,6 +6,23 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ---
 
+## [2.1.0] — 2026-05-07
+
+### ✨ Añadido
+- **Mejoras en el Simulador de Horizonte 3D**
+  - Implementación de **Interpolación IDW** (Inverse Distance Weighting) para suavizar el relieve con datos dispersos.
+  - Capa de **ruido fractal procedural** para micro-topografía realista.
+  - Corrección de la **orientación geográfica** (Norte = -Z, Este = +X) para total coherencia con el mapa.
+  - Nueva perspectiva panorámica con el observador en primer plano.
+  - Radio de 20km sincronizado con el perfil topográfico del radar.
+- **Educación y Seguridad**
+  - Nuevo modal de ayuda educativa en el simulador de Perlas de Baily.
+  - Explicación científica del fenómeno y refuerzo de las normas de seguridad visual.
+- **Sistema de Changelog Dinámico**
+  - El changelog de la aplicación ahora se carga directamente desde `CHANGELOG.md`.
+
+---
+
 ## [2.0.0] — 2026-05-07
 
 ### ✨ Añadido

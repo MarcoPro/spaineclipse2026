@@ -354,7 +354,10 @@
         <div id="beads-modal" class="glass-panel simulation-modal hidden">
             <div class="modal-header">
                 <h3><i class="fa-solid fa-gem"></i> Simulador de Perlas de Baily</h3>
-                <button id="close-beads" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+                <div class="modal-header-actions">
+                    <button id="btn-beads-help" class="beads-help-btn" title="¿Qué son las Perlas de Baily?"><i class="fa-solid fa-circle-question"></i></button>
+                    <button id="close-beads" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+                </div>
             </div>
             <div class="beads-container">
                 <canvas id="beads-canvas" width="400" height="400"></canvas>
@@ -365,6 +368,90 @@
             </div>
             <p class="simulation-desc">Visualización de la luz solar a través de los valles lunares (LRO Data). Arrastra
                 el control para ver el avance del eclipse.</p>
+        </div>
+
+        <!-- Baily's Beads Help Modal -->
+        <div id="beads-help-modal" class="glass-panel simulation-modal beads-help-modal hidden">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-circle-question"></i> Perlas de Baily</h3>
+                <button id="close-beads-help" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="beads-help-content">
+                <!-- Qué son -->
+                <div class="help-section">
+                    <div class="help-section-icon">
+                        <i class="fa-solid fa-gem"></i>
+                    </div>
+                    <div class="help-section-body">
+                        <h4>¿Qué son?</h4>
+                        <p>Las <strong>Perlas de Baily</strong> son puntos brillantes de luz solar que aparecen en el borde de la Luna justo antes y después de la totalidad de un eclipse solar. Se producen cuando la luz del Sol se filtra a través de los <strong>valles y cráteres</strong> del relieve lunar.</p>
+                    </div>
+                </div>
+
+                <!-- Por qué se llaman así -->
+                <div class="help-section">
+                    <div class="help-section-icon">
+                        <i class="fa-solid fa-book-open"></i>
+                    </div>
+                    <div class="help-section-body">
+                        <h4>Origen del nombre</h4>
+                        <p>Reciben su nombre del astrónomo inglés <strong>Francis Baily</strong>, quien las describió por primera vez durante el eclipse anular de 1836. Las comparó con un collar de cuentas luminosas rodeando la silueta oscura de la Luna.</p>
+                    </div>
+                </div>
+
+                <!-- Cuándo se ven -->
+                <div class="help-section">
+                    <div class="help-section-icon">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                    <div class="help-section-body">
+                        <h4>¿Cuándo se ven?</h4>
+                        <p>Aparecen durante <strong>unos pocos segundos</strong> en los instantes C2 (inicio de la totalidad) y C3 (fin de la totalidad). Son tan fugaces que parpadear puede significar perdérselas.</p>
+                    </div>
+                </div>
+
+                <!-- Anillo de diamante -->
+                <div class="help-section">
+                    <div class="help-section-icon diamond-icon">
+                        <i class="fa-solid fa-diamond"></i>
+                    </div>
+                    <div class="help-section-body">
+                        <h4>El Anillo de Diamante</h4>
+                        <p>Cuando queda una sola perla dominante, se produce el espectacular efecto del <strong>Anillo de Diamante</strong>: un destello brillante en un punto del borde lunar mientras la corona solar brilla alrededor, asemejándose a un anillo con un diamante engastado.</p>
+                    </div>
+                </div>
+
+                <!-- Seguridad - GAFAS -->
+                <div class="help-section help-section-warning">
+                    <div class="help-section-icon warning-icon">
+                        <i class="fa-solid fa-glasses"></i>
+                    </div>
+                    <div class="help-section-body">
+                        <h4>⚠️ Protección ocular obligatoria</h4>
+                        <p>Las Perlas de Baily se producen cuando <strong>aún hay luz solar directa</strong> atravesando el limbo lunar. Aunque parezcan pequeñas, cada perla concentra una cantidad de radiación suficiente para causar <strong>daños irreversibles en la retina</strong> (retinopatía solar).</p>
+                        <div class="help-safety-rule">
+                            <i class="fa-solid fa-shield-halved"></i>
+                            <span>Debes llevar puestas las <strong>gafas de eclipse certificadas (ISO 12312-2)</strong> durante toda la fase de perlas. Solo puedes retirarlas durante los escasos segundos de totalidad completa.</span>
+                        </div>
+                        <div class="help-safety-timeline">
+                            <div class="safety-phase danger">
+                                <i class="fa-solid fa-gem"></i>
+                                <span>Perlas C2<br><strong>Gafas SÍ</strong></span>
+                            </div>
+                            <i class="fa-solid fa-arrow-right safety-arrow"></i>
+                            <div class="safety-phase safe">
+                                <i class="fa-solid fa-eye"></i>
+                                <span>Totalidad<br><strong>Gafas NO</strong></span>
+                            </div>
+                            <i class="fa-solid fa-arrow-right safety-arrow"></i>
+                            <div class="safety-phase danger">
+                                <i class="fa-solid fa-gem"></i>
+                                <span>Perlas C3<br><strong>Gafas SÍ</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- 3D Horizon Modal -->
@@ -408,8 +495,8 @@
     <!-- Astronomy Engine JS -->
     <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
 
-    <!-- Three.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+    <!-- Three.js (r149 - last version with global build support) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js"></script>
 
     <!-- Configuración unificada -->
     <script src="config.js"></script>
