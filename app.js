@@ -762,10 +762,10 @@ document.addEventListener("DOMContentLoaded", () => {
     //
     // Criteria weights (total = 10):
     //   1. Duration of totality:    3.0 pts (30%)
-    //   2. Solar altitude:          1.5 pts (15%)
-    //   3. Cloud probability:       2.0 pts (20%)
+    //   2. Solar altitude:          1.0 pts (10%)
+    //   3. Cloud probability:       3.0 pts (30%)
     //   4. Horizon obstruction:     2.0 pts (20%)
-    //   5. Sunset interference:     1.5 pts (15%)
+    //   5. Sunset interference:     1.0 pts (10%)
     //
     function calculateObservationScore(eclipse, observer, inBand, sunAltitude, cloudPct, isHorizonBlocked, warningSunset, sunsetDate, maxHorizonAngle) {
         // Default maxHorizonAngle to 0 if not provided (terrain check not done yet)
@@ -791,40 +791,38 @@ document.addEventListener("DOMContentLoaded", () => {
                 color: '#2ecc71'
             });
 
-            // 2. SOLAR ALTITUDE (0–1.5 pts)
+            // 2. SOLAR ALTITUDE (0–1.0 pts)
             // Rationale: Higher sun = less atmospheric extinction, better contrast for corona.
-            // Scale: 0° → 0pts, 20°+ → 1.5pts (saturates). Linear.
-            const altScore = Math.min(1.5, Math.max(0, (sunAltitude / 20) * 1.5));
+            // Ceiling at 11°: full score from 11°+ (realistic max for this eclipse in Spain).
+            const altScore = Math.min(1.0, Math.max(0, (sunAltitude / 11) * 1.0));
             criteria.push({
                 icon: 'fa-arrows-up-to-line',
                 label: 'Altitud solar',
                 detail: `${sunAltitude.toFixed(1)}°`,
                 pts: altScore,
-                max: 1.5,
+                max: 1.0,
                 color: '#f1c40f'
             });
 
-            // 3. CLOUD PROBABILITY (0–2.0 pts)
+            // 3. CLOUD PROBABILITY (0–3.0 pts)
             // Rationale: Historical cloud cover is the primary risk factor.
             // Effective range: 85%+ clear (≤15% nubes) = full score, ≤20% clear (≥80% nubes) = 0.
             // Remapped from [20%–85% clear] → [0–1], then power curve (1.5).
-            // Examples: 15% nubes → 2.0pts, 30% nubes → 1.3pts,
-            //           50% nubes → 0.6pts, 70% nubes → 0.1pts, 80%+ nubes → 0pts
             let cloudScore = 0;
             if (cloudPct !== null && !isNaN(cloudPct)) {
                 const clearPct = 100 - cloudPct;
                 // Remap: ≤20% clear → 0, ≥85% clear → 1.0
                 const effectiveClear = Math.max(0, Math.min(1, (clearPct - 20) / 65));
-                cloudScore = Math.pow(effectiveClear, 1.5) * 2.0;
+                cloudScore = Math.pow(effectiveClear, 1.5) * 3.0;
             } else {
-                cloudScore = 1.0; // Unknown: neutral
+                cloudScore = 1.5; // Unknown: neutral
             }
             criteria.push({
                 icon: 'fa-cloud-sun',
                 label: 'Cielo despejado',
                 detail: cloudPct !== null && !isNaN(cloudPct) ? `${Math.round(100 - cloudPct)}% prob.` : 'Sin datos',
                 pts: cloudScore,
-                max: 2.0,
+                max: 3.0,
                 color: '#3498db'
             });
 
@@ -869,15 +867,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 color: '#e67e22'
             });
 
-            // 5. SUNSET INTERFERENCE (0–1.5 pts)
+            // 5. SUNSET INTERFERENCE (0–1.0 pts)
             // Rationale: If the sun sets before the eclipse finishes, the observation experience
             // is degraded. This includes:
             //   a) Astronomical sunset during eclipse phases
             //   b) Terrain blockage at peak (isHorizonBlocked)
             //   c) Terrain that will block the sun as it DESCENDS during partial phases
-            //      (maxHorizonAngle > 0 but < sunAltitude means: sun is above mountains NOW
-            //       but will drop behind them as the eclipse progresses)
-            let sunsetScore = 1.5;
+            let sunsetScore = 1.0;
             let sunsetDetail = 'Eclipse completo visible';
 
             if (isHorizonBlocked) {
@@ -886,32 +882,23 @@ document.addEventListener("DOMContentLoaded", () => {
                     sunsetScore = 0;
                     sunsetDetail = '⚠ Sol oculto por terreno';
                 } else if (sunAltitude <= 10) {
-                    sunsetScore = 0.3;
+                    sunsetScore = 0.2;
                     sunsetDetail = '⚠ Terreno oculta el sol bajo';
                 } else {
-                    sunsetScore = 0.6;
+                    sunsetScore = 0.4;
                     sunsetDetail = 'Riesgo de ocultación por terreno';
                 }
             } else if (maxHorizonAngle > 2) {
                 // Case C: Sun at peak is above mountains, but as the sun descends
                 // during the partial phase after totality, it will drop behind terrain.
-                //
-                // Key physical threshold: ~9° altitude is where the post-totality
-                // partial phase occurs (eclipse max is between ~8-12° in Spain).
-                // If mountains block at ≥9°, the entire post-totality experience is lost.
-                //
                 if (maxHorizonAngle >= 9) {
-                    // Mountains block at or above the partial-phase altitude
-                    // → entire post-totality partial phase is invisible
-                    sunsetScore = 0.2;
+                    sunsetScore = 0.1;
                     sunsetDetail = '⚠ Montañas a ' + maxHorizonAngle.toFixed(0) + '° ocultan parcialidad';
                 } else if (maxHorizonAngle >= 5) {
-                    // Mountains block during the late partial phase / near sunset
-                    sunsetScore = 0.7;
+                    sunsetScore = 0.5;
                     sunsetDetail = 'Montañas a ' + maxHorizonAngle.toFixed(0) + '° recortarán fase final';
                 } else {
-                    // Mountains at 2-5°: only affects the very last minutes near sunset
-                    sunsetScore = 1.2;
+                    sunsetScore = 0.8;
                     sunsetDetail = 'Horizonte elevado a ' + maxHorizonAngle.toFixed(0) + '°';
                 }
             } else if (warningSunset && sunsetDate) {
@@ -928,17 +915,17 @@ document.addEventListener("DOMContentLoaded", () => {
                     sunsetScore = 0;
                     sunsetDetail = '⚠ Sol se pone durante totalidad';
                 } else if (sunsetTime <= totalEndTime + 600000) {
-                    sunsetScore = 0.3;
+                    sunsetScore = 0.2;
                     sunsetDetail = 'Puesta < 10min tras totalidad';
                 } else if (sunsetTime <= totalEndTime + 1800000) {
-                    sunsetScore = 0.7;
+                    sunsetScore = 0.5;
                     sunsetDetail = 'Fase parcial recortada';
                 } else if (sunsetTime < partialEndTime) {
-                    sunsetScore = 1.1;
+                    sunsetScore = 0.7;
                     sunsetDetail = 'Puesta antes de C4';
                 }
             } else if (!sunsetDate) {
-                sunsetScore = 1.5;
+                sunsetScore = 1.0;
                 sunsetDetail = 'Sin datos';
             }
 
@@ -947,7 +934,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 label: 'Puesta de sol',
                 detail: sunsetDetail,
                 pts: sunsetScore,
-                max: 1.5,
+                max: 1.0,
                 color: '#e74c3c'
             });
 
