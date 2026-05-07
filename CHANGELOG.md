@@ -6,6 +6,31 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ---
 
+## [2.2.0] — 2026-05-07
+
+### ✨ Añadido
+- **Simulador de Perlas de Baily v2 — Reescritura completa**
+  - **Modo fotorrealista mejorado**:
+    - Cromosfera solar (arco rojo Hα) visible cerca de la totalidad.
+    - Corona solar con estructura asimétrica y streamers realistas.
+    - Perfil LOLA visible como contorno sutil sobre el borde lunar.
+    - Anillo de Diamante con star-burst y flare óptico calibrado.
+  - **Dirección lunar corregida**: PA ≈ 300° (Luna entra desde cuadrante superior-derecho).
+  - **Canvas HiDPI**: Resolución 800×800 con soporte para devicePixelRatio.
+  - **Optimización de rendimiento**: Gate de proximidad a totalidad, cap de perlas renderizadas.
+  - **Controles mejorados**:
+    - Botón Play/Pause para animación automática.
+    - Indicador de fase actual (Parcial / Perlas C2 / Totalidad / Perlas C3).
+    - Rango temporal expandido a ±20s alrededor de la totalidad.
+
+### 🔧 Cambiado
+- Escala visual del perfil lunar calibrada para proporciones realistas.
+- Modal del simulador ampliado (max-width: 580px) para aprovechar el canvas mayor.
+- Slider de tiempo reorganizado en layout horizontal con botón play integrado.
+- Brillo del disco solar, corona y anillo de diamante reducidos para mayor realismo.
+
+---
+
 ## [2.1.0] — 2026-05-07
 
 ### ✨ Añadido
