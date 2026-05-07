@@ -1,37 +1,51 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Eclipse Solar España 2026</title>
-    <meta name="description" content="Sigue la trayectoria e infórmate del espectacular eclipse solar total del 12 de Agosto de 2026 en España. Cálculos en tiempo real y mapas de precisión.">
+    <meta name="description"
+        content="Sigue la trayectoria e infórmate del espectacular eclipse solar total del 12 de Agosto de 2026 en España. Cálculos en tiempo real y mapas de precisión.">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
     <!-- Custom CSS -->
     <link rel="stylesheet" href="styles.css">
     <style>
         .custom-spinner {
             width: 1rem;
             height: 1rem;
-            border: 2px solid rgba(255,255,255,0.3);
+            border: 2px solid rgba(255, 255, 255, 0.3);
             border-top: 2px solid #f1c40f;
             border-radius: 50%;
             animation: spin 1s linear infinite;
             display: inline-block;
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
+
 <body>
 
     <!-- Map Container -->
@@ -39,25 +53,26 @@
 
     <!-- UI Overlay container -->
     <div class="ui-container">
-        
+
         <!-- Header & Search -->
         <header class="glass-panel main-header">
             <div class="logo">
                 <i class="fa-solid fa-eclipse"></i>
                 <h1>Eclipse <strong>2026</strong></h1>
             </div>
-            
+
             <div class="search-container">
                 <div class="search-input-wrapper">
                     <i class="fa-solid fa-location-dot location-icon"></i>
-                    <input type="text" id="search-input" placeholder="Buscar tu localidad (ej. Burgos)..." autocomplete="off">
+                    <input type="text" id="search-input" placeholder="Buscar tu localidad (ej. Burgos)..."
+                        autocomplete="off">
                     <i class="fa-solid fa-circle-notch fa-spin loading-icon hidden" id="search-loading"></i>
                 </div>
                 <div class="search-results hidden" id="search-results">
                     <!-- Results will be injected here via JS -->
                 </div>
             </div>
-            
+
             <div class="header-controls" id="header-controls">
                 <button class="btn-location" id="btn-geolocation" title="Usar mi ubicación actual">
                     <i class="fa-solid fa-location-crosshairs"></i>
@@ -75,7 +90,7 @@
                     <i class="fa-solid fa-cloud"></i>
                 </button>
             </div>
-            
+
             <button class="mobile-menu-btn" id="btn-mobile-menu">
                 <i class="fa-solid fa-bars"></i>
             </button>
@@ -108,43 +123,63 @@
                 <h2 id="locality-name">Nombre Localidad</h2>
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
                     <span class="region-name" id="region-name">Región, País</span>
-                    <span class="elevation-badge hidden" id="elevation-badge" title="Altitud sobre el nivel del mar" style="font-size: 0.8rem; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 12px;"><i class="fa-solid fa-mountain"></i> <span id="elevation-value">--</span> m</span>
+                    <span class="elevation-badge hidden" id="elevation-badge" title="Altitud sobre el nivel del mar"
+                        style="font-size: 0.8rem; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 12px;"><i
+                            class="fa-solid fa-mountain"></i> <span id="elevation-value">--</span> m</span>
                 </div>
             </div>
-            
-            <div class="safety-warning" id="safety-warning" style="margin-top: 15px; margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2);">
-                <div style="background: rgba(230, 126, 34, 0.2); padding: 8px 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);" id="safety-header">
+
+            <div class="safety-warning" id="safety-warning"
+                style="margin-top: 15px; margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2);">
+                <div style="background: rgba(230, 126, 34, 0.2); padding: 8px 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);"
+                    id="safety-header">
                     <i class="fa-solid fa-shield-halved" style="color: #e67e22;" id="safety-shield-icon"></i>
-                    <span style="color: #e67e22; font-weight: bold; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;" id="safety-header-text">Seguridad Visual</span>
+                    <span
+                        style="color: #e67e22; font-weight: bold; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;"
+                        id="safety-header-text">Seguridad Visual</span>
                 </div>
                 <div style="padding: 12px; display: flex; align-items: center; gap: 12px;">
-                    <div style="background: rgba(255,255,255,0.05); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" id="safety-icon-bg">
-                        <i class="fa-solid fa-glasses" id="safety-glasses-icon" style="font-size: 1.4rem; color: #f1f2f6;"></i>
+                    <div style="background: rgba(255,255,255,0.05); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"
+                        id="safety-icon-bg">
+                        <i class="fa-solid fa-glasses" id="safety-glasses-icon"
+                            style="font-size: 1.4rem; color: #f1f2f6;"></i>
                     </div>
                     <div style="font-size: 0.85rem; color: #dcdde1; line-height: 1.4;">
-                        <strong style="color: #f1f2f6; display: block; margin-bottom: 3px; font-size: 0.95rem;" id="safety-title">Uso Obligatorio de Gafas</strong>
+                        <strong style="color: #f1f2f6; display: block; margin-bottom: 3px; font-size: 0.95rem;"
+                            id="safety-title">Uso Obligatorio de Gafas</strong>
                         <span id="safety-desc">Las gafas deben usarse en todo momento.</span>
                     </div>
                 </div>
                 <div style="padding: 0 12px 12px 12px;" id="safety-timeline-container">
-                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 5px; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between; padding: 10px 5px; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 30%;">
                             <i class="fa-solid fa-glasses" style="color: #e74c3c; font-size: 1.1rem;"></i>
-                            <span style="font-size: 0.65rem; color: #a4b0be; text-transform: uppercase; text-align: center;">Fase Parcial<br><strong style="color: #e74c3c;">Gafas SÍ</strong></span>
+                            <span
+                                style="font-size: 0.65rem; color: #a4b0be; text-transform: uppercase; text-align: center;">Fase
+                                Parcial<br><strong style="color: #e74c3c;">Gafas SÍ</strong></span>
                         </div>
-                        
-                        <i class="fa-solid fa-chevron-right" style="color: rgba(255,255,255,0.2); font-size: 0.8rem;"></i>
-                        
+
+                        <i class="fa-solid fa-chevron-right"
+                            style="color: rgba(255,255,255,0.2); font-size: 0.8rem;"></i>
+
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 30%;">
-                            <i class="fa-solid fa-eye" style="color: #2ecc71; font-size: 1.1rem;" id="safety-timeline-mid-icon"></i>
-                            <span style="font-size: 0.65rem; color: #a4b0be; text-transform: uppercase; text-align: center;" id="safety-timeline-mid-text">Totalidad<br><strong style="color: #2ecc71;">Gafas NO</strong></span>
+                            <i class="fa-solid fa-eye" style="color: #2ecc71; font-size: 1.1rem;"
+                                id="safety-timeline-mid-icon"></i>
+                            <span
+                                style="font-size: 0.65rem; color: #a4b0be; text-transform: uppercase; text-align: center;"
+                                id="safety-timeline-mid-text">Totalidad<br><strong style="color: #2ecc71;">Gafas
+                                    NO</strong></span>
                         </div>
-                        
-                        <i class="fa-solid fa-chevron-right" style="color: rgba(255,255,255,0.2); font-size: 0.8rem;"></i>
-                        
+
+                        <i class="fa-solid fa-chevron-right"
+                            style="color: rgba(255,255,255,0.2); font-size: 0.8rem;"></i>
+
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 30%;">
                             <i class="fa-solid fa-glasses" style="color: #e74c3c; font-size: 1.1rem;"></i>
-                            <span style="font-size: 0.65rem; color: #a4b0be; text-transform: uppercase; text-align: center;">Fase Parcial<br><strong style="color: #e74c3c;">Gafas SÍ</strong></span>
+                            <span
+                                style="font-size: 0.65rem; color: #a4b0be; text-transform: uppercase; text-align: center;">Fase
+                                Parcial<br><strong style="color: #e74c3c;">Gafas SÍ</strong></span>
                         </div>
                     </div>
                 </div>
@@ -251,29 +286,42 @@
                         <span class="weather-source" id="weather-source"></span>
                     </div>
                 </div>
-                
+
                 <div class="sunset-warning hidden" id="sunset-warning">
                     <i class="fa-solid fa-triangle-exclamation"></i>
-                    <span>¡Atención! El eclipse estará en curso durante la puesta de sol en esta ubicación (<span id="sunset-time">--:--</span>).</span>
+                    <span>¡Atención! El eclipse estará en curso durante la puesta de sol en esta ubicación (<span
+                            id="sunset-time">--:--</span>).</span>
                 </div>
-                
-                <div class="sunset-warning hidden" id="horizon-warning" style="background-color: rgba(231, 76, 60, 0.15); border-left-color: #e74c3c; margin-top: 10px;">
+
+                <div class="sunset-warning hidden" id="horizon-warning"
+                    style="background-color: rgba(231, 76, 60, 0.15); border-left-color: #e74c3c; margin-top: 10px;">
                     <i class="fa-solid fa-mountain-sun" style="color: #e74c3c;"></i>
-                    <span style="color: #f1f2f6;">¡Peligro! Las montañas al oeste podrían <strong>bloquear la vista</strong> del eclipse en la fase principal.</span>
+                    <span style="color: #f1f2f6;">¡Alerta! Las montañas al oeste podrían <strong>bloquear la
+                            vista</strong> del eclipse en la fase principal.</span>
                 </div>
-                
-                <div class="horizon-profile-container hidden" id="horizon-container" style="margin-top: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-size: 0.85rem; color: #a4b0be;"><i class="fa-solid fa-chart-area"></i> Perfil de Horizonte (20km)</span>
+
+                <div class="horizon-profile-container hidden" id="horizon-container"
+                    style="margin-top: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 0.85rem; color: #a4b0be;"><i class="fa-solid fa-chart-area"></i> Perfil
+                            de Horizonte (20km)</span>
                         <div id="horizon-spinner" class="custom-spinner hidden"></div>
                     </div>
-                    <canvas id="horizon-canvas" width="400" height="150" style="width: 100%; height: auto; display: block; border-radius: 4px; background: #1e272e; border: 1px solid rgba(255,255,255,0.1);"></canvas>
+                    <canvas id="horizon-canvas" width="400" height="150"
+                        style="width: 100%; height: auto; display: block; border-radius: 4px; background: #1e272e; border: 1px solid rgba(255,255,255,0.1);"></canvas>
                 </div>
             </div>
 
             <div class="panel-footer">
+                <button class="simulation-btn" id="btn-beads-sim">
+                    <i class="fa-solid fa-gem"></i> Perlas de Baily
+                </button>
+                <button class="simulation-btn" id="btn-horizon-3d">
+                    <i class="fa-solid fa-cube"></i> Vista 3D
+                </button>
                 <button class="compare-add-btn" id="btn-add-compare">
-                    <i class="fa-solid fa-plus"></i> Añadir a comparación
+                    <i class="fa-solid fa-plus"></i> Comparar
                 </button>
             </div>
         </main>
@@ -288,25 +336,80 @@
                 <!-- Cards injected via JS -->
             </div>
         </div>
-        
+
         <div class="intro-message" id="intro-message">
             <div class="glass-panel intro-content" style="position: relative;">
-                <button class="close-btn" id="close-intro" title="Cerrar introducción" style="top: 0.5rem; right: 0.5rem;">
+                <button class="close-btn" id="close-intro" title="Cerrar introducción"
+                    style="top: 0.5rem; right: 0.5rem;">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
                 <h2>El Gran Eclipse Español</h2>
-                <p>El <strong>12 de Agosto de 2026</strong>, España será testigo de un eclipse solar total. La sombra de la luna oscurecerá la península justo antes del atardecer.</p>
+                <p>El <strong>12 de Agosto de 2026</strong>, España será testigo de un eclipse solar total. La sombra de
+                    la luna oscurecerá la península justo antes del atardecer.</p>
                 <p>Busca tu municipio o selecciona un punto en el mapa para descubrir los horarios precisos.</p>
+            </div>
+        </div>
+
+        <!-- Baily's Beads Modal -->
+        <div id="beads-modal" class="glass-panel simulation-modal hidden">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-gem"></i> Simulador de Perlas de Baily</h3>
+                <button id="close-beads" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="beads-container">
+                <canvas id="beads-canvas" width="400" height="400"></canvas>
+                <div class="beads-controls">
+                    <input type="range" id="beads-scrub" min="0" max="1" step="0.001" value="0.5">
+                    <div class="beads-time" id="beads-time-label">T-0s</div>
+                </div>
+            </div>
+            <p class="simulation-desc">Visualización de la luz solar a través de los valles lunares (LRO Data). Arrastra
+                el control para ver el avance del eclipse.</p>
+        </div>
+
+        <!-- 3D Horizon Modal -->
+        <div id="horizon-3d-modal" class="glass-panel simulation-modal hidden">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-cube"></i> Simulador 3D de Horizonte</h3>
+                <button id="close-horizon-3d" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="horizon-3d-container">
+                <!-- Three.js renderer will be appended here -->
+                <div id="horizon-3d-loading" class="hidden"><i class="fa-solid fa-spinner fa-spin"></i> Generando
+                    relieve 3D...</div>
+            </div>
+            <p class="simulation-desc">Vista 3D del relieve local y la trayectoria del Sol. Usa el ratón para rotar y
+                zoom.</p>
+        </div>
+
+        <!-- Version Badge -->
+        <div class="version-badge" id="version-badge" title="Ver changelog">
+            <i class="fa-solid fa-code-branch"></i>
+            <span id="version-text">v2.0.0</span>
+        </div>
+
+        <!-- Changelog Modal -->
+        <div id="changelog-modal" class="glass-panel simulation-modal hidden">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-clock-rotate-left"></i> Changelog</h3>
+                <button id="close-changelog" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="changelog-content" id="changelog-content">
+                <!-- Contenido inyectado por JS -->
             </div>
         </div>
     </div>
 
     <!-- Scripts -->
     <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
     <!-- Astronomy Engine JS -->
     <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
 
     <!-- Configuración unificada -->
     <script src="config.js"></script>
@@ -326,8 +429,16 @@
     <!-- Besselian Calculator (Custom Math) -->
     <script src="besselian_calculator.js"></script>
 
+    <!-- Lunar Limb Profile Data (LOLA/SLDEM2015) -->
+    <script src="lunar_limb_profile.js"></script>
+
+    <!-- Limb Simulator & 3D Horizon -->
+    <script src="limb_simulator.js"></script>
+    <script src="horizon_3d.js"></script>
+
     <!-- Custom Logic -->
     <script src="app.js"></script>
 
 </body>
+
 </html>

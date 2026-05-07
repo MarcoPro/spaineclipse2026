@@ -75,6 +75,10 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentMarker = null;
     let currentSunLine = null;
 
+    // State for simulations
+    let lastEclipseData = null;
+    let lastLocation = { lat: 0, lng: 0, alt: 0, az: 0 };
+
     // --- LEAFLET MAP INITIALIZATION ---
     // Madrid center as default
     const map = L.map('map', { zoomControl: false }).setView([40.4168, -3.7038], 6);
@@ -172,11 +176,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function fetchLocations(query) {
         try {
-            // Restrict to Spain for better relevance
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&countrycodes=es&format=json&addressdetails=1&limit=5`);
+            // Request more results to allow for post-filtering
+            const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&bbox=-18.2,27.6,4.4,43.8&limit=15`);
             const data = await response.json();
 
-            displaySearchResults(data);
+            // Filter strictly for Spain
+            let spanishResults = (data.features || []).filter(f => {
+                const props = f.properties;
+                return props.countrycode === 'ES' ||
+                    (props.country && props.country.toLowerCase().includes('españa')) ||
+                    (props.country && props.country.toLowerCase().includes('spain'));
+            });
+
+            // Keep only the top 5 relevant results
+            spanishResults = spanishResults.slice(0, 5);
+
+            displaySearchResults(spanishResults);
         } catch (error) {
             console.error("Error fetching locations:", error);
             // Hide loading on error
@@ -188,19 +203,35 @@ document.addEventListener("DOMContentLoaded", () => {
         searchLoading.classList.add('hidden');
         searchResults.innerHTML = '';
 
-        if (results.length === 0) {
+        if (!results || results.length === 0) {
             searchResults.innerHTML = '<div class="search-result-item"><span class="res-context">No se encontraron resultados</span></div>';
             searchResults.classList.remove('hidden');
             return;
         }
 
+        const seenSignatures = new Set();
+
         results.forEach(pos => {
+            // Extract a nice name from Photon GeoJSON
+            const props = pos.properties;
+            const coords = pos.geometry.coordinates; // [lng, lat]
+
+            const name = props.name || props.city || props.town || props.village || props.locality || "Ubicación";
+
+            const contextParts = [];
+            if (props.city && props.city !== name) contextParts.push(props.city);
+            if (props.state && props.state !== name) contextParts.push(props.state);
+            if (props.country && props.country !== name) contextParts.push(props.country);
+
+            const context = contextParts.join(', ') || props.country || "España";
+
+            // Avoid duplicate results (e.g., city center vs railway station with the same name)
+            const signature = `${name}|${context}`;
+            if (seenSignatures.has(signature)) return;
+            seenSignatures.add(signature);
+
             const div = document.createElement('div');
             div.className = 'search-result-item';
-
-            // Extract a nice name
-            const name = pos.name || pos.address.city || pos.address.town || pos.address.village || pos.address.municipality;
-            const context = pos.display_name.split(',').slice(1, 3).join(',') || pos.address.state || pos.address.region;
 
             div.innerHTML = `
                 <span class="res-name">${name}</span>
@@ -208,7 +239,7 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
 
             div.addEventListener('click', () => {
-                selectLocation(parseFloat(pos.lat), parseFloat(pos.lon), name, context);
+                selectLocation(parseFloat(coords[1]), parseFloat(coords[0]), name, context);
                 searchResults.classList.add('hidden');
                 searchInput.value = name;
             });
@@ -222,13 +253,21 @@ document.addEventListener("DOMContentLoaded", () => {
     async function reverseGeocode(lat, lng) {
         searchLoading.classList.remove('hidden');
         try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`);
+            const response = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`);
             const data = await response.json();
             searchLoading.classList.add('hidden');
 
-            if (data && data.address) {
-                const name = data.address.hamlet || data.address.city || data.address.town || data.address.village || data.address.municipality || "Ubicación Seleccionada";
-                const context = data.address.state || data.address.country || "";
+            if (data && data.features && data.features.length > 0) {
+                const props = data.features[0].properties;
+                const name = props.name || props.city || props.town || props.village || props.locality || "Ubicación Seleccionada";
+
+                const contextParts = [];
+                if (props.city && props.city !== name) contextParts.push(props.city);
+                if (props.state && props.state !== name) contextParts.push(props.state);
+                if (props.country && props.country !== name) contextParts.push(props.country);
+
+                const context = contextParts.join(', ') || props.country || "España";
+
                 selectLocation(lat, lng, name, context);
             } else {
                 selectLocation(lat, lng, `Lat: ${lat.toFixed(3)}, Lng: ${lng.toFixed(3)}`, "España");
@@ -288,10 +327,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     closePanelBtn.addEventListener('click', () => {
         infoPanel.classList.add('hidden');
-        if (currentMarker) {
-            map.removeLayer(currentMarker);
-            currentMarker = null;
-        }
     });
 
     closeIntroBtn.addEventListener('click', () => {
@@ -607,6 +642,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const eclipse = window.BesselianCalculator.calculateLocalCircumstances(lat, lng, localElev);
 
         if (eclipse && eclipse.peak) {
+            // Guardar estado para simuladores
+            lastEclipseData = eclipse;
+
+            const equ_peak = window.Astronomy.Equator('Sun', eclipse.peak.time.date, observer, true, true);
+            const hor_peak = window.Astronomy.Horizon(eclipse.peak.time.date, observer, equ_peak.ra, equ_peak.dec, 'normal');
+            lastLocation = { lat, lng, alt: hor_peak.altitude, az: hor_peak.azimuth };
+
             drawSunDirection(lat, lng, eclipse.peak.time.date, localElev);
             renderEclipseInfo(eclipse, observer, name, context, localElev);
             checkHorizonBlockage(lat, lng, localElev, eclipse.peak.time.date, observer);
@@ -622,7 +664,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const observer = new window.Astronomy.Observer(lat, lng, elev);
         const equ_peak = window.Astronomy.Equator('Sun', peakDate, observer, true, true);
         const hor_peak = window.Astronomy.Horizon(peakDate, observer, equ_peak.ra, equ_peak.dec, 'normal');
-        
+
         const sunAzimuth = hor_peak.azimuth;
 
         // Trazamos una línea de 20km (la misma distancia que escanea el radar del horizonte)
@@ -790,7 +832,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Update DOM
         document.getElementById('locality-name').textContent = name;
         document.getElementById('region-name').textContent = context || 'España';
-        
+
         const elevBadge = document.getElementById('elevation-badge');
         const elevValue = document.getElementById('elevation-value');
         if (localElev > 0) {
@@ -812,14 +854,17 @@ document.addEventListener("DOMContentLoaded", () => {
         // C2/C3: only show for total eclipses
         const stepC2 = document.getElementById('step-c2');
         const stepC3 = document.getElementById('step-c3');
+        const btnBeadsSim = document.getElementById('btn-beads-sim');
         if (isLocallyTotal) {
             document.getElementById('time-c2').textContent = timeC2;
             document.getElementById('time-c3').textContent = timeC3;
             stepC2.classList.remove('hidden');
             stepC3.classList.remove('hidden');
+            if (btnBeadsSim) btnBeadsSim.style.display = '';
         } else {
             stepC2.classList.add('hidden');
             stepC3.classList.add('hidden');
+            if (btnBeadsSim) btnBeadsSim.style.display = 'none';
         }
 
         document.getElementById('duration-totality').textContent = isLocallyTotal ? `${phaseDurationObj.m}m ${phaseDurationObj.s}s` : '0m 0s (Sin totalidad)';
@@ -853,7 +898,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const safetyGlassesIcon = document.getElementById('safety-glasses-icon');
         const safetyTitle = document.getElementById('safety-title');
         const safetyDesc = document.getElementById('safety-desc');
-        
+
         const safetyTimelineContainer = document.getElementById('safety-timeline-container');
 
         if (isLocallyTotal) {
@@ -864,8 +909,8 @@ document.addEventListener("DOMContentLoaded", () => {
             safetyGlassesIcon.style.color = '#2ecc71';
             safetyTitle.textContent = 'Gafas durante fase parcial';
             safetyDesc.innerHTML = 'Las gafas hay que usarlas durante todo el eclipse <strong>salvo en los minutos de totalidad</strong>.';
-            
-            if(safetyTimelineContainer) {
+
+            if (safetyTimelineContainer) {
                 safetyTimelineContainer.innerHTML = `
                     <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 5px; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; width: 30%;">
@@ -893,8 +938,8 @@ document.addEventListener("DOMContentLoaded", () => {
             safetyGlassesIcon.style.color = '#e74c3c';
             safetyTitle.textContent = 'Uso permanente de gafas';
             safetyDesc.innerHTML = 'Al ser un eclipse parcial, las gafas deberían usarse <strong>durante todo el eclipse</strong> sin quitárselas en ningún momento.';
-            
-            if(safetyTimelineContainer) {
+
+            if (safetyTimelineContainer) {
                 safetyTimelineContainer.innerHTML = `
                     <div style="display: flex; align-items: center; justify-content: center; padding: 12px 5px; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
@@ -969,10 +1014,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const canvas = document.getElementById('horizon-canvas');
 
         if (!horizonWarning || !horizonContainer || !horizonSpinner || !canvas) return;
-        
+
         horizonWarning.classList.add('hidden');
         horizonContainer.classList.add('hidden');
-        
+
         // Limpiar el canvas preventivamente
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -980,7 +1025,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Calcula posición del sol en el máximo
         const equ_peak = window.Astronomy.Equator('Sun', peakTime, observer, true, true);
         const hor_peak = window.Astronomy.Horizon(peakTime, observer, equ_peak.ra, equ_peak.dec, 'normal');
-        
+
         const sunAzimuth = hor_peak.azimuth;
         const sunAltitude = hor_peak.altitude;
 
@@ -1007,7 +1052,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const url = `${apiEndpoint}?latitude=${lats}&longitude=${lons}`;
             const response = await fetch(url);
             const data = await response.json();
-            
+
             if (data && data.elevation) {
                 let isBlocked = false;
                 // La elevación real del observador según la misma API (evita fallos si la local es 0)
@@ -1017,18 +1062,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 for (let i = 1; i < data.elevation.length; i++) {
                     const distKm = i; // Porque el índice 0 es el observador
                     const mountainElev = data.elevation[i];
-                    
+
                     // Corrección de la curvatura de la tierra aprox: h_drop = (d^2) / (2R)
-                    const earthDrop = (distKm * distKm) / (2 * 6371) * 1000; 
+                    const earthDrop = (distKm * distKm) / (2 * 6371) * 1000;
                     const apparentMountainElev = mountainElev - earthDrop;
                     adjustedElevations.push(apparentMountainElev);
 
                     if (mountainElev > apiObserverElev) {
                         const deltaH = mountainElev - apiObserverElev;
                         const effectiveDeltaH = deltaH - earthDrop;
-                        
+
                         const mountainAngle = Math.atan2(effectiveDeltaH, distKm * 1000) * (180 / Math.PI);
-                        
+
                         if (mountainAngle >= sunAltitude) {
                             isBlocked = true;
                         }
@@ -1058,7 +1103,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Calcular el perfil de la montaña vs la línea del sol
         let minElev = Math.min(...elevations);
-        
+
         // Rayo del sol a lo largo de 20 km
         const sunRayElevations = [];
         for (let i = 0; i < elevations.length; i++) {
@@ -1068,10 +1113,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         let maxElev = Math.max(...elevations, ...sunRayElevations);
-        
+
         let rawRange = maxElev - minElev;
         if (rawRange < 100) rawRange = 100; // Evitar gráficos planos sin escala
-        
+
         // Margen visual proporcional
         minElev = minElev - (rawRange * 0.20) - 10;
         maxElev = maxElev + (rawRange * 0.10) + 50;
@@ -1105,7 +1150,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 break;
             }
         }
-        
+
         let startY = Math.ceil(minElev / yStep) * yStep;
         for (let yVal = startY; yVal <= maxElev; yVal += yStep) {
             const py = getY(yVal);
@@ -1167,18 +1212,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // --- 3. Dibujar el perfil del terreno ---
         ctx.beginPath();
-        ctx.moveTo(getX(0), H - padBottom); 
+        ctx.moveTo(getX(0), H - padBottom);
         for (let i = 0; i < elevations.length; i++) {
             ctx.lineTo(getX(i), getY(elevations[i]));
         }
         ctx.lineTo(getX(elevations.length - 1), H - padBottom);
         ctx.closePath();
-        
+
         // Degradado montaña
         const grad = ctx.createLinearGradient(0, padTop, 0, H - padBottom);
-        grad.addColorStop(0, '#27ae60'); 
-        grad.addColorStop(1, '#2c3e50'); 
-        
+        grad.addColorStop(0, '#27ae60');
+        grad.addColorStop(1, '#2c3e50');
+
         ctx.fillStyle = grad;
         ctx.fill();
         ctx.strokeStyle = '#2ecc71';
@@ -1188,7 +1233,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // --- 4. Dibujar al observador ---
         const obsX = getX(0);
         const obsY = getY(observerElev);
-        
+
         ctx.beginPath();
         ctx.arc(obsX, obsY, 4, 0, Math.PI * 2);
         ctx.fillStyle = '#e74c3c';
@@ -1196,7 +1241,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 1;
         ctx.stroke();
-        
+
         ctx.fillStyle = '#fff';
         ctx.font = '10px Arial';
         ctx.textAlign = 'left';
@@ -1218,7 +1263,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (peakIndex > 0) {
                 const peakX = getX(peakIndex);
                 const peakY = getY(elevations[peakIndex]); // La gráfica usa las elevaciones ajustadas
-                
+
                 ctx.beginPath();
                 ctx.arc(peakX, peakY, 3, 0, Math.PI * 2);
                 ctx.fillStyle = '#f39c12';
@@ -1578,10 +1623,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 weight: 0
             });
             circle.bindTooltip(`Nubes: ${Math.round(basePct)}%`, { permanent: false, direction: 'top' });
-            
+
             // Guardamos los datos en la propia capa para actualizarlos dinámicamente
             circle.cloudData = p;
-            
+
             cloudHeatmapLayer.addLayer(circle);
         });
 
@@ -1612,17 +1657,17 @@ document.addEventListener("DOMContentLoaded", () => {
         // Añadir interactividad al slider
         const yearSlider = document.getElementById('cloud-year-slider');
         const yearDisplay = document.getElementById('cloud-year-display');
-        
+
         yearSlider.addEventListener('input', (e) => {
             const val = parseInt(e.target.value);
             const isAccumulated = val < minYear;
-            
+
             if (isAccumulated) {
                 yearDisplay.textContent = `Acumulado (${minYear}-${maxYear})`;
             } else {
                 yearDisplay.textContent = `Año ${val}`;
             }
-            
+
             cloudHeatmapLayer.eachLayer(layer => {
                 if (layer.cloudData) {
                     // Calculamos qué porcentaje mostrar
@@ -1635,10 +1680,10 @@ document.addEventListener("DOMContentLoaded", () => {
                             pct = layer.cloudData.years[val];
                         } else {
                             // Si no hay datos de ese año para este punto (nulo en GEE)
-                            pct = 0; 
+                            pct = 0;
                         }
                     }
-                    
+
                     // Actualizamos el color y tooltip del círculo
                     layer.setStyle({ fillColor: cloudColor(pct) });
                     layer.setTooltipContent(`Nubes: ${Math.round(pct)}%`);
@@ -1662,6 +1707,184 @@ document.addEventListener("DOMContentLoaded", () => {
             if (cloudHeatmapLayer) map.removeLayer(cloudHeatmapLayer);
             if (cloudHeatmapLegend) cloudHeatmapLegend.style.display = 'none';
         }
+    });
+
+    // --- SIMULATIONS INTEGRATION ---
+    const btnBeads = document.getElementById('btn-beads-sim');
+    const btnHorizon3D = document.getElementById('btn-horizon-3d');
+    const closeBeads = document.getElementById('close-beads');
+    const closeHorizon3D = document.getElementById('close-horizon-3d');
+
+    if (window.LimbSimulator) window.LimbSimulator.init();
+    if (window.Horizon3D) window.Horizon3D.init();
+
+    btnBeads.addEventListener('click', () => {
+        if (window.LimbSimulator) window.LimbSimulator.show();
+    });
+
+    btnHorizon3D.addEventListener('click', () => {
+        if (window.Horizon3D) {
+            window.Horizon3D.show(lastLocation.lat, lastLocation.lng, lastLocation.alt, lastLocation.az);
+        }
+    });
+
+    closeBeads.addEventListener('click', () => {
+        if (window.LimbSimulator) window.LimbSimulator.hide();
+    });
+
+    closeHorizon3D.addEventListener('click', () => {
+        if (window.Horizon3D) window.Horizon3D.hide();
+    });
+
+    // --- VERSION & CHANGELOG ---
+    const versionBadge = document.getElementById('version-badge');
+    const versionText = document.getElementById('version-text');
+    const changelogModal = document.getElementById('changelog-modal');
+    const changelogContent = document.getElementById('changelog-content');
+    const closeChangelog = document.getElementById('close-changelog');
+
+    // Mostrar versión desde config
+    if (window.EclipseConfig && window.EclipseConfig.version) {
+        versionText.textContent = `v${window.EclipseConfig.version}`;
+    }
+
+    // Changelog data (embebido para evitar fetch en file://)
+    const changelogData = [
+        {
+            version: '2.0.0',
+            date: '2026-05-07',
+            sections: [
+                {
+                    title: '✨ Añadido',
+                    items: [
+                        'Simulador de Perlas de Baily con datos LOLA/SLDEM2015 reales (NASA LRO)',
+                        'Perfil de limbo lunar de 720 puntos con libración específica del eclipse',
+                        'Slider interactivo T-10s a T+10s con efecto Corona y Anillo de Diamante',
+                        'Simulador de Horizonte 3D con Three.js (WebGL)',
+                        'Relieve 3D local con trayectoria solar proyectada',
+                        'Número de versión visible en la app con acceso al changelog'
+                    ]
+                }
+            ]
+        },
+        {
+            version: '1.5.0',
+            date: '2026-05-06',
+            sections: [
+                {
+                    title: '✨ Añadido',
+                    items: [
+                        'Migración del buscador a Photon API (OpenStreetMap)',
+                        'El marcador persiste al cerrar el panel de información'
+                    ]
+                }
+            ]
+        },
+        {
+            version: '1.4.0',
+            date: '2026-05-04',
+            sections: [
+                {
+                    title: '✨ Añadido',
+                    items: [
+                        'Mapa de nubes interactivo por año (slider 2008-2025)',
+                        'Script GEE actualizado para extracción multi-año'
+                    ]
+                }
+            ]
+        },
+        {
+            version: '1.3.0',
+            date: '2026-05-02',
+            sections: [
+                {
+                    title: '✨ Añadido',
+                    items: [
+                        'Aviso de seguridad visual contextual (total vs parcial)',
+                        'Timeline de fases con indicación de uso de gafas'
+                    ]
+                },
+                {
+                    title: '🔧 Cambiado',
+                    items: [
+                        'Icono del heatmap corregido',
+                        'Layout del perfil montañoso en móvil arreglado'
+                    ]
+                }
+            ]
+        },
+        {
+            version: '1.2.0',
+            date: '2026-05-01',
+            sections: [
+                {
+                    title: '✨ Añadido',
+                    items: [
+                        'Radar de Horizonte en Vivo (perfil topográfico 20km)',
+                        'Alertas de bloqueo orográfico',
+                        'Mapa de calor de duración de totalidad',
+                        'Control de capas de mapa'
+                    ]
+                }
+            ]
+        },
+        {
+            version: '1.1.0',
+            date: '2026-04-29',
+            sections: [
+                {
+                    title: '✨ Añadido',
+                    items: [
+                        'Motor Besseliano propio con corrección de altitud',
+                        'Corrección asimétrica de limbo lunar (modelo polinómico)',
+                        'Interpolación espacial de meteorología (10 años)'
+                    ]
+                }
+            ]
+        },
+        {
+            version: '1.0.0',
+            date: '2026-04-25',
+            sections: [
+                {
+                    title: '✨ Lanzamiento',
+                    items: [
+                        'Mapa Leaflet con franja de totalidad GeoJSON',
+                        'Tiempos de contacto C1-C4 con Astronomy Engine',
+                        'Animación de sombra umbral',
+                        'Buscador, geolocalización y comparador',
+                        'PWA con soporte offline',
+                        'Diseño glassmorphism responsive'
+                    ]
+                }
+            ]
+        }
+    ];
+
+    function renderChangelog() {
+        changelogContent.innerHTML = changelogData.map(v => `
+            <div class="changelog-version">
+                <div class="changelog-version-header">
+                    <span class="changelog-version-tag">v${v.version}</span>
+                    <span class="changelog-version-date">${v.date}</span>
+                </div>
+                ${v.sections.map(s => `
+                    <div class="changelog-section">
+                        <div class="changelog-section-title">${s.title}</div>
+                        <ul>${s.items.map(item => `<li>${item}</li>`).join('')}</ul>
+                    </div>
+                `).join('')}
+            </div>
+        `).join('');
+    }
+
+    versionBadge.addEventListener('click', () => {
+        renderChangelog();
+        changelogModal.classList.remove('hidden');
+    });
+
+    closeChangelog.addEventListener('click', () => {
+        changelogModal.classList.add('hidden');
     });
 
 });

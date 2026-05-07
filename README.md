@@ -19,7 +19,7 @@ La aplicación muestra:
 - 📡 **Radar de Horizonte en Vivo**, generando gráficas de perfiles montañosos cruzados con la trayectoria del sol
 - ☁️ **Mapa de nubes histórico** (Heatmap) basado en probabilidad estadística interactivo (Acumulado y desglosado por año, 2008-2025)
 - 🌑 **Simulación de la sombra (Umbra)** animada en tiempo real
-- 🔍 **Buscador de localidades** con autocompletado vía Nominatim (OpenStreetMap)
+- 🔍 **Buscador de localidades** con autocompletado vía Photon (OpenStreetMap)
 - 📍 **Geolocalización** para detectar tu posición automáticamente
 - 📊 **Panel informativo** con tiempos de contacto (C1–C4) ajustados a la curvatura terrestre
 - 🌅 **Alertas de visibilidad**: puesta de sol y montañas bloqueando la totalidad
@@ -58,7 +58,8 @@ graph LR
     B --> C[eclipse_2026.geojson]
     B --> D[eclipse_data.js]
     D --> E[app.js]
-    E -->|Astronomy Engine| F[Cálculos en tiempo real<br>C1, C2, Max, C3, C4]
+    E -->|BesselianCalculator| F[Fases exactas y oscurecimiento<br>C1, C2, Max, C3, C4]
+    E -->|Astronomy Engine| I[Posición solar y puesta de sol]
     E -->|Point-in-polygon| G[¿Totalidad Sí/No?]
     C -.->|Uso externo| H[QGIS / GIS tools]
 ```
@@ -103,13 +104,17 @@ El script Python (`scripts/generate_eclipse_geojson.py`) calcula la geometría d
 
 ### Cálculos en el frontend
 
-El frontend utiliza **[Astronomy Engine](https://github.com/cosinekitty/astronomy)** para calcular en tiempo real:
+El frontend utiliza un **Motor Matemático Propio (`besselian_calculator.js`)** basado en los Elementos Besselianos para calcular en tiempo real y con precisión de sub-segundos (aplicando correcciones por altitud local):
 
-- **Fases de contacto** (C1–C4) para cualquier coordenada
-- **Oscurecimiento máximo** del disco solar
-- **Puesta de sol** local para avisar si coincide con el eclipse
+- **Fases de contacto exactas** (C1–C4) para cualquier coordenada.
+- **Oscurecimiento máximo** del disco solar.
 
-La **determinación de totalidad** usa un test **point-in-polygon** (ray casting) contra el polígono GeoJSON como fuente de verdad, ya que Astronomy Engine y los Elementos Besselianos usan modelos de sombra ligeramente diferentes.
+Adicionalmente, se sigue empleando la librería **[Astronomy Engine](https://github.com/cosinekitty/astronomy)**, pero **únicamente** para:
+
+- **Posición del Sol** (Azimut y Elevación) en el instante máximo del eclipse.
+- **Puesta de sol** local, para lanzar alertas si coincide con la fase del eclipse.
+
+La **determinación estricta de totalidad** usa un test **point-in-polygon** (ray casting) contra el polígono GeoJSON como fuente de verdad, ya que el polígono contiene las asimetrías y deformaciones exactas de la sombra por el relieve lunar.
 
 ---
 
@@ -119,8 +124,8 @@ La **determinación de totalidad** usa un test **point-in-polygon** (ray casting
 |------------|-----|
 | **HTML5 / CSS3 / JavaScript** | Frontend puro, sin frameworks |
 | **[Leaflet](https://leafletjs.com/)** v1.9.4 | Mapa interactivo |
-| **[Astronomy Engine](https://github.com/cosinekitty/astronomy)** v2.1.19 | Cálculos astronómicos en tiempo real |
-| **[Nominatim](https://nominatim.openstreetmap.org/)** | Geocodificación directa e inversa |
+| **[Astronomy Engine](https://github.com/cosinekitty/astronomy)** v2.1.19 | Posición solar y ocaso |
+| **[Photon](https://photon.komoot.io/)** | Geocodificación directa e inversa |
 | **[OpenStreetMap](https://www.openstreetmap.org/)** | Tiles del mapa base |
 | **Python 3** | Generación offline de datos GeoJSON |
 | **[Font Awesome](https://fontawesome.com/)** v6.4 | Iconografía |

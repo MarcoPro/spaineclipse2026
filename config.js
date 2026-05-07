@@ -1,4 +1,6 @@
 window.EclipseConfig = {
+  "version": "2.0.0",
+  "version_date": "2026-05-07",
   "besselian": {
     "eclipse_date": "2026-08-12",
     "T0": 18.0,
@@ -46,7 +48,7 @@ window.EclipseConfig = {
         "quad": -0.0027
       },
       "frontend": {
-        "base": 0.00011,
+        "base": 0.00012,
         "slope": -0.00015
       }
     }
