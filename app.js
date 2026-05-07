@@ -806,15 +806,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 3. CLOUD PROBABILITY (0–2.0 pts)
             // Rationale: Historical cloud cover is the primary risk factor.
-            // Floor at 80% clouds: anything above 80% cloud cover = 0 pts.
-            // The clear fraction is remapped from [20%–100%] → [0–1], then power curve (1.5).
-            // Examples: 0% clouds (100% clear) → 2.0pts, 30% clouds → 1.3pts,
-            //           50% clouds → 0.7pts, 70% clouds → 0.1pts, 80%+ clouds → 0pts
+            // Effective range: 85%+ clear (≤15% nubes) = full score, ≤20% clear (≥80% nubes) = 0.
+            // Remapped from [20%–85% clear] → [0–1], then power curve (1.5).
+            // Examples: 15% nubes → 2.0pts, 30% nubes → 1.3pts,
+            //           50% nubes → 0.6pts, 70% nubes → 0.1pts, 80%+ nubes → 0pts
             let cloudScore = 0;
             if (cloudPct !== null && !isNaN(cloudPct)) {
-                // Remap: 80%+ clouds → 0, 0% clouds → 1.0
                 const clearPct = 100 - cloudPct;
-                const effectiveClear = Math.max(0, Math.min(1, (clearPct - 20) / 80));
+                // Remap: ≤20% clear → 0, ≥85% clear → 1.0
+                const effectiveClear = Math.max(0, Math.min(1, (clearPct - 20) / 65));
                 cloudScore = Math.pow(effectiveClear, 1.5) * 2.0;
             } else {
                 cloudScore = 1.0; // Unknown: neutral
