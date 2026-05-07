@@ -777,9 +777,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 1. DURATION OF TOTALITY (0–3.0 pts)
             // Rationale: The most important factor. Longer totality = more observation time.
-            // Scale: 0s → 0pts, 100s+ → 3pts (saturates). Linear.
+            // Uses power curve (exp 1.5) so full score is only reached at maximum duration.
+            // Ceiling at 110s (theoretical max). 100s→2.7pts, 80s→1.9pts, 60s→1.2pts
             const durationSec = (eclipse.total_end.time.date - eclipse.total_begin.time.date) / 1000;
-            const durationScore = Math.min(3.0, (durationSec / 100) * 3.0);
+            const durationFraction = Math.min(1, durationSec / 110);
+            const durationScore = Math.pow(durationFraction, 1.5) * 3.0;
             criteria.push({
                 icon: 'fa-clock',
                 label: 'Duración totalidad',
@@ -804,13 +806,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 3. CLOUD PROBABILITY (0–2.0 pts)
             // Rationale: Historical cloud cover is the primary risk factor.
-            // Uses power curve (exponent 1.5) instead of linear to penalize high cloud cover
-            // more aggressively. Below ~45% clear sky probability, score drops sharply.
-            // Examples: 80% clear → 1.4pts, 60% clear → 0.9pts, 45% clear → 0.6pts, 30% clear → 0.3pts
+            // Floor at 80% clouds: anything above 80% cloud cover = 0 pts.
+            // The clear fraction is remapped from [20%–100%] → [0–1], then power curve (1.5).
+            // Examples: 0% clouds (100% clear) → 2.0pts, 30% clouds → 1.3pts,
+            //           50% clouds → 0.7pts, 70% clouds → 0.1pts, 80%+ clouds → 0pts
             let cloudScore = 0;
             if (cloudPct !== null && !isNaN(cloudPct)) {
-                const clearFraction = Math.max(0, (100 - cloudPct) / 100);
-                cloudScore = Math.pow(clearFraction, 1.5) * 2.0;
+                // Remap: 80%+ clouds → 0, 0% clouds → 1.0
+                const clearPct = 100 - cloudPct;
+                const effectiveClear = Math.max(0, Math.min(1, (clearPct - 20) / 80));
+                cloudScore = Math.pow(effectiveClear, 1.5) * 2.0;
             } else {
                 cloudScore = 1.0; // Unknown: neutral
             }
