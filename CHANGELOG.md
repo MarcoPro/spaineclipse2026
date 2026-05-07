@@ -6,6 +6,29 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ---
 
+## [2.3.0] — 2026-05-08
+
+### ✨ Añadido
+- **Índice de Observación del Eclipse** (puntuación 0-10)
+  - Indicador discreto centrado bajo el nombre de localidad y región en el panel de detalle.
+  - **5 criterios objetivos** para eclipses totales (suma = 10 pts):
+    - Duración de la totalidad (0–3.0 pts): calibrado para el máximo de ~100s en España.
+    - Altitud solar (0–1.5 pts): mayor altitud = menor extinción atmosférica.
+    - Cielo despejado (0–2.0 pts): curva exponencial (potencia 1.5) sobre datos históricos IDW.
+    - Horizonte libre (0–2.0 pts): penalización escalonada por altitud solar (0-5°/5-10°/10-15°/15-20°).
+    - Puesta de sol (0–1.5 pts): coherente con horizonte — bloqueo orográfico implica puesta efectiva.
+  - **Eclipses parciales**: puntuación 0 con explicación descriptiva (sin totalidad = sin valor).
+  - Tooltip interactivo (`position: fixed`, anclado a `body`) con desglose visual por barras.
+  - Código de color: excelente (verde), bueno (amarillo), regular (naranja), desfavorable (rojo), sin puntuación (gris).
+  - Actualización dinámica tras la comprobación asíncrona del horizonte.
+
+### 🐛 Corregido
+- **Nubosidad mostraba NaN**: propiedad `cloudcover` no existía en datos; corregido a `accumulated`.
+- **Predicción meteorológica desaparecida**: `Math.round(null)` producía NaN y ocultaba el panel.
+- **Umbral de horizonte ampliado**: de 15° a 20° para cubrir más ubicaciones en España.
+
+---
+
 ## [2.2.0] — 2026-05-07
 
 ### ✨ Añadido

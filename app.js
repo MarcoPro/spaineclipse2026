@@ -78,6 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // State for simulations
     let lastEclipseData = null;
     let lastLocation = { lat: 0, lng: 0, alt: 0, az: 0 };
+    let lastScoreState = null;
 
     // --- LEAFLET MAP INITIALIZATION ---
     // Madrid center as default
@@ -751,6 +752,329 @@ document.addEventListener("DOMContentLoaded", () => {
         return R * c;
     }
 
+    // --- ECLIPSE OBSERVATION SCORE ---
+    // Scoring system based on objective astrophysical criteria.
+    // Total eclipses: max 10 points across 5 criteria.
+    // Partial eclipses: score = 0 (no totality = no observation value for a total eclipse event).
+    //
+    // Criteria weights (total = 10):
+    //   1. Duration of totality:    3.0 pts (30%)
+    //   2. Solar altitude:          1.5 pts (15%)
+    //   3. Cloud probability:       2.0 pts (20%)
+    //   4. Horizon obstruction:     2.0 pts (20%)
+    //   5. Sunset interference:     1.5 pts (15%)
+    //
+    function calculateObservationScore(eclipse, observer, inBand, sunAltitude, cloudPct, isHorizonBlocked, warningSunset, sunsetDate) {
+        const criteria = [];
+
+        if (inBand && eclipse.total_begin && eclipse.total_end) {
+            // --- TOTAL ECLIPSE SCORING (5 criteria, sum = 10) ---
+
+            // 1. DURATION OF TOTALITY (0–3.0 pts)
+            // Rationale: The most important factor. Longer totality = more observation time.
+            // Scale: 0s → 0pts, 100s+ → 3pts (saturates). Linear.
+            const durationSec = (eclipse.total_end.time.date - eclipse.total_begin.time.date) / 1000;
+            const durationScore = Math.min(3.0, (durationSec / 100) * 3.0);
+            criteria.push({
+                icon: 'fa-clock',
+                label: 'Duración totalidad',
+                detail: `${Math.round(durationSec)}s`,
+                pts: durationScore,
+                max: 3.0,
+                color: '#2ecc71'
+            });
+
+            // 2. SOLAR ALTITUDE (0–1.5 pts)
+            // Rationale: Higher sun = less atmospheric extinction, better contrast for corona.
+            // Scale: 0° → 0pts, 20°+ → 1.5pts (saturates). Linear.
+            const altScore = Math.min(1.5, Math.max(0, (sunAltitude / 20) * 1.5));
+            criteria.push({
+                icon: 'fa-arrows-up-to-line',
+                label: 'Altitud solar',
+                detail: `${sunAltitude.toFixed(1)}°`,
+                pts: altScore,
+                max: 1.5,
+                color: '#f1c40f'
+            });
+
+            // 3. CLOUD PROBABILITY (0–2.0 pts)
+            // Rationale: Historical cloud cover is the primary risk factor.
+            // Uses power curve (exponent 1.5) instead of linear to penalize high cloud cover
+            // more aggressively. Below ~45% clear sky probability, score drops sharply.
+            // Examples: 80% clear → 1.4pts, 60% clear → 0.9pts, 45% clear → 0.6pts, 30% clear → 0.3pts
+            let cloudScore = 0;
+            if (cloudPct !== null && !isNaN(cloudPct)) {
+                const clearFraction = Math.max(0, (100 - cloudPct) / 100);
+                cloudScore = Math.pow(clearFraction, 1.5) * 2.0;
+            } else {
+                cloudScore = 1.0; // Unknown: neutral
+            }
+            criteria.push({
+                icon: 'fa-cloud-sun',
+                label: 'Cielo despejado',
+                detail: cloudPct !== null && !isNaN(cloudPct) ? `${Math.round(100 - cloudPct)}% prob.` : 'Sin datos',
+                pts: cloudScore,
+                max: 2.0,
+                color: '#3498db'
+            });
+
+            // 4. HORIZON OBSTRUCTION (0–2.0 pts)
+            // Rationale: At low-to-moderate sun altitudes, terrain can PHYSICALLY BLOCK the view.
+            // This is especially critical in mountainous areas (Picos de Europa, Pirineos).
+            // - Sun > 20°: horizon almost irrelevant, full score
+            // - Sun ≤ 20°: terrain matters. Blockage penalty scales with altitude:
+            //   - Sun 0-5°: catastrophic (lose 2.0 pts)
+            //   - Sun 5-10°: severe (lose 1.6 pts)
+            //   - Sun 10-15°: serious (lose 1.2 pts)
+            //   - Sun 15-20°: moderate (lose 0.8 pts)
+            let horizonScore = 2.0;
+            let horizonDetail = 'Despejado';
+            if (sunAltitude <= 20) {
+                if (isHorizonBlocked) {
+                    if (sunAltitude <= 5) {
+                        horizonScore = 0;
+                        horizonDetail = '⚠ Bloqueado (crítico)';
+                    } else if (sunAltitude <= 10) {
+                        horizonScore = 0.4;
+                        horizonDetail = '⚠ Bloqueado (grave)';
+                    } else if (sunAltitude <= 15) {
+                        horizonScore = 0.8;
+                        horizonDetail = '⚠ Bloqueado';
+                    } else {
+                        horizonScore = 1.2;
+                        horizonDetail = '⚠ Parcialmente bloqueado';
+                    }
+                } else {
+                    horizonDetail = 'Sin obstrucción';
+                }
+            } else {
+                horizonDetail = 'Sol alto (N/A)';
+            }
+            criteria.push({
+                icon: 'fa-mountain-sun',
+                label: 'Horizonte libre',
+                detail: horizonDetail,
+                pts: horizonScore,
+                max: 2.0,
+                color: '#e67e22'
+            });
+
+            // 5. SUNSET INTERFERENCE (0–1.5 pts)
+            // Rationale: If the sun sets before the eclipse finishes, the observation experience
+            // is degraded. This includes BOTH astronomical sunset AND effective sunset caused
+            // by terrain blockage (mountains hiding the sun before true sunset).
+            // Worst case: sunset during totality (complete ruin).
+            // Bad case: sunset during partial phase (C3-C4 cut short).
+            // Best case: full eclipse visible from C1 to C4.
+            let sunsetScore = 1.5;
+            let sunsetDetail = 'Eclipse completo visible';
+
+            // If horizon is blocked, mountains cause an effective early "sunset" —
+            // the sun disappears behind terrain during the eclipse, which is equivalent
+            // to or worse than a late astronomical sunset.
+            if (isHorizonBlocked) {
+                // Horizon blockage = terrain hides the sun during eclipse
+                // This is at least as bad as sunset during the partial phase
+                if (sunAltitude <= 5) {
+                    sunsetScore = 0;
+                    sunsetDetail = '⚠ Sol oculto por terreno';
+                } else if (sunAltitude <= 10) {
+                    sunsetScore = 0.3;
+                    sunsetDetail = '⚠ Terreno oculta el sol bajo';
+                } else {
+                    sunsetScore = 0.6;
+                    sunsetDetail = 'Riesgo de ocultación por terreno';
+                }
+            } else if (warningSunset && sunsetDate) {
+                const totalBeginTime = eclipse.total_begin.time.date.getTime();
+                const totalEndTime = eclipse.total_end.time.date.getTime();
+                const sunsetTime = sunsetDate.getTime();
+                const partialEndTime = eclipse.partial_end ? eclipse.partial_end.time.date.getTime() : totalEndTime + 3600000;
+
+                if (sunsetTime <= totalBeginTime) {
+                    sunsetScore = 0;
+                    sunsetDetail = '⚠ Sol puesto antes de totalidad';
+                } else if (sunsetTime <= totalEndTime) {
+                    sunsetScore = 0;
+                    sunsetDetail = '⚠ Sol se pone durante totalidad';
+                } else if (sunsetTime <= totalEndTime + 600000) {
+                    sunsetScore = 0.3;
+                    sunsetDetail = 'Puesta < 10min tras totalidad';
+                } else if (sunsetTime <= totalEndTime + 1800000) {
+                    sunsetScore = 0.7;
+                    sunsetDetail = 'Fase parcial recortada';
+                } else if (sunsetTime < partialEndTime) {
+                    sunsetScore = 1.1;
+                    sunsetDetail = 'Puesta antes de C4';
+                }
+            } else if (!sunsetDate) {
+                sunsetScore = 1.5;
+                sunsetDetail = 'Sin datos';
+            }
+
+            criteria.push({
+                icon: 'fa-sun',
+                label: 'Puesta de sol',
+                detail: sunsetDetail,
+                pts: sunsetScore,
+                max: 1.5,
+                color: '#e74c3c'
+            });
+
+        } else {
+            // --- PARTIAL ECLIPSE: NO SCORE ---
+            criteria.push({
+                icon: 'fa-circle-half-stroke',
+                label: 'Sin totalidad',
+                detail: `${(eclipse.obscuration * 100).toFixed(0)}% oscurec.`,
+                pts: 0,
+                max: 10.0,
+                color: '#636e72'
+            });
+
+            return {
+                score: 0,
+                isPartial: true,
+                criteria,
+                totalPts: 0,
+                totalMax: 10.0
+            };
+        }
+
+        // Sum total
+        const totalPts = criteria.reduce((sum, c) => sum + c.pts, 0);
+        const totalMax = criteria.reduce((sum, c) => sum + c.max, 0);
+        // Normalize to 0-10 scale
+        const score10 = totalMax > 0 ? (totalPts / totalMax) * 10 : 0;
+
+        return {
+            score: Math.round(score10 * 10) / 10, // 1 decimal
+            isPartial: false,
+            criteria,
+            totalPts,
+            totalMax
+        };
+    }
+
+    function updateScoreBadge(scoreResult) {
+        const badge = document.getElementById('eclipse-score-badge');
+        const valueEl = document.getElementById('score-value');
+        const breakdownEl = document.getElementById('score-breakdown');
+
+        if (!badge || !valueEl || !breakdownEl) return;
+
+        const score = scoreResult.score;
+
+        // Remove all tier classes
+        badge.classList.remove('score-excellent', 'score-good', 'score-fair', 'score-poor', 'score-none');
+
+        if (scoreResult.isPartial) {
+            // Partial eclipse: show dash, grey style
+            valueEl.textContent = '—';
+            badge.classList.add('score-none');
+
+            breakdownEl.innerHTML = `
+                <div class="score-criterion">
+                    <div class="score-criterion-header">
+                        <span class="score-criterion-label">
+                            <i class="fa-solid fa-circle-half-stroke" style="color: #636e72;"></i>
+                            Fuera de la franja de totalidad
+                        </span>
+                    </div>
+                    <div style="font-size: 0.7rem; color: #636e72; margin-top: 4px; line-height: 1.4;">
+                        Esta ubicación solo experimenta un eclipse parcial (${scoreResult.criteria[0] && scoreResult.criteria[0].detail ? scoreResult.criteria[0].detail : ''}). 
+                        Sin totalidad, no es posible observar la corona solar, las Perlas de Baily ni el anillo de diamante.
+                        La puntuación solo se calcula para ubicaciones dentro de la franja de totalidad.
+                    </div>
+                </div>
+            `;
+        } else {
+            valueEl.textContent = score.toFixed(1);
+
+            // Assign color tier
+            if (score >= 8) {
+                badge.classList.add('score-excellent');
+            } else if (score >= 5.5) {
+                badge.classList.add('score-good');
+            } else if (score >= 3) {
+                badge.classList.add('score-fair');
+            } else {
+                badge.classList.add('score-poor');
+            }
+
+            // Build breakdown HTML
+            breakdownEl.innerHTML = scoreResult.criteria.map(c => {
+                const pctFill = c.max > 0 ? (c.pts / c.max) * 100 : 0;
+                return `
+                    <div class="score-criterion">
+                        <div class="score-criterion-header">
+                            <span class="score-criterion-label">
+                                <i class="fa-solid ${c.icon}" style="color: ${c.color};"></i>
+                                ${c.label}
+                                <span style="opacity:0.5; font-weight:400;">(${c.detail})</span>
+                            </span>
+                            <span class="score-criterion-pts" style="color: ${c.color};">${c.pts.toFixed(1)}/${c.max.toFixed(1)}</span>
+                        </div>
+                        <div class="score-criterion-bar">
+                            <div class="score-criterion-fill" style="width: ${pctFill}%; background: ${c.color};"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        badge.classList.remove('hidden');
+    }
+
+    // --- Score tooltip positioning (appended to body, fully independent) ---
+    (function initScoreTooltip() {
+        const badge = document.getElementById('eclipse-score-badge');
+        const tooltip = document.getElementById('score-tooltip');
+        if (!badge || !tooltip) return;
+
+        // Move tooltip to body so it's outside the scrollable info-panel
+        document.body.appendChild(tooltip);
+
+        function showTooltip() {
+            const rect = badge.getBoundingClientRect();
+            const tooltipWidth = window.innerWidth < 600 ? 280 : 310;
+
+            // Position directly below the badge
+            let left = rect.left + (rect.width / 2) - (tooltipWidth / 2);
+            let top = rect.bottom + 8;
+
+            // Clamp horizontal to viewport
+            if (left < 8) left = 8;
+            if (left + tooltipWidth > window.innerWidth - 8) left = window.innerWidth - tooltipWidth - 8;
+
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+            tooltip.style.bottom = 'auto';
+            tooltip.style.width = tooltipWidth + 'px';
+
+            // Arrow points at badge center
+            const arrowLeft = (rect.left + rect.width / 2) - left;
+            tooltip.style.setProperty('--arrow-left', arrowLeft + 'px');
+
+            tooltip.classList.add('visible');
+        }
+
+        function hideTooltip() {
+            tooltip.classList.remove('visible');
+        }
+
+        badge.addEventListener('mouseenter', showTooltip);
+        badge.addEventListener('mouseleave', hideTooltip);
+        badge.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            if (tooltip.classList.contains('visible')) {
+                hideTooltip();
+            } else {
+                showTooltip();
+            }
+        });
+    })();
+
     function renderEclipseInfo(eclipse, observer, name, context, localElev) {
         // Usar el polígono GeoJSON como fuente de verdad para la totalidad.
         // Astronomy Engine usa un modelo de sombra ligeramente diferente.
@@ -992,6 +1316,29 @@ document.addEventListener("DOMContentLoaded", () => {
         // --- WEATHER / CLIMATE DATA ---
         updateWeatherData(observer.latitude, observer.longitude);
 
+        // --- OBSERVATION SCORE ---
+        // Get cloud percentage for scoring (reuse the IDW logic)
+        const cloudPctForScore = getCloudPct(observer.latitude, observer.longitude);
+        // Sun altitude already computed above as `alt` (or from hor_peak)
+        let sunAltForScore = 0;
+        if (eclipse.peak && window.Astronomy) {
+            const peakTimeScore = eclipse.peak.time.date;
+            const equScore = window.Astronomy.Equator('Sun', peakTimeScore, observer, true, true);
+            const horScore = window.Astronomy.Horizon(peakTimeScore, observer, equScore.ra, equScore.dec, 'normal');
+            sunAltForScore = horScore.altitude;
+        }
+
+        // Initial score (horizon blockage unknown yet, assume clear)
+        const initialScore = calculateObservationScore(
+            eclipse, observer, inBand, sunAltForScore, cloudPctForScore, false, warningSunset, sunsetDate
+        );
+        updateScoreBadge(initialScore);
+
+        // Store state so horizon check can re-score
+        lastScoreState = {
+            eclipse, observer, inBand, sunAltForScore, cloudPctForScore, warningSunset, sunsetDate
+        };
+
         // Save for comparison
         lastEclipseResult = {
             name: name,
@@ -1030,7 +1377,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const sunAltitude = hor_peak.altitude;
 
         // Si el sol ya está muy alto o se ha puesto
-        if (sunAltitude > 15 || sunAltitude < 0) return;
+        if (sunAltitude > 20 || sunAltitude < 0) return;
 
         // Mostrar contenedor y spinner
         horizonContainer.classList.remove('hidden');
@@ -1082,6 +1429,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (isBlocked) {
                     horizonWarning.classList.remove('hidden');
+                }
+
+                // Re-calculate observation score with actual horizon data
+                if (lastScoreState) {
+                    const updatedScore = calculateObservationScore(
+                        lastScoreState.eclipse,
+                        lastScoreState.observer,
+                        lastScoreState.inBand,
+                        lastScoreState.sunAltForScore,
+                        lastScoreState.cloudPctForScore,
+                        isBlocked,
+                        lastScoreState.warningSunset,
+                        lastScoreState.sunsetDate
+                    );
+                    updateScoreBadge(updatedScore);
                 }
 
                 drawHorizonProfile(canvas, adjustedElevations, apiObserverElev, sunAltitude, data.elevation);
@@ -1295,6 +1657,43 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
+    // --- WEATHER: Get cloud percentage for scoring (pure calculation, no DOM) ---
+    function getCloudPct(lat, lng) {
+        if (typeof window.cloudHeatmapData === 'undefined' || window.cloudHeatmapData.length === 0) {
+            return null;
+        }
+        try {
+            const pointsWithDist = window.cloudHeatmapData.map(p => ({
+                ...p,
+                dist: haversineDist(lat, lng, p.lat, p.lon)
+            }));
+            pointsWithDist.sort((a, b) => a.dist - b.dist);
+            const nearestPoints = pointsWithDist.slice(0, 4);
+
+            // Use 'accumulated' (primary) or 'cloudcover' (legacy fallback)
+            const getVal = (p) => p.accumulated !== undefined ? p.accumulated : (p.cloudcover !== undefined ? p.cloudcover : null);
+
+            let pct = 0;
+            if (nearestPoints[0].dist < 1) {
+                pct = getVal(nearestPoints[0]);
+            } else {
+                let sumWeights = 0;
+                let sumValues = 0;
+                for (const p of nearestPoints) {
+                    const val = getVal(p);
+                    if (val === null) continue;
+                    const weight = 1 / Math.pow(p.dist, 2);
+                    sumWeights += weight;
+                    sumValues += val * weight;
+                }
+                pct = sumWeights > 0 ? sumValues / sumWeights : null;
+            }
+            return pct !== null ? Math.round(pct) : null;
+        } catch (err) {
+            return null;
+        }
+    }
+
     // --- WEATHER CALCULATION (IDW Interpolation from Historical Data) ---
     function updateWeatherData(lat, lng) {
         const weatherEl = document.getElementById('weather-info');
@@ -1325,24 +1724,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
             let pct = 0;
 
+            // Use 'accumulated' (primary) or 'cloudcover' (legacy fallback)
+            const getVal = (p) => p.accumulated !== undefined ? p.accumulated : (p.cloudcover !== undefined ? p.cloudcover : null);
+
             // If the closest point is extremely close (e.g. < 1km), just use its value
             if (nearestPoints[0].dist < 1) {
-                pct = nearestPoints[0].cloudcover;
+                pct = getVal(nearestPoints[0]);
             } else {
                 // IDW Formula
                 let sumWeights = 0;
                 let sumValues = 0;
                 for (const p of nearestPoints) {
+                    const val = getVal(p);
+                    if (val === null) continue;
                     const weight = 1 / Math.pow(p.dist, 2);
                     sumWeights += weight;
-                    sumValues += p.cloudcover * weight;
+                    sumValues += val * weight;
                 }
-                pct = sumValues / sumWeights;
+                pct = sumWeights > 0 ? sumValues / sumWeights : null;
             }
 
+            if (pct === null) return;
             pct = Math.round(pct);
 
-            if (pct !== undefined && !isNaN(pct)) {
+            if (!isNaN(pct)) {
                 cloudsEl.textContent = `${pct}%`;
                 const hc = window.EclipseConfig.heatmap;
                 sourceEl.textContent = `Promedio ${hc.day_start}-${hc.day_end} Ago (${hc.year_start}-${hc.year_end})`;

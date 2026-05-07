@@ -18,7 +18,9 @@ La aplicación muestra:
 - ⛰️ **Análisis de Altitud 3D**, calculando el impacto de tu elevación (0-3000m) en los tiempos del eclipse
 - 📡 **Radar de Horizonte en Vivo**, generando gráficas de perfiles montañosos cruzados con la trayectoria del sol
 - ☁️ **Mapa de nubes histórico** (Heatmap) basado en probabilidad estadística interactivo (Acumulado y desglosado por año, 2008-2025)
+- ⭐ **Índice de Observación** (0-10): puntuación astrofísica objetiva con 5 criterios (duración, altitud solar, nubosidad, horizonte, puesta de sol)
 - 🌑 **Simulación de la sombra (Umbra)** animada en tiempo real
+- 💎 **Simulador de Perlas de Baily** con perfil lunar real y modos fotorrealista/técnico
 - 🔍 **Buscador de localidades** con autocompletado vía Photon (OpenStreetMap)
 - 📍 **Geolocalización** para detectar tu posición automáticamente
 - 📊 **Panel informativo** con tiempos de contacto (C1–C4) ajustados a la curvatura terrestre
@@ -31,8 +33,11 @@ La aplicación muestra:
 
 ### Archivos del Frontend (Web App)
 - `index.html`: Punto de entrada principal. Contiene la estructura DOM, el modal de información y el contenedor del mapa.
-- `app.js`: Motor principal de la aplicación. Maneja el mapa Leaflet, la geolocalización, la búsqueda, la animación de la sombra, el gráfico de horizonte y la interfaz.
+- `app.js`: Motor principal de la aplicación. Maneja el mapa Leaflet, la geolocalización, la búsqueda, la animación de la sombra, el gráfico de horizonte, el índice de observación y la interfaz.
 - `besselian_calculator.js`: Motor matemático puro. Utiliza los elementos besselianos para calcular el instante exacto, duración y oscurecimiento con precisión de sub-segundos corrigiendo la altitud terrestre.
+- `limb_simulator.js`: Simulador de Perlas de Baily con renderizado dual (fotorrealista y técnico) basado en el perfil real del limbo lunar.
+- `lunar_limb_profile.js`: Perfil de elevación del limbo lunar real para el simulador de Perlas de Baily.
+- `horizon_3d.js`: Motor de visualización 3D del terreno con interpolación IDW y ruido fractal procedural.
 - `config.js`: Archivo de configuración centralizado (única fuente de la verdad). Almacena los elementos besselianos, deltas de tiempo, y parámetros de conexión para APIs y capas topográficas.
 - `styles.css`: Hoja de estilos principal con diseño *glassmorphism*, dark mode y diseño responsive para móviles.
 - `pois.js`: Base de datos local con Puntos de Interés (miradores, ciudades clave) para autocompletado y marcadores sugeridos en el mapa.
@@ -115,6 +120,23 @@ Adicionalmente, se sigue empleando la librería **[Astronomy Engine](https://git
 - **Puesta de sol** local, para lanzar alertas si coincide con la fase del eclipse.
 
 La **determinación estricta de totalidad** usa un test **point-in-polygon** (ray casting) contra el polígono GeoJSON como fuente de verdad, ya que el polígono contiene las asimetrías y deformaciones exactas de la sombra por el relieve lunar.
+
+### Índice de Observación del Eclipse
+
+El sistema implementa una **puntuación objetiva de 0 a 10** basada en criterios astrofísicos para evaluar la calidad de observación en cada ubicación:
+
+| Criterio | Peso | Método |
+|----------|------|--------|
+| **Duración de totalidad** | 3.0 pts (30%) | Lineal: 0s → 0 pts, 100s+ → 3.0 pts |
+| **Altitud solar** | 1.5 pts (15%) | Lineal: 0° → 0 pts, 20°+ → 1.5 pts |
+| **Cielo despejado** | 2.0 pts (20%) | Curva potencial (exp. 1.5) sobre media histórica IDW |
+| **Horizonte libre** | 2.0 pts (20%) | Escalonado por altitud: bloqueo a ≤5° = 0 pts, a ≤10° = 0.4 pts |
+| **Puesta de sol** | 1.5 pts (15%) | Puesta astronómica + bloqueo orográfico como puesta efectiva |
+
+**Reglas especiales:**
+- **Eclipses parciales** reciben puntuación **0** (sin totalidad = sin valor de observación para un evento de eclipse total).
+- Los criterios **horizonte** y **puesta de sol** están **correlacionados**: si el terreno bloquea el sol, ambos se penalizan simultáneamente.
+- La puntuación se recalcula automáticamente cuando el análisis asíncrono de horizonte (Open-Meteo) finaliza.
 
 ---
 

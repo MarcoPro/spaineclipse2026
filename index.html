@@ -127,6 +127,23 @@
                         style="font-size: 0.8rem; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 12px;"><i
                             class="fa-solid fa-mountain"></i> <span id="elevation-value">--</span> m</span>
                 </div>
+                <div class="score-badge-row">
+                    <div class="eclipse-score-badge hidden" id="eclipse-score-badge">
+                        <i class="fa-solid fa-star"></i>
+                        <span class="score-value" id="score-value">--</span>
+                        <span class="score-max">/10</span>
+                        <div class="score-tooltip" id="score-tooltip">
+                            <div class="score-tooltip-title"><i class="fa-solid fa-calculator"></i> Índice de Observación</div>
+                            <div class="score-tooltip-desc">Puntuación objetiva de la calidad de observación del eclipse en esta ubicación, basada en criterios astrofísicos.</div>
+                            <div class="score-breakdown" id="score-breakdown">
+                                <!-- Populated by JS -->
+                            </div>
+                            <div class="score-tooltip-footer">
+                                <i class="fa-solid fa-circle-info"></i> Escala: 0 (desfavorable) – 10 (óptimo)
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="safety-warning" id="safety-warning"

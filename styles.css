@@ -559,6 +559,226 @@ body {
     word-wrap: break-word;
 }
 
+/* --- Score Badge Row (below region name) --- */
+.score-badge-row {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+
+/* --- Eclipse Observation Score Badge --- */
+.eclipse-score-badge {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: help;
+    transition: var(--transition);
+    white-space: nowrap;
+    flex-shrink: 0;
+    animation: scoreAppear 0.5s ease-out;
+}
+
+@keyframes scoreAppear {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.eclipse-score-badge i {
+    font-size: 0.7rem;
+    filter: drop-shadow(0 0 3px currentColor);
+}
+
+.eclipse-score-badge .score-value {
+    font-variant-numeric: tabular-nums;
+}
+
+.eclipse-score-badge .score-max {
+    font-weight: 400;
+    opacity: 0.6;
+    font-size: 0.75rem;
+}
+
+/* Score color tiers */
+.eclipse-score-badge.score-excellent {
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+    border: 1px solid rgba(46, 204, 113, 0.3);
+}
+
+.eclipse-score-badge.score-good {
+    background: rgba(241, 196, 15, 0.15);
+    color: #f1c40f;
+    border: 1px solid rgba(241, 196, 15, 0.3);
+}
+
+.eclipse-score-badge.score-fair {
+    background: rgba(230, 126, 34, 0.15);
+    color: #e67e22;
+    border: 1px solid rgba(230, 126, 34, 0.3);
+}
+
+.eclipse-score-badge.score-poor {
+    background: rgba(231, 76, 60, 0.15);
+    color: #e74c3c;
+    border: 1px solid rgba(231, 76, 60, 0.3);
+}
+
+.eclipse-score-badge.score-none {
+    background: rgba(99, 110, 114, 0.12);
+    color: #636e72;
+    border: 1px solid rgba(99, 110, 114, 0.25);
+}
+
+.eclipse-score-badge.score-none .score-max {
+    display: none;
+}
+
+/* --- Score Tooltip --- */
+.score-tooltip {
+    display: none;
+    position: fixed;
+    width: 310px;
+    background: rgba(14, 16, 22, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    z-index: 10000;
+    text-align: left;
+    cursor: default;
+    animation: tooltipFadeIn 0.25s ease-out;
+    pointer-events: none;
+}
+
+.score-tooltip.visible {
+    display: block;
+}
+
+@keyframes tooltipFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Tooltip arrow (points upward) */
+.score-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: var(--arrow-left, 50%);
+    transform: translateX(-50%) rotate(45deg);
+    width: 12px;
+    height: 12px;
+    background: rgba(14, 16, 22, 0.96);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Remove the old CSS hover trigger - JS handles it now */
+
+
+
+.score-tooltip-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #f0f2f5;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.score-tooltip-title i {
+    font-size: 0.75rem;
+    color: var(--accent-neon);
+    filter: none;
+}
+
+.score-tooltip-desc {
+    font-size: 0.72rem;
+    color: #a0a6b5;
+    line-height: 1.45;
+    margin-bottom: 12px;
+    font-weight: 400;
+}
+
+.score-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.score-criterion {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.score-criterion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.score-criterion-label {
+    font-size: 0.72rem;
+    color: #ccc;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.score-criterion-label i {
+    font-size: 0.65rem;
+    width: 14px;
+    text-align: center;
+    filter: none;
+}
+
+.score-criterion-pts {
+    font-size: 0.7rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: #a0a6b5;
+}
+
+.score-criterion-bar {
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.score-criterion-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s ease-out;
+}
+
+.score-tooltip-footer {
+    font-size: 0.65rem;
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-weight: 400;
+}
+
+.score-tooltip-footer i {
+    font-size: 0.6rem;
+    filter: none;
+}
+
 .region-name {
     color: var(--text-muted);
     font-size: 0.9rem;
@@ -1260,6 +1480,10 @@ body {
         margin: 0.5rem auto 0;
         font-size: 0.8rem;
         align-self: center;
+    }
+
+    .score-tooltip {
+        width: 280px;
     }
 }
 
