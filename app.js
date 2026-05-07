@@ -767,7 +767,9 @@ document.addEventListener("DOMContentLoaded", () => {
     //   4. Horizon obstruction:     2.0 pts (20%)
     //   5. Sunset interference:     1.5 pts (15%)
     //
-    function calculateObservationScore(eclipse, observer, inBand, sunAltitude, cloudPct, isHorizonBlocked, warningSunset, sunsetDate) {
+    function calculateObservationScore(eclipse, observer, inBand, sunAltitude, cloudPct, isHorizonBlocked, warningSunset, sunsetDate, maxHorizonAngle) {
+        // Default maxHorizonAngle to 0 if not provided (terrain check not done yet)
+        maxHorizonAngle = maxHorizonAngle || 0;
         const criteria = [];
 
         if (inBand && eclipse.total_begin && eclipse.total_end) {
@@ -864,20 +866,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 5. SUNSET INTERFERENCE (0–1.5 pts)
             // Rationale: If the sun sets before the eclipse finishes, the observation experience
-            // is degraded. This includes BOTH astronomical sunset AND effective sunset caused
-            // by terrain blockage (mountains hiding the sun before true sunset).
-            // Worst case: sunset during totality (complete ruin).
-            // Bad case: sunset during partial phase (C3-C4 cut short).
-            // Best case: full eclipse visible from C1 to C4.
+            // is degraded. This includes:
+            //   a) Astronomical sunset during eclipse phases
+            //   b) Terrain blockage at peak (isHorizonBlocked)
+            //   c) Terrain that will block the sun as it DESCENDS during partial phases
+            //      (maxHorizonAngle > 0 but < sunAltitude means: sun is above mountains NOW
+            //       but will drop behind them as the eclipse progresses)
             let sunsetScore = 1.5;
             let sunsetDetail = 'Eclipse completo visible';
 
-            // If horizon is blocked, mountains cause an effective early "sunset" —
-            // the sun disappears behind terrain during the eclipse, which is equivalent
-            // to or worse than a late astronomical sunset.
             if (isHorizonBlocked) {
-                // Horizon blockage = terrain hides the sun during eclipse
-                // This is at least as bad as sunset during the partial phase
+                // Case B: Mountains already block the sun at peak — catastrophic
                 if (sunAltitude <= 5) {
                     sunsetScore = 0;
                     sunsetDetail = '⚠ Sol oculto por terreno';
@@ -888,7 +887,30 @@ document.addEventListener("DOMContentLoaded", () => {
                     sunsetScore = 0.6;
                     sunsetDetail = 'Riesgo de ocultación por terreno';
                 }
+            } else if (maxHorizonAngle > 2) {
+                // Case C: Sun at peak is above mountains, but as the sun descends
+                // during the partial phase after totality, it will drop behind terrain.
+                //
+                // Key physical threshold: ~9° altitude is where the post-totality
+                // partial phase occurs (eclipse max is between ~8-12° in Spain).
+                // If mountains block at ≥9°, the entire post-totality experience is lost.
+                //
+                if (maxHorizonAngle >= 9) {
+                    // Mountains block at or above the partial-phase altitude
+                    // → entire post-totality partial phase is invisible
+                    sunsetScore = 0.2;
+                    sunsetDetail = '⚠ Montañas a ' + maxHorizonAngle.toFixed(0) + '° ocultan parcialidad';
+                } else if (maxHorizonAngle >= 5) {
+                    // Mountains block during the late partial phase / near sunset
+                    sunsetScore = 0.7;
+                    sunsetDetail = 'Montañas a ' + maxHorizonAngle.toFixed(0) + '° recortarán fase final';
+                } else {
+                    // Mountains at 2-5°: only affects the very last minutes near sunset
+                    sunsetScore = 1.2;
+                    sunsetDetail = 'Horizonte elevado a ' + maxHorizonAngle.toFixed(0) + '°';
+                }
             } else if (warningSunset && sunsetDate) {
+                // Case A: Astronomical sunset interferes
                 const totalBeginTime = eclipse.total_begin.time.date.getTime();
                 const totalEndTime = eclipse.total_end.time.date.getTime();
                 const sunsetTime = sunsetDate.getTime();
@@ -1405,6 +1427,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (data && data.elevation) {
                 let isBlocked = false;
+                let maxHorizonAngle = 0; // Maximum angle any mountain subtends from observer
                 // La elevación real del observador según la misma API (evita fallos si la local es 0)
                 const apiObserverElev = data.elevation[0];
                 const adjustedElevations = [apiObserverElev]; // Para la gráfica
@@ -1424,6 +1447,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
                         const mountainAngle = Math.atan2(effectiveDeltaH, distKm * 1000) * (180 / Math.PI);
 
+                        // Track the maximum horizon angle from any mountain
+                        if (mountainAngle > maxHorizonAngle) {
+                            maxHorizonAngle = mountainAngle;
+                        }
+
                         if (mountainAngle >= sunAltitude) {
                             isBlocked = true;
                         }
@@ -1435,6 +1463,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 // Re-calculate observation score with actual horizon data
+                // Pass maxHorizonAngle so sunset scoring can detect partial-phase blockage
                 if (lastScoreState) {
                     const updatedScore = calculateObservationScore(
                         lastScoreState.eclipse,
@@ -1444,7 +1473,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         lastScoreState.cloudPctForScore,
                         isBlocked,
                         lastScoreState.warningSunset,
-                        lastScoreState.sunsetDate
+                        lastScoreState.sunsetDate,
+                        maxHorizonAngle
                     );
                     updateScoreBadge(updatedScore);
                 }
