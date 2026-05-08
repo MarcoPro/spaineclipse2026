@@ -238,27 +238,38 @@ window.Horizon3D = (() => {
         neighbors.sort((a, b) => a.dSq - b.dSq);
         const activePoints = neighbors.slice(0, maxPoints);
 
-        // Plane (Barycentric) interpolation using the 3 nearest points.
-        // This fits a flat triangle between the 3 points, mathematically eliminating 
-        // the "egg-carton" effect caused by radial IDW.
-        if (activePoints.length >= 3) {
-            const p1 = activePoints[0];
-            const p2 = activePoints[1];
-            const p3 = activePoints[2];
+        // Bilinear interpolation using the 4 nearest points (which form a grid cell).
+        // This creates a perfectly smooth hyperbolic paraboloid surface,
+        // eliminating both IDW dimples and Barycentric "Minecraft" triangles.
+        if (activePoints.length >= 4) {
+            // Sort by longitude (X)
+            const sortedByX = activePoints.slice(0, 4).sort((a, b) => a.lng - b.lng);
+            
+            // Left two points (lowest X), sort by latitude (Y)
+            const lefts = [sortedByX[0], sortedByX[1]].sort((a, b) => a.lat - b.lat);
+            const BL = lefts[0];
+            const TL = lefts[1];
 
-            const x = lng, y = lat;
-            const x1 = p1.lng, y1 = p1.lat, z1 = p1.alt;
-            const x2 = p2.lng, y2 = p2.lat, z2 = p2.alt;
-            const x3 = p3.lng, y3 = p3.lat, z3 = p3.alt;
+            // Right two points (highest X), sort by latitude (Y)
+            const rights = [sortedByX[2], sortedByX[3]].sort((a, b) => a.lat - b.lat);
+            const BR = rights[0];
+            const TR = rights[1];
 
-            const det = (y2 - y3) * (x1 - x3) + (x3 - x2) * (y1 - y3);
+            const dx = TR.lng - TL.lng;
+            const dy = TL.lat - BL.lat;
 
-            // If points are not collinear
-            if (Math.abs(det) > 1e-10) {
-                const w1 = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) / det;
-                const w2 = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) / det;
-                const w3 = 1.0 - w1 - w2;
-                return w1 * z1 + w2 * z2 + w3 * z3;
+            // Ensure points form a valid rectangle
+            if (dx > 1e-6 && dy > 1e-6) {
+                // Normalize coordinates within the cell
+                const u = (lng - TL.lng) / dx;
+                const v = (lat - BL.lat) / dy;
+
+                // Interpolate along X for bottom and top edges
+                const botElev = BL.alt * (1 - u) + BR.alt * u;
+                const topElev = TL.alt * (1 - u) + TR.alt * u;
+
+                // Interpolate along Y between the two edges
+                return botElev * (1 - v) + topElev * v;
             }
         }
 
