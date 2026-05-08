@@ -238,13 +238,12 @@ window.Horizon3D = (() => {
         neighbors.sort((a, b) => a.dSq - b.dSq);
         const activePoints = neighbors.slice(0, maxPoints);
 
-        // Check if we are exactly on a point
-        if (activePoints[0].dSq < 0.000001) return activePoints[0].alt;
-
-        // Calculate IDW (power = 2) with smoothing to prevent egg-carton dimples
+        // Calculate IDW (power = 2) with strong smoothing to prevent egg-carton dimples
         let weightSum = 0;
         let elevSum = 0;
-        const smoothing = 0.000005; // Prevents division by zero and smooths grid peaks
+        // Smoothing factor roughly equal to the square of grid spacing (~0.01^2)
+        // This acts as a low-pass filter to blend peaks with their neighbors.
+        const smoothing = 0.00015; 
         for (const p of activePoints) {
             const w = 1 / (p.dSq + smoothing);
             elevSum += p.alt * w;
