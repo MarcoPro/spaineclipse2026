@@ -228,7 +228,7 @@ window.Horizon3D = (() => {
             const dLng = lng - ptLng;
             const dSq = dLat * dLat + dLng * dLng;
             if (dSq < searchRadiusSq) {
-                neighbors.push({ alt: ptAlt, dSq: dSq });
+                neighbors.push({ lat: ptLat, lng: ptLng, alt: ptAlt, dSq: dSq });
             }
         }
 
@@ -238,11 +238,33 @@ window.Horizon3D = (() => {
         neighbors.sort((a, b) => a.dSq - b.dSq);
         const activePoints = neighbors.slice(0, maxPoints);
 
-        // Calculate IDW (power = 2) with strong smoothing to prevent egg-carton dimples
+        // Plane (Barycentric) interpolation using the 3 nearest points.
+        // This fits a flat triangle between the 3 points, mathematically eliminating 
+        // the "egg-carton" effect caused by radial IDW.
+        if (activePoints.length >= 3) {
+            const p1 = activePoints[0];
+            const p2 = activePoints[1];
+            const p3 = activePoints[2];
+
+            const x = lng, y = lat;
+            const x1 = p1.lng, y1 = p1.lat, z1 = p1.alt;
+            const x2 = p2.lng, y2 = p2.lat, z2 = p2.alt;
+            const x3 = p3.lng, y3 = p3.lat, z3 = p3.alt;
+
+            const det = (y2 - y3) * (x1 - x3) + (x3 - x2) * (y1 - y3);
+
+            // If points are not collinear
+            if (Math.abs(det) > 1e-10) {
+                const w1 = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) / det;
+                const w2 = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) / det;
+                const w3 = 1.0 - w1 - w2;
+                return w1 * z1 + w2 * z2 + w3 * z3;
+            }
+        }
+
+        // Fallback: Calculate IDW (power = 2) if collinear or < 3 points
         let weightSum = 0;
         let elevSum = 0;
-        // Smoothing factor roughly equal to the square of grid spacing (~0.01^2)
-        // This acts as a low-pass filter to blend peaks with their neighbors.
         const smoothing = 0.00015; 
         for (const p of activePoints) {
             const w = 1 / (p.dSq + smoothing);
