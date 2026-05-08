@@ -169,8 +169,8 @@ window.Horizon3D = (() => {
      * Simple deterministic fractal noise.
      */
     function pseudoNoise(x, z) {
-        // Simple hash-based noise
-        const n = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
+        // High-frequency constants to avoid Moire wave patterns
+        const n = Math.sin(x * 127.1 + z * 311.7) * 43758.5453123;
         return n - Math.floor(n);
     }
 
@@ -241,11 +241,12 @@ window.Horizon3D = (() => {
         // Check if we are exactly on a point
         if (activePoints[0].dSq < 0.000001) return activePoints[0].alt;
 
-        // Calculate IDW (power = 2)
+        // Calculate IDW (power = 2) with smoothing to prevent egg-carton dimples
         let weightSum = 0;
         let elevSum = 0;
+        const smoothing = 0.000005; // Prevents division by zero and smooths grid peaks
         for (const p of activePoints) {
-            const w = 1 / p.dSq;
+            const w = 1 / (p.dSq + smoothing);
             elevSum += p.alt * w;
             weightSum += w;
         }
