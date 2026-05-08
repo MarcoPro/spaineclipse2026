@@ -130,9 +130,14 @@ window.LimbSimulator = (() => {
         const moonBaseR = sunR * MOON_RATIO;
 
         // Offset along position angle
+        // PA is astronomical (0=North, 90=East/Left, anti-clockwise)
+        // Convert PA to canvas math angle for the starting position
+        const startAngleCanvas = -Math.PI / 2 - MOON_PA_RAD;
+        const motionAngle = startAngleCanvas + Math.PI;
+
         const travel = (t - 0.5) * (sunR * 0.4);
-        const offX = Math.cos(MOON_PA_RAD) * travel;
-        const offY = -Math.sin(MOON_PA_RAD) * travel; // canvas Y inverted
+        const offX = Math.cos(motionAngle) * travel;
+        const offY = Math.sin(motionAngle) * travel;
         const moonCx = cx + offX;
         const moonCy = cy + offY;
 
@@ -306,7 +311,8 @@ window.LimbSimulator = (() => {
             const rad = (i / n) * Math.PI * 2;
             const corr = getLimbCorr(deg);
             const r = moonBaseR * (1 + corr);
-            pts.push({ x: moonCx + Math.cos(rad) * r, y: moonCy + Math.sin(rad) * r });
+            const radCanvas = -Math.PI / 2 - rad;
+            pts.push({ x: moonCx + Math.cos(radCanvas) * r, y: moonCy + Math.sin(radCanvas) * r });
         }
 
         // Smooth quadratic path
@@ -342,8 +348,9 @@ window.LimbSimulator = (() => {
             const rad = (i / n) * Math.PI * 2;
             const corr = getLimbCorr(deg);
             const r = moonBaseR * (1 + corr);
-            const px = moonCx + Math.cos(rad) * r;
-            const py = moonCy + Math.sin(rad) * r;
+            const radCanvas = -Math.PI / 2 - rad;
+            const px = moonCx + Math.cos(radCanvas) * r;
+            const py = moonCy + Math.sin(radCanvas) * r;
 
             // Check proximity to sun edge
             const dx = px - cx, dy = py - cy;
@@ -424,8 +431,9 @@ window.LimbSimulator = (() => {
             const rad = (i / n) * Math.PI * 2;
             const corr = getLimbCorr(deg);
             const edgeR = moonBaseR * (1 + corr);
-            const mx = moonCx + Math.cos(rad) * edgeR;
-            const my = moonCy + Math.sin(rad) * edgeR;
+            const radCanvas = -Math.PI / 2 - rad;
+            const mx = moonCx + Math.cos(radCanvas) * edgeR;
+            const my = moonCy + Math.sin(radCanvas) * edgeR;
             const dx = mx - cx, dy = my - cy;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < sunR) {
