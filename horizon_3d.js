@@ -117,20 +117,38 @@ window.Horizon3D = (() => {
         orbitRadius = Math.max(15, Math.min(120, orbitRadius + e.deltaY * 0.05));
         updateCameraPosition();
     }
+    let prevPinchDist = 0;
+
+    function getPinchDistance(e) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
     function onTouchStart(e) {
         if (e.touches.length === 1) {
             isDragging = true;
             prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        } else if (e.touches.length === 2) {
+            isDragging = false;
+            prevPinchDist = getPinchDistance(e);
         }
     }
     function onTouchMove(e) {
-        if (!isDragging || e.touches.length !== 1) return;
-        const dx = e.touches[0].clientX - prevMouse.x;
-        const dy = e.touches[0].clientY - prevMouse.y;
-        orbitAngle.theta -= dx * 0.008;
-        orbitAngle.phi = Math.max(0.15, Math.min(Math.PI / 2.2, orbitAngle.phi + dy * 0.008));
-        prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        updateCameraPosition();
+        if (e.touches.length === 1 && isDragging) {
+            const dx = e.touches[0].clientX - prevMouse.x;
+            const dy = e.touches[0].clientY - prevMouse.y;
+            orbitAngle.theta -= dx * 0.008;
+            orbitAngle.phi = Math.max(0.15, Math.min(Math.PI / 2.2, orbitAngle.phi + dy * 0.008));
+            prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            updateCameraPosition();
+        } else if (e.touches.length === 2) {
+            const dist = getPinchDistance(e);
+            const delta = prevPinchDist - dist;
+            orbitRadius = Math.max(15, Math.min(120, orbitRadius + delta * 0.2));
+            prevPinchDist = dist;
+            updateCameraPosition();
+        }
     }
 
     function onWindowResize() {
