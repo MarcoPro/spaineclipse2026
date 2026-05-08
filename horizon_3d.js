@@ -78,9 +78,9 @@ window.Horizon3D = (() => {
         renderer.domElement.addEventListener('mousemove', onMouseMove);
         renderer.domElement.addEventListener('mouseup', onMouseUp);
         renderer.domElement.addEventListener('mouseleave', onMouseUp);
-        renderer.domElement.addEventListener('wheel', onWheel, { passive: true });
-        renderer.domElement.addEventListener('touchstart', onTouchStart, { passive: true });
-        renderer.domElement.addEventListener('touchmove', onTouchMove, { passive: true });
+        renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
+        renderer.domElement.addEventListener('touchstart', onTouchStart, { passive: false });
+        renderer.domElement.addEventListener('touchmove', onTouchMove, { passive: false });
         renderer.domElement.addEventListener('touchend', onMouseUp);
 
         window.addEventListener('resize', onWindowResize);
@@ -114,7 +114,8 @@ window.Horizon3D = (() => {
     }
     function onMouseUp() { isDragging = false; }
     function onWheel(e) {
-        orbitRadius = Math.max(15, Math.min(120, orbitRadius + e.deltaY * 0.05));
+        e.preventDefault();
+        orbitRadius = Math.max(5, Math.min(120, orbitRadius + e.deltaY * 0.05));
         updateCameraPosition();
     }
     let prevPinchDist = 0;
@@ -135,6 +136,7 @@ window.Horizon3D = (() => {
         }
     }
     function onTouchMove(e) {
+        e.preventDefault(); // Evita el zoom/scroll nativo del navegador
         if (e.touches.length === 1 && isDragging) {
             const dx = e.touches[0].clientX - prevMouse.x;
             const dy = e.touches[0].clientY - prevMouse.y;
@@ -145,7 +147,8 @@ window.Horizon3D = (() => {
         } else if (e.touches.length === 2) {
             const dist = getPinchDistance(e);
             const delta = prevPinchDist - dist;
-            orbitRadius = Math.max(15, Math.min(120, orbitRadius + delta * 0.2));
+            // Permitimos bajar hasta 5 de radio para un zoom más profundo
+            orbitRadius = Math.max(5, Math.min(120, orbitRadius + delta * 0.2));
             prevPinchDist = dist;
             updateCameraPosition();
         }
