@@ -211,8 +211,8 @@ window.Horizon3D = (() => {
      * Get elevation using Inverse Distance Weighting (IDW) for better
      * handling of sparse topography data compared to bilinear.
      */
-    function getInterpolatedElevation(lat, lng) {
-        const data = window.topographyData || (typeof topographyData !== 'undefined' ? topographyData : null);
+    function getInterpolatedElevation(lat, lng, customData = null) {
+        const data = customData || window.topographyData || (typeof topographyData !== 'undefined' ? topographyData : null);
         if (!data || data.length === 0) return 0;
 
         // Find N nearest points within a search radius
@@ -296,6 +296,24 @@ window.Horizon3D = (() => {
         const geometry = new THREE.PlaneGeometry(terrainSpan, terrainSpan, gridSize - 1, gridSize - 1);
         const vertices = geometry.attributes.position.array;
 
+        // --- Optimize: Pre-filter topography data for this bounding box ---
+        const globalData = window.topographyData || (typeof topographyData !== 'undefined' ? topographyData : null);
+        let localData = globalData;
+
+        if (globalData && globalData.length > 0) {
+            const margin = 0.15; // ~15km padding around the grid
+            const minLat = lat - geoSpanLat/2 - margin;
+            const maxLat = lat + geoSpanLat/2 + margin;
+            const minLng = lng - geoSpanLng/2 - margin;
+            const maxLng = lng + geoSpanLng/2 + margin;
+            
+            localData = globalData.filter(pt => {
+                const ptLat = pt.lat !== undefined ? pt.lat : pt[0];
+                const ptLng = pt.lng !== undefined ? pt.lng : pt[1];
+                return ptLat >= minLat && ptLat <= maxLat && ptLng >= minLng && ptLng <= maxLng;
+            });
+        }
+
         // Sample elevations
         const baseElevations = [];
         for (let i = 0; i < vertices.length; i += 3) {
@@ -310,10 +328,10 @@ window.Horizon3D = (() => {
             // So geoLat = lat + lz * factor
             const geoLat = lat + (lz / terrainSpan) * geoSpanLat;
             const geoLng = lng + (lx / terrainSpan) * geoSpanLng;
-            baseElevations.push(getInterpolatedElevation(geoLat, geoLng));
+            baseElevations.push(getInterpolatedElevation(geoLat, geoLng, localData));
         }
 
-        const observerElev = getInterpolatedElevation(lat, lng);
+        const observerElev = getInterpolatedElevation(lat, lng, localData);
         const minElev = Math.min(...baseElevations);
         const maxElev = Math.max(...baseElevations);
         const elevRange = maxElev - minElev;
