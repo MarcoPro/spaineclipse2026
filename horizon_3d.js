@@ -221,11 +221,14 @@ window.Horizon3D = (() => {
         const neighbors = [];
 
         for (const pt of data) {
-            const dLat = lat - pt.lat;
-            const dLng = lng - pt.lng;
+            const ptLat = pt.lat !== undefined ? pt.lat : pt[0];
+            const ptLng = pt.lng !== undefined ? pt.lng : pt[1];
+            const ptAlt = pt.alt !== undefined ? pt.alt : pt[2];
+            const dLat = lat - ptLat;
+            const dLng = lng - ptLng;
             const dSq = dLat * dLat + dLng * dLng;
             if (dSq < searchRadiusSq) {
-                neighbors.push({ alt: pt.alt, dSq: dSq });
+                neighbors.push({ alt: ptAlt, dSq: dSq });
             }
         }
 
@@ -279,10 +282,10 @@ window.Horizon3D = (() => {
         if (observerPin) scene.remove(observerPin);
 
         // --- Terrain grid parameters ---
-        // Cover 20km radius (40km total) to match the radar profile
-        const RADIUS_KM = 20;
+        // Cover 12km radius (24km total) for a closer, more dramatic profile
+        const RADIUS_KM = 12;
         const TOTAL_KM = RADIUS_KM * 2; 
-        const gridSize = 100; 
+        const gridSize = 250; 
         const terrainSpan = 120; // Larger span for panoramic feel
 
         const kmPerDegLat = 111.32;
@@ -299,7 +302,13 @@ window.Horizon3D = (() => {
             const lx = vertices[i];
             const lz = vertices[i + 1];
             // North is negative Z, East is positive X
-            const geoLat = lat - (lz / terrainSpan) * geoSpanLat;
+            // PlaneGeometry Y axis (lz) maps to World -Z. 
+            // So lz > 0 is South (-Z < 0). Moving South decreases Lat.
+            // Wait, lz is local Y. World Z = -lz.
+            // If World Z increases (South), -lz increases => lz decreases.
+            // If lz decreases, geoLat should decrease. 
+            // So geoLat = lat + lz * factor
+            const geoLat = lat + (lz / terrainSpan) * geoSpanLat;
             const geoLng = lng + (lx / terrainSpan) * geoSpanLng;
             baseElevations.push(getInterpolatedElevation(geoLat, geoLng));
         }
@@ -310,10 +319,10 @@ window.Horizon3D = (() => {
         const elevRange = maxElev - minElev;
 
         // Vertical scaling - more dramatic to resemble a profile
-        let altScale = 0.015;
-        if (elevRange < 100) altScale = 0.05; // Boost flat/low areas
-        else if (elevRange < 500) altScale = 0.03;
-        else if (elevRange > 2000) altScale = 0.012;
+        let altScale = 0.03;
+        if (elevRange < 100) altScale = 0.10; // Boost flat/low areas
+        else if (elevRange < 500) altScale = 0.06;
+        else if (elevRange > 2000) altScale = 0.024;
 
         // Final elevation with subtle procedural noise
         const finalElevations = [];
@@ -325,8 +334,9 @@ window.Horizon3D = (() => {
             // Base altitude from data
             const baseAlt = baseElevations[idx];
             
-            // Subtle noise (very low amplitude to not distort real profile)
-            const noise = (fractalNoise(lx * 0.3, lz * 0.3) - 0.5) * 1.5;
+            // Procedural noise: increases with altitude to simulate rocky peaks
+            const roughness = Math.min(1, baseAlt / 1000);
+            const noise = (fractalNoise(lx * 0.4, lz * 0.4) - 0.5) * (5 + roughness * 15);
             
             const finalAlt = baseAlt + noise;
             finalElevations.push(finalAlt);
