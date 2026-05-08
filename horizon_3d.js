@@ -215,75 +215,72 @@ window.Horizon3D = (() => {
         const data = customData || window.topographyData || (typeof topographyData !== 'undefined' ? topographyData : null);
         if (!data || data.length === 0) return 0;
 
-        // Find N nearest points within a search radius
-        const maxPoints = 8;
-        const searchRadiusSq = 0.15 * 0.15; // ~15km radius in degrees squared
-        const neighbors = [];
-
+        let BL = null, BR = null, TL = null, TR = null;
+        let dBL = Infinity, dBR = Infinity, dTL = Infinity, dTR = Infinity;
+        
+        // Find the 4 closest points in each of the 4 quadrants around (lat, lng)
         for (const pt of data) {
             const ptLat = pt.lat !== undefined ? pt.lat : pt[0];
             const ptLng = pt.lng !== undefined ? pt.lng : pt[1];
             const ptAlt = pt.alt !== undefined ? pt.alt : pt[2];
-            const dLat = lat - ptLat;
-            const dLng = lng - ptLng;
-            const dSq = dLat * dLat + dLng * dLng;
-            if (dSq < searchRadiusSq) {
-                neighbors.push({ lat: ptLat, lng: ptLng, alt: ptAlt, dSq: dSq });
-            }
+
+            const dSq = (lat - ptLat) ** 2 + (lng - ptLng) ** 2;
+            
+            // Check quadrants (including exact matches on axes)
+            if (ptLat <= lat && ptLng <= lng && dSq < dBL) { BL = {lat: ptLat, lng: ptLng, alt: ptAlt}; dBL = dSq; }
+            if (ptLat <= lat && ptLng >= lng && dSq < dBR) { BR = {lat: ptLat, lng: ptLng, alt: ptAlt}; dBR = dSq; }
+            if (ptLat >= lat && ptLng <= lng && dSq < dTL) { TL = {lat: ptLat, lng: ptLng, alt: ptAlt}; dTL = dSq; }
+            if (ptLat >= lat && ptLng >= lng && dSq < dTR) { TR = {lat: ptLat, lng: ptLng, alt: ptAlt}; dTR = dSq; }
         }
 
-        if (neighbors.length === 0) return 0;
+        // If we found a valid bounding box, perform strict Bilinear Interpolation
+        if (BL && BR && TL && TR) {
+            if (dBL < 1e-12) return BL.alt;
+            if (dBR < 1e-12) return BR.alt;
+            if (dTL < 1e-12) return TL.alt;
+            if (dTR < 1e-12) return TR.alt;
 
-        // Sort by distance and take top N
-        neighbors.sort((a, b) => a.dSq - b.dSq);
-        const activePoints = neighbors.slice(0, maxPoints);
-
-        // Bilinear interpolation using the 4 nearest points (which form a grid cell).
-        // This creates a perfectly smooth hyperbolic paraboloid surface,
-        // eliminating both IDW dimples and Barycentric "Minecraft" triangles.
-        if (activePoints.length >= 4) {
-            // Sort by longitude (X)
-            const sortedByX = activePoints.slice(0, 4).sort((a, b) => a.lng - b.lng);
-            
-            // Left two points (lowest X), sort by latitude (Y)
-            const lefts = [sortedByX[0], sortedByX[1]].sort((a, b) => a.lat - b.lat);
-            const BL = lefts[0];
-            const TL = lefts[1];
-
-            // Right two points (highest X), sort by latitude (Y)
-            const rights = [sortedByX[2], sortedByX[3]].sort((a, b) => a.lat - b.lat);
-            const BR = rights[0];
-            const TR = rights[1];
-
-            const dx = TR.lng - TL.lng;
+            const dx = BR.lng - BL.lng;
             const dy = TL.lat - BL.lat;
 
-            // Ensure points form a valid rectangle
-            if (dx > 1e-6 && dy > 1e-6) {
-                // Normalize coordinates within the cell
-                const u = (lng - TL.lng) / dx;
+            if (dx > 1e-8 && dy > 1e-8) {
+                // Inside the cell: interpolate X then Y
+                const u = (lng - BL.lng) / dx;
                 const v = (lat - BL.lat) / dy;
-
-                // Interpolate along X for bottom and top edges
                 const botElev = BL.alt * (1 - u) + BR.alt * u;
                 const topElev = TL.alt * (1 - u) + TR.alt * u;
-
-                // Interpolate along Y between the two edges
                 return botElev * (1 - v) + topElev * v;
+            } else if (dx > 1e-8) {
+                // Edge case: dy is 0 (exactly on horizontal edge)
+                const u = (lng - BL.lng) / dx;
+                return BL.alt * (1 - u) + BR.alt * u;
+            } else if (dy > 1e-8) {
+                // Edge case: dx is 0 (exactly on vertical edge)
+                const v = (lat - BL.lat) / dy;
+                return BL.alt * (1 - v) + TL.alt * v;
             }
         }
 
-        // Fallback: Calculate IDW (power = 2) if collinear or < 3 points
+        // Fallback: Inverse Distance Weighting if we are outside the grid bounds
         let weightSum = 0;
         let elevSum = 0;
-        const smoothing = 0.00015; 
-        for (const p of activePoints) {
-            const w = 1 / (p.dSq + smoothing);
-            elevSum += p.alt * w;
-            weightSum += w;
+        const smoothing = 0.00015;
+        
+        // Re-gather close neighbors for fallback
+        const searchRadiusSq = 0.15 * 0.15;
+        for (const pt of data) {
+            const ptLat = pt.lat !== undefined ? pt.lat : pt[0];
+            const ptLng = pt.lng !== undefined ? pt.lng : pt[1];
+            const ptAlt = pt.alt !== undefined ? pt.alt : pt[2];
+            const dSq = (lat - ptLat) ** 2 + (lng - ptLng) ** 2;
+            if (dSq < searchRadiusSq) {
+                const w = 1 / (dSq + smoothing);
+                elevSum += ptAlt * w;
+                weightSum += w;
+            }
         }
-
-        return elevSum / weightSum;
+        
+        return weightSum > 0 ? elevSum / weightSum : 0;
     }
 
     /**
