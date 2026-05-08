@@ -4,8 +4,8 @@
  * 
  * Usa perfil LOLA/SLDEM2015 con libración del eclipse 12-Ago-2026.
  * 
- * Dirección lunar: PA ≈ 300° para España (Luna entra desde
- * cuadrante superior-derecho del disco solar).
+ * Perspectiva Visual (Alt-Azimut) para España al atardecer:
+ * La luna entra desde el cuadrante inferior-derecho.
  */
 
 window.LimbSimulator = (() => {
@@ -14,9 +14,12 @@ window.LimbSimulator = (() => {
     let limbData = [], limbNorm = [];
     let animId = null, playing = false;
 
-    // Eclipse 2026 constants
-    const MOON_PA_DEG = 300;        // Position angle Luna para España
-    const MOON_PA_RAD = MOON_PA_DEG * Math.PI / 180;
+    // Constantes visuales (Alt-Az) para el eclipse 2026 en España (~17:30 UTC)
+    // El eclipse ocurre hacia el Oeste. El Norte Celeste está rotado respecto al cénit.
+    const PARALLACTIC_ANGLE_DEG = 52; // Rotación del Norte (sentido horario desde Cénit)
+    const CONTACT_V_DEG = 122;        // Ángulo de Vértice de entrada C1 (desde Cénit)
+    const CONTACT_V_RAD = CONTACT_V_DEG * Math.PI / 180;
+    const PARALLACTIC_RAD = PARALLACTIC_ANGLE_DEG * Math.PI / 180;
     const MOON_RATIO = 1.0386;      // Magnitud 2026
     const MEAN_SOLAR_R = 959.63;    // arcsec
     const VISUAL_SCALE = 5;
@@ -129,10 +132,9 @@ window.LimbSimulator = (() => {
         const sunR = W * 0.32;
         const moonBaseR = sunR * MOON_RATIO;
 
-        // Offset along position angle
-        // PA is astronomical (0=North, 90=East/Left, anti-clockwise)
-        // Convert PA to canvas math angle for the starting position
-        const startAngleCanvas = -Math.PI / 2 - MOON_PA_RAD;
+        // Offset along Vertex Angle (Alt-Az perspective)
+        // Cénit (Arriba) es -90° en canvas math.
+        const startAngleCanvas = -Math.PI / 2 + CONTACT_V_RAD;
         const motionAngle = startAngleCanvas + Math.PI;
 
         const travel = (t - 0.5) * (sunR * 0.4);
@@ -311,7 +313,8 @@ window.LimbSimulator = (() => {
             const rad = (i / n) * Math.PI * 2;
             const corr = getLimbCorr(deg);
             const r = moonBaseR * (1 + corr);
-            const radCanvas = -Math.PI / 2 - rad;
+            // Mapeo: Cénit (-pi/2) + Paraláctico - ángulo lunar (antihorario)
+            const radCanvas = -Math.PI / 2 + PARALLACTIC_RAD - rad;
             pts.push({ x: moonCx + Math.cos(radCanvas) * r, y: moonCy + Math.sin(radCanvas) * r });
         }
 
@@ -348,7 +351,7 @@ window.LimbSimulator = (() => {
             const rad = (i / n) * Math.PI * 2;
             const corr = getLimbCorr(deg);
             const r = moonBaseR * (1 + corr);
-            const radCanvas = -Math.PI / 2 - rad;
+            const radCanvas = -Math.PI / 2 + PARALLACTIC_RAD - rad;
             const px = moonCx + Math.cos(radCanvas) * r;
             const py = moonCy + Math.sin(radCanvas) * r;
 
@@ -431,7 +434,7 @@ window.LimbSimulator = (() => {
             const rad = (i / n) * Math.PI * 2;
             const corr = getLimbCorr(deg);
             const edgeR = moonBaseR * (1 + corr);
-            const radCanvas = -Math.PI / 2 - rad;
+            const radCanvas = -Math.PI / 2 + PARALLACTIC_RAD - rad;
             const mx = moonCx + Math.cos(radCanvas) * edgeR;
             const my = moonCy + Math.sin(radCanvas) * edgeR;
             const dx = mx - cx, dy = my - cy;
