@@ -260,7 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (data && data.features && data.features.length > 0) {
                 const props = data.features[0].properties;
-                const name = props.name || props.city || props.town || props.village || props.locality || "Ubicación Seleccionada";
+                const name = props.city || props.town || props.village || props.locality || props.name || "Ubicación Seleccionada";
 
                 const contextParts = [];
                 if (props.city && props.city !== name) contextParts.push(props.city);
