@@ -805,7 +805,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             // 3. CLOUD PROBABILITY (0–3.0 pts)
-            // Rationale: Historical cloud cover is the primary risk factor.
+            // Rationale: Historical cloud cover or real forecast is the primary risk factor.
             // Effective range: 85%+ clear (≤15% nubes) = full score, ≤20% clear (≥80% nubes) = 0.
             // Remapped from [20%–85% clear] → [0–1], then power curve (1.5).
             let cloudScore = 0;
@@ -817,10 +817,11 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 cloudScore = 1.5; // Unknown: neutral
             }
+            const sourceLabelStr = (typeof currentForecastMode !== 'undefined' && currentForecastMode === 'forecast') ? 'Previsión Real' : 'Histórico ERA5';
             criteria.push({
                 icon: 'fa-cloud-sun',
                 label: 'Cielo despejado',
-                detail: cloudPct !== null && !isNaN(cloudPct) ? `${Math.round(100 - cloudPct)}% prob.` : 'Sin datos',
+                detail: cloudPct !== null && !isNaN(cloudPct) ? `${Math.round(100 - cloudPct)}% despejado (${sourceLabelStr})` : 'Sin datos',
                 pts: cloudScore,
                 max: 3.0,
                 color: '#3498db'
@@ -1683,7 +1684,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // --- FORECAST & WEATHER MODE STATE ---
-    let currentForecastMode = 'historical'; // 'historical' | 'forecast'
+    let currentForecastMode = 'forecast'; // 'forecast' | 'historical' (Default: Real Forecast)
 
     function getWeatherForecast(lat, lng) {
         if (!window.weatherForecastData || !window.weatherForecastData.points || window.weatherForecastData.points.length === 0) {
@@ -1871,9 +1872,29 @@ document.addEventListener("DOMContentLoaded", () => {
         const historicalPct = getCloudPct(lat, lng);
         const forecast = getWeatherForecast(lat, lng);
 
+        const clarityTag = document.getElementById('weather-clarity-tag');
+        const activeCloudPct = (currentForecastMode === 'forecast' && forecast) ? forecast.c_total : historicalPct;
+
+        if (clarityTag && activeCloudPct !== null && !isNaN(activeCloudPct)) {
+            const clearPct = 100 - activeCloudPct;
+            if (activeCloudPct <= 30) {
+                clarityTag.style.background = 'rgba(46, 204, 113, 0.15)';
+                clarityTag.style.color = '#2ecc71';
+                clarityTag.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${clearPct}% despejado (Óptimo)`;
+            } else if (activeCloudPct <= 60) {
+                clarityTag.style.background = 'rgba(241, 196, 15, 0.15)';
+                clarityTag.style.color = '#f1c40f';
+                clarityTag.innerHTML = `<i class="fa-solid fa-circle-info"></i> ${clearPct}% despejado (Aceptable)`;
+            } else {
+                clarityTag.style.background = 'rgba(231, 76, 60, 0.15)';
+                clarityTag.style.color = '#e74c3c';
+                clarityTag.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${activeCloudPct}% nubes (Cubierto)`;
+            }
+        }
+
         if (currentForecastMode === 'forecast' && forecast) {
             // SHOW REAL PREGENERATED FORECAST
-            if (titleLabel) titleLabel.textContent = 'Previsión Real (Open-Meteo):';
+            if (titleLabel) titleLabel.textContent = 'Cobertura de Nubes (Prevista):';
             cloudsEl.textContent = `${forecast.c_total}%`;
             cloudsEl.style.color = forecast.c_total <= 30 ? '#2ecc71' : (forecast.c_total <= 60 ? '#f1c40f' : '#e74c3c');
 
@@ -1950,7 +1971,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         } else {
             // SHOW HISTORICAL ERA5
-            if (titleLabel) titleLabel.textContent = 'Nubosidad Histórica (ERA5):';
+            if (titleLabel) titleLabel.textContent = 'Cobertura de Nubes (Histórico):';
             if (forecastDetails) forecastDetails.classList.add('hidden');
 
             if (historicalPct !== null && !isNaN(historicalPct)) {
@@ -2194,49 +2215,71 @@ document.addEventListener("DOMContentLoaded", () => {
     let cloudHeatmapVisible = false;
 
     function generateCloudHeatmap() {
-        if (typeof cloudHeatmapData === 'undefined') {
-            console.warn('Cloud Heatmap: Data not loaded. Make sure cloud_heatmap.js is included.');
+        if (typeof cloudHeatmapData === 'undefined' && typeof weatherForecastData === 'undefined') {
+            console.warn('Cloud Heatmap: Data not loaded.');
             return;
         }
 
         cloudHeatmapLayer = L.layerGroup();
 
         function cloudColor(pct) {
-            // Interpolación matemática continua (sin saltos)
-            // pct va de 0 a 100. Lo convertimos a un valor t de 0.0 a 1.0
             const t = Math.max(0, Math.min(100, pct)) / 100;
-
             if (t < 0.5) {
-                // De 0% a 50%: Transición muy suave de Verde (Hue 130) a Amarillo (Hue 55)
                 const h = 130 - (t * 2 * 75);
                 return `hsl(${h}, 75%, 55%)`;
             } else {
-                // De 50% a 100%: Transición suave de Amarillo (Hue 55) a Naranja/Rojizo (Hue 10)
-                // y oscureciendo un poco para simular "nubarrones" o mal tiempo
                 const h = 55 - ((t - 0.5) * 2 * 45);
-                const l = 55 - ((t - 0.5) * 2 * 10); // Baja la luminosidad del 55% al 45%
+                const l = 55 - ((t - 0.5) * 2 * 10);
                 return `hsl(${h}, 85%, ${l}%)`;
             }
         }
 
-        cloudHeatmapData.forEach(p => {
-            // Compatibilidad hacia atrás: si no existe 'accumulated', intentamos 'cloudcover'
-            const basePct = p.accumulated !== undefined ? p.accumulated : p.cloudcover;
-            const color = cloudColor(basePct);
-            const circle = L.circleMarker([p.lat, p.lon], {
-                radius: 14,
-                color: 'transparent',
-                fillColor: color,
-                fillOpacity: 0.6,
-                weight: 0
-            });
-            circle.bindTooltip(`Nubes: ${Math.round(basePct)}%`, { permanent: false, direction: 'top' });
+        function populateCloudLayer(mode, yearVal) {
+            if (!cloudHeatmapLayer) return;
+            cloudHeatmapLayer.clearLayers();
 
-            // Guardamos los datos en la propia capa para actualizarlos dinámicamente
-            circle.cloudData = p;
+            if (mode === 'forecast' && window.weatherForecastData && window.weatherForecastData.points) {
+                window.weatherForecastData.points.forEach(p => {
+                    const color = cloudColor(p.c_total);
+                    const circle = L.circleMarker([p.lat, p.lon], {
+                        radius: 14,
+                        color: 'transparent',
+                        fillColor: color,
+                        fillOpacity: 0.65,
+                        weight: 0
+                    });
+                    const clearPct = 100 - p.c_total;
+                    circle.bindTooltip(`⚡ Previsión Real: ${p.c_total}% nubes (${clearPct}% despejado)<br>Bajas: ${p.c_low}% | Medias: ${p.c_mid}% | Altas: ${p.c_high}%`, { permanent: false, direction: 'top' });
+                    cloudHeatmapLayer.addLayer(circle);
+                });
+            } else if (typeof cloudHeatmapData !== 'undefined') {
+                const minYear = window.EclipseConfig.heatmap.year_start;
+                const maxYear = window.EclipseConfig.heatmap.year_end;
+                const isAccumulated = yearVal < minYear;
 
-            cloudHeatmapLayer.addLayer(circle);
-        });
+                cloudHeatmapData.forEach(p => {
+                    let basePct;
+                    if (isAccumulated) {
+                        basePct = p.accumulated !== undefined ? p.accumulated : p.cloudcover;
+                    } else {
+                        basePct = (p.years && p.years[yearVal] !== undefined) ? p.years[yearVal] : 0;
+                    }
+                    const color = cloudColor(basePct);
+                    const circle = L.circleMarker([p.lat, p.lon], {
+                        radius: 14,
+                        color: 'transparent',
+                        fillColor: color,
+                        fillOpacity: 0.6,
+                        weight: 0
+                    });
+                    const clearPct = 100 - basePct;
+                    circle.bindTooltip(`📜 Histórico ${isAccumulated ? 'Promedio' : yearVal}: ${Math.round(basePct)}% nubes (${Math.round(clearPct)}% despejado)`, { permanent: false, direction: 'top' });
+                    cloudHeatmapLayer.addLayer(circle);
+                });
+            }
+        }
+
+        populateCloudLayer(currentForecastMode, window.EclipseConfig.heatmap.year_start - 1);
 
         const minYear = window.EclipseConfig.heatmap.year_start;
         const maxYear = window.EclipseConfig.heatmap.year_end;
@@ -2244,60 +2287,96 @@ document.addEventListener("DOMContentLoaded", () => {
         cloudHeatmapLegend = document.createElement('div');
         cloudHeatmapLegend.className = 'heatmap-legend glass-panel';
         cloudHeatmapLegend.innerHTML = `
-            <h4><i class="fa-solid fa-cloud"></i> Previsión Nubosidad</h4>
+            <h4><i class="fa-solid fa-cloud"></i> Mapa de Nubosidad</h4>
+            
+            <div class="mode-toggle-pill" style="display: flex; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 2px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.08);">
+                <button id="map-mode-forecast" class="forecast-tab-btn ${currentForecastMode === 'forecast' ? 'active' : ''}" style="flex: 1; border: none; padding: 4px 6px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; cursor: pointer;">
+                    <i class="fa-solid fa-bolt"></i> Previsión Real
+                </button>
+                <button id="map-mode-historical" class="forecast-tab-btn ${currentForecastMode === 'historical' ? 'active' : ''}" style="flex: 1; border: none; padding: 4px 6px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; cursor: pointer;">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Histórico
+                </button>
+            </div>
+
             <div class="heatmap-scale">
                 <div class="cloud-scale-bar"></div>
             </div>
             <div class="heatmap-scale-labels">
-                <span>0%</span>
-                <span>100%</span>
+                <span style="color: #2ecc71; font-weight: 600;">0% (Despejado)</span>
+                <span style="color: #e74c3c; font-weight: 600;">100% (Cubierto)</span>
             </div>
-            <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px; text-align: center;">${window.EclipseConfig.heatmap.day_start}-${window.EclipseConfig.heatmap.day_end} de Agosto</div>
             
-            <div class="cloud-year-slider-container">
+            <div class="cloud-year-slider-container ${currentForecastMode === 'forecast' ? 'hidden' : ''}" id="map-historical-slider-box">
                 <div class="cloud-year-label" id="cloud-year-display">Acumulado (${minYear}-${maxYear})</div>
                 <input type="range" id="cloud-year-slider" class="cloud-year-slider" min="${minYear - 1}" max="${maxYear}" step="1" value="${minYear - 1}">
+            </div>
+            <div id="map-forecast-info-box" style="font-size: 0.65rem; color: #a4b0be; margin-top: 6px; text-align: center;" class="${currentForecastMode === 'historical' ? 'hidden' : ''}">
+                <i class="fa-solid fa-check" style="color: #2ecc71;"></i> Previsión numérico-climática en vivo (12 Ago 18:00 UTC)
             </div>
         `;
         document.querySelector('.ui-container').appendChild(cloudHeatmapLegend);
         cloudHeatmapLayer.addTo(map);
 
-        // Añadir interactividad al slider
+        const btnMapFore = document.getElementById('map-mode-forecast');
+        const btnMapHist = document.getElementById('map-mode-historical');
+        const sliderBox = document.getElementById('map-historical-slider-box');
+        const forecastInfoBox = document.getElementById('map-forecast-info-box');
         const yearSlider = document.getElementById('cloud-year-slider');
         const yearDisplay = document.getElementById('cloud-year-display');
 
-        yearSlider.addEventListener('input', (e) => {
-            const val = parseInt(e.target.value);
-            const isAccumulated = val < minYear;
-
-            if (isAccumulated) {
-                yearDisplay.textContent = `Acumulado (${minYear}-${maxYear})`;
+        function updateMapLegendTabStyles(activeMode) {
+            if (activeMode === 'forecast') {
+                btnMapFore.classList.add('active');
+                btnMapHist.classList.remove('active');
+                btnMapFore.style.background = 'rgba(255, 204, 0, 0.2)';
+                btnMapFore.style.color = '#ffcc00';
+                btnMapHist.style.background = 'transparent';
+                btnMapHist.style.color = '#a4b0be';
+                if (sliderBox) sliderBox.classList.add('hidden');
+                if (forecastInfoBox) forecastInfoBox.classList.remove('hidden');
             } else {
-                yearDisplay.textContent = `Año ${val}`;
+                btnMapHist.classList.add('active');
+                btnMapFore.classList.remove('active');
+                btnMapHist.style.background = 'rgba(255, 204, 0, 0.2)';
+                btnMapHist.style.color = '#ffcc00';
+                btnMapFore.style.background = 'transparent';
+                btnMapFore.style.color = '#a4b0be';
+                if (sliderBox) sliderBox.classList.remove('hidden');
+                if (forecastInfoBox) forecastInfoBox.classList.add('hidden');
             }
+        }
 
-            cloudHeatmapLayer.eachLayer(layer => {
-                if (layer.cloudData) {
-                    // Calculamos qué porcentaje mostrar
-                    let pct;
-                    if (isAccumulated) {
-                        pct = layer.cloudData.accumulated !== undefined ? layer.cloudData.accumulated : layer.cloudData.cloudcover;
-                    } else {
-                        // Si existen los años y ese año en concreto
-                        if (layer.cloudData.years && layer.cloudData.years[val] !== undefined) {
-                            pct = layer.cloudData.years[val];
-                        } else {
-                            // Si no hay datos de ese año para este punto (nulo en GEE)
-                            pct = 0;
-                        }
-                    }
+        updateMapLegendTabStyles(currentForecastMode);
 
-                    // Actualizamos el color y tooltip del círculo
-                    layer.setStyle({ fillColor: cloudColor(pct) });
-                    layer.setTooltipContent(`Nubes: ${Math.round(pct)}%`);
-                }
-            });
+        btnMapFore.addEventListener('click', () => {
+            currentForecastMode = 'forecast';
+            updateMapLegendTabStyles('forecast');
+            populateCloudLayer('forecast', minYear - 1);
+            // Sincronizar con el panel lateral si existe
+            const panelTabFore = document.getElementById('tab-mode-forecast');
+            if (panelTabFore) panelTabFore.click();
         });
+
+        btnMapHist.addEventListener('click', () => {
+            currentForecastMode = 'historical';
+            updateMapLegendTabStyles('historical');
+            const yearVal = yearSlider ? parseInt(yearSlider.value) : (minYear - 1);
+            populateCloudLayer('historical', yearVal);
+            // Sincronizar con el panel lateral si existe
+            const panelTabHist = document.getElementById('tab-mode-historical');
+            if (panelTabHist) panelTabHist.click();
+        });
+
+        if (yearSlider) {
+            yearSlider.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                const isAccumulated = val < minYear;
+                if (yearDisplay) {
+                    yearDisplay.textContent = isAccumulated ? `Acumulado (${minYear}-${maxYear})` : `Año ${val}`;
+                }
+                populateCloudLayer('historical', val);
+            });
+        }
     }
 
     btnCloudHeatmap.addEventListener('click', () => {

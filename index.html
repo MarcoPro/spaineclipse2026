@@ -337,22 +337,25 @@
 
                 <div class="weather-mode-selector" id="weather-mode-selector" style="margin-top: 12px; margin-bottom: 12px;">
                     <div class="mode-toggle-pill" style="display: flex; background: rgba(0,0,0,0.3); border-radius: 20px; padding: 3px; border: 1px solid rgba(255,255,255,0.08);">
-                        <button class="forecast-tab-btn active" id="tab-mode-historical" style="flex: 1; border: none; background: rgba(255, 204, 0, 0.2); color: #ffcc00; padding: 6px 10px; border-radius: 16px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
-                            <i class="fa-solid fa-clock-rotate-left"></i> Histórico ERA5
-                        </button>
-                        <button class="forecast-tab-btn" id="tab-mode-forecast" style="flex: 1; border: none; background: transparent; color: #a4b0be; padding: 6px 10px; border-radius: 16px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+                        <button class="forecast-tab-btn active" id="tab-mode-forecast" style="flex: 1; border: none; background: rgba(255, 204, 0, 0.2); color: #ffcc00; padding: 6px 10px; border-radius: 16px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
                             <i class="fa-solid fa-bolt"></i> Previsión Real
+                        </button>
+                        <button class="forecast-tab-btn" id="tab-mode-historical" style="flex: 1; border: none; background: transparent; color: #a4b0be; padding: 6px 10px; border-radius: 16px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+                            <i class="fa-solid fa-clock-rotate-left"></i> Histórico ERA5
                         </button>
                     </div>
                 </div>
 
                 <div class="info-item weather-item" id="weather-info" style="flex-direction: column; align-items: stretch; gap: 8px;">
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
                             <i class="fa-solid fa-cloud-sun" id="weather-icon" style="font-size: 1.2rem; color: #3498db;"></i>
-                            <span class="item-label" id="weather-title-label" style="font-weight: 600;">Nubosidad Histórica (ERA5):</span>
+                            <span class="item-label" id="weather-title-label" style="font-weight: 600;">Cobertura de Nubes (Prevista):</span>
                         </div>
-                        <strong id="weather-clouds" style="font-size: 1.1rem; color: #f1c40f;">--%</strong>
+                        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                            <strong id="weather-clouds" style="font-size: 1.1rem; color: #f1c40f;">--%</strong>
+                            <span id="weather-clarity-tag" style="font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 6px; background: rgba(46, 204, 113, 0.15); color: #2ecc71; white-space: nowrap;">--</span>
+                        </div>
                     </div>
 
                     <!-- Forecast Card Details (visible in Real Forecast mode) -->
