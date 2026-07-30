@@ -184,9 +184,13 @@ Esto genera:
 
 ### Regenerar los datos de Meteorología y Relieve
 
-Si deseas actualizar o recalcular el historial de cobertura nubosa (ampliando el rango de años) o reconstruir la base topográfica de España:
+**Generar Previsión Meteorológica Real (Actualización Diaria Offline):**
+```bash
+python3 scripts/generate_weather_forecast.py
+```
+> **📡 Previsión Meteorológica numérico-climática en vivo (Open-Meteo API):** Genera la cobertura de nubes prevista para el 12 de agosto de 2026 (desglosada en nubes bajas, medias y altas), probabilidad de precipitación y temperatura. Produce el archivo estático `weather_forecast_data.js` para un funcionamiento 100% offline sin llamadas AJAX en tiempo de ejecución.
 
-**Generar Nubes:**
+**Generar Nubes Históricas:**
 ```bash
 python3 scripts/generate_cloud_heatmap_gee.py
 ```

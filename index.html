@@ -335,15 +335,73 @@
                     <strong id="duration-total">--h --m</strong>
                 </div>
 
-                <div class="info-item weather-item hidden" id="weather-info">
-                    <i class="fa-solid fa-cloud-sun" id="weather-icon"></i>
-                    <div class="weather-content">
-                        <div class="weather-main">
-                            <span class="item-label">Nubes previstas:</span>
-                            <strong id="weather-clouds">--%</strong>
-                        </div>
-                        <span class="weather-source" id="weather-source"></span>
+                <div class="weather-mode-selector" id="weather-mode-selector" style="margin-top: 12px; margin-bottom: 12px;">
+                    <div class="mode-toggle-pill" style="display: flex; background: rgba(0,0,0,0.3); border-radius: 20px; padding: 3px; border: 1px solid rgba(255,255,255,0.08);">
+                        <button class="forecast-tab-btn active" id="tab-mode-historical" style="flex: 1; border: none; background: rgba(255, 204, 0, 0.2); color: #ffcc00; padding: 6px 10px; border-radius: 16px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+                            <i class="fa-solid fa-clock-rotate-left"></i> Histórico ERA5
+                        </button>
+                        <button class="forecast-tab-btn" id="tab-mode-forecast" style="flex: 1; border: none; background: transparent; color: #a4b0be; padding: 6px 10px; border-radius: 16px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+                            <i class="fa-solid fa-bolt"></i> Previsión Real
+                        </button>
                     </div>
+                </div>
+
+                <div class="info-item weather-item" id="weather-info" style="flex-direction: column; align-items: stretch; gap: 8px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-cloud-sun" id="weather-icon" style="font-size: 1.2rem; color: #3498db;"></i>
+                            <span class="item-label" id="weather-title-label" style="font-weight: 600;">Nubosidad Histórica (ERA5):</span>
+                        </div>
+                        <strong id="weather-clouds" style="font-size: 1.1rem; color: #f1c40f;">--%</strong>
+                    </div>
+
+                    <!-- Forecast Card Details (visible in Real Forecast mode) -->
+                    <div class="weather-forecast-details hidden" id="weather-forecast-details" style="background: rgba(0,0,0,0.25); border-radius: 8px; padding: 10px; border: 1px solid rgba(255,255,255,0.05); margin-top: 4px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.75rem;">
+                            <span style="color: #a4b0be;" id="weather-condition-text"><i class="fa-solid fa-temperature-half"></i> --°C</span>
+                            <span class="forecast-update-badge" id="forecast-update-badge" style="background: rgba(46, 204, 113, 0.15); color: #2ecc71; padding: 2px 8px; border-radius: 10px; font-weight: 500;">
+                                <i class="fa-solid fa-check"></i> Pregenerado hoy
+                            </span>
+                        </div>
+
+                        <!-- Cloud layers breakdown -->
+                        <div class="cloud-layers-container" style="display: flex; flex-direction: column; gap: 5px; font-size: 0.72rem;">
+                            <div class="cloud-layer-row" style="display: flex; align-items: center; justify-content: space-between;">
+                                <span style="color: #cbd5e1;"><i class="fa-solid fa-cloud" style="color: #94a3b8; font-size: 0.7rem;"></i> Nubes Bajas</span>
+                                <div style="display: flex; align-items: center; gap: 6px; width: 60%;">
+                                    <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                                        <div id="bar-cloud-low" style="width: 0%; height: 100%; background: #e74c3c; transition: width 0.4s ease;"></div>
+                                    </div>
+                                    <span id="val-cloud-low" style="width: 26px; text-align: right; color: #fff; font-weight: 600;">--%</span>
+                                </div>
+                            </div>
+                            <div class="cloud-layer-row" style="display: flex; align-items: center; justify-content: space-between;">
+                                <span style="color: #cbd5e1;"><i class="fa-solid fa-cloud" style="color: #cbd5e1; font-size: 0.7rem;"></i> Nubes Medias</span>
+                                <div style="display: flex; align-items: center; gap: 6px; width: 60%;">
+                                    <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                                        <div id="bar-cloud-mid" style="width: 0%; height: 100%; background: #f39c12; transition: width 0.4s ease;"></div>
+                                    </div>
+                                    <span id="val-cloud-mid" style="width: 26px; text-align: right; color: #fff; font-weight: 600;">--%</span>
+                                </div>
+                            </div>
+                            <div class="cloud-layer-row" style="display: flex; align-items: center; justify-content: space-between;">
+                                <span style="color: #cbd5e1;"><i class="fa-solid fa-cloud" style="color: #e2e8f0; font-size: 0.7rem;"></i> Nubes Altas (Cirros)</span>
+                                <div style="display: flex; align-items: center; gap: 6px; width: 60%;">
+                                    <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                                        <div id="bar-cloud-high" style="width: 0%; height: 100%; background: #3498db; transition: width 0.4s ease;"></div>
+                                    </div>
+                                    <span id="val-cloud-high" style="width: 26px; text-align: right; color: #fff; font-weight: 600;">--%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 0.72rem;">
+                            <span style="color: #a4b0be;"><i class="fa-solid fa-umbrella"></i> Prob. Lluvia: <strong id="val-precip" style="color: #fff;">0%</strong></span>
+                            <span id="cloud-diff-badge" style="font-weight: 600; color: #2ecc71;">--</span>
+                        </div>
+                    </div>
+
+                    <span class="weather-source" id="weather-source" style="font-size: 0.68rem; color: #a4b0be; margin-top: 2px;"></span>
                 </div>
 
                 <div class="sunset-warning hidden" id="sunset-warning">
@@ -586,6 +644,9 @@
 
     <!-- Cloud Heatmap Data -->
     <script src="cloud_heatmap.js"></script>
+
+    <!-- Weather Forecast Data (Pregenerado Offline) -->
+    <script src="weather_forecast_data.js"></script>
 
     <!-- Topography Data (Offline DEM) -->
     <script src="topography_data.js"></script>

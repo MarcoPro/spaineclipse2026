@@ -983,6 +983,23 @@ body {
     color: var(--danger);
 }
 
+/* Forecast Tab Toggle Buttons */
+.forecast-tab-btn:hover {
+    color: #fff !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.forecast-tab-btn.active {
+    background: rgba(255, 204, 0, 0.2) !important;
+    color: #ffcc00 !important;
+    box-shadow: 0 2px 8px rgba(255, 204, 0, 0.15);
+}
+
+.cloud-layer-row:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+}
+
 /* Sun position */
 .sun-position {
     display: flex;

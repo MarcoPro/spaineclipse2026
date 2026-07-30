@@ -1334,8 +1334,8 @@ document.addEventListener("DOMContentLoaded", () => {
         updateWeatherData(observer.latitude, observer.longitude);
 
         // --- OBSERVATION SCORE ---
-        // Get cloud percentage for scoring (reuse the IDW logic)
-        const cloudPctForScore = getCloudPct(observer.latitude, observer.longitude);
+        // Get cloud percentage for scoring (supports historical vs real forecast mode)
+        const cloudPctForScore = getEffectiveCloudPct(observer.latitude, observer.longitude, currentForecastMode);
         // Sun altitude already computed above as `alt` (or from hor_peak)
         let sunAltForScore = 0;
         if (eclipse.peak && window.Astronomy) {
@@ -1400,11 +1400,11 @@ document.addEventListener("DOMContentLoaded", () => {
         horizonContainer.classList.remove('hidden');
         horizonSpinner.classList.remove('hidden');
 
-        // Generar 20 puntos a lo largo del azimut (1km a 20km)
+        // Generar 40 puntos a lo largo del azimut (0.5km a 20km)
         const points = [];
         // Insertamos el punto de origen (el observador) como el primer punto
         points.push({ lat: lat, lng: lng });
-        for (let d = 1; d <= 20; d++) {
+        for (let d = 0.5; d <= 20; d += 0.5) {
             points.push(calculateDestinationPoint(lat, lng, d, sunAzimuth));
         }
 
@@ -1425,7 +1425,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const adjustedElevations = [apiObserverElev]; // Para la gráfica
 
                 for (let i = 1; i < data.elevation.length; i++) {
-                    const distKm = i; // Porque el índice 0 es el observador
+                    const distKm = i * 0.5; // Porque el índice 0 es el observador, paso 0.5km
                     const mountainElev = data.elevation[i];
 
                     // Corrección de la curvatura de la tierra aprox: h_drop = (d^2) / (2R)
@@ -1494,7 +1494,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Rayo del sol a lo largo de 20 km
         const sunRayElevations = [];
         for (let i = 0; i < elevations.length; i++) {
-            const distKm = i;
+            const distKm = i * 0.5;
             const rayElev = observerElev + (distKm * 1000) * Math.tan(sunAltitude * Math.PI / 180);
             sunRayElevations.push(rayElev);
         }
@@ -1554,7 +1554,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         for (let xKm = 0; xKm <= 20; xKm += 5) { // 0, 5, 10, 15, 20
-            const px = getX(xKm);
+            const px = getX(xKm * 2);
             // linea
             ctx.beginPath();
             ctx.moveTo(px, padTop);
@@ -1682,6 +1682,72 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
+    // --- FORECAST & WEATHER MODE STATE ---
+    let currentForecastMode = 'historical'; // 'historical' | 'forecast'
+
+    function getWeatherForecast(lat, lng) {
+        if (!window.weatherForecastData || !window.weatherForecastData.points || window.weatherForecastData.points.length === 0) {
+            return null;
+        }
+        try {
+            const pointsWithDist = window.weatherForecastData.points.map(p => ({
+                ...p,
+                dist: haversineDist(lat, lng, p.lat, p.lon)
+            }));
+            pointsWithDist.sort((a, b) => a.dist - b.dist);
+            const nearestPoints = pointsWithDist.slice(0, 4);
+
+            if (nearestPoints[0].dist < 2) {
+                return { ...nearestPoints[0], generated_at: window.weatherForecastData.generated_at, model: window.weatherForecastData.model };
+            }
+
+            let sumWeights = 0;
+            let sumCTotal = 0, sumCLow = 0, sumCMid = 0, sumCHigh = 0, sumPrecip = 0, sumTemp = 0;
+            for (const p of nearestPoints) {
+                const weight = 1 / Math.pow(Math.max(0.1, p.dist), 2);
+                sumWeights += weight;
+                sumCTotal += (p.c_total || 0) * weight;
+                sumCLow += (p.c_low || 0) * weight;
+                sumCMid += (p.c_mid || 0) * weight;
+                sumCHigh += (p.c_high || 0) * weight;
+                sumPrecip += (p.precip || 0) * weight;
+                sumTemp += (p.temp || 25.0) * weight;
+            }
+
+            if (sumWeights === 0) return null;
+
+            return {
+                lat: lat,
+                lon: lng,
+                c_total: Math.round(sumCTotal / sumWeights),
+                c_low: Math.round(sumCLow / sumWeights),
+                c_mid: Math.round(sumCMid / sumWeights),
+                c_high: Math.round(sumCHigh / sumWeights),
+                precip: Math.round(sumPrecip / sumWeights),
+                w_code: nearestPoints[0].w_code,
+                temp: Math.round((sumTemp / sumWeights) * 10) / 10,
+                generated_at: window.weatherForecastData.generated_at,
+                model: window.weatherForecastData.model,
+                dist: nearestPoints[0].dist
+            };
+        } catch (e) {
+            console.warn('Weather forecast lookup error:', e);
+            return null;
+        }
+    }
+
+    function getWMOWeatherInfo(code) {
+        if (code === 0) return { text: 'Cielo Despejado', icon: 'fa-sun', color: '#2ecc71' };
+        if (code === 1) return { text: 'Principalmente Despejado', icon: 'fa-cloud-sun', color: '#2ecc71' };
+        if (code === 2) return { text: 'Parcialmente Nublado', icon: 'fa-cloud-sun', color: '#f1c40f' };
+        if (code === 3) return { text: 'Nublado / Cubierto', icon: 'fa-cloud', color: '#e67e22' };
+        if (code === 45 || code === 48) return { text: 'Bruma / Niebla', icon: 'fa-smog', color: '#95a5a6' };
+        if (code >= 51 && code <= 55) return { text: 'Llovizna', icon: 'fa-cloud-rain', color: '#3498db' };
+        if (code >= 61 && code <= 65) return { text: 'Lluvia', icon: 'fa-cloud-showers-heavy', color: '#e74c3c' };
+        if (code >= 80 && code <= 82) return { text: 'Chubascos', icon: 'fa-cloud-showers-water', color: '#e74c3c' };
+        return { text: 'Nuboso', icon: 'fa-cloud', color: '#f1c40f' };
+    }
+
     // --- WEATHER: Get cloud percentage for scoring (pure calculation, no DOM) ---
     function getCloudPct(lat, lng) {
         if (typeof window.cloudHeatmapData === 'undefined' || window.cloudHeatmapData.length === 0) {
@@ -1695,7 +1761,6 @@ document.addEventListener("DOMContentLoaded", () => {
             pointsWithDist.sort((a, b) => a.dist - b.dist);
             const nearestPoints = pointsWithDist.slice(0, 4);
 
-            // Use 'accumulated' (primary) or 'cloudcover' (legacy fallback)
             const getVal = (p) => p.accumulated !== undefined ? p.accumulated : (p.cloudcover !== undefined ? p.cloudcover : null);
 
             let pct = 0;
@@ -1719,79 +1784,192 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // --- WEATHER CALCULATION (IDW Interpolation from Historical Data) ---
+    function getEffectiveCloudPct(lat, lng, mode) {
+        if (mode === 'forecast') {
+            const forecast = getWeatherForecast(lat, lng);
+            if (forecast) {
+                // Low and mid clouds block the corona completely; high cirrus clouds allow partial view
+                const weightedCloud = Math.min(100, forecast.c_low * 1.0 + forecast.c_mid * 0.85 + forecast.c_high * 0.45);
+                return Math.round(weightedCloud);
+            }
+        }
+        return getCloudPct(lat, lng);
+    }
+
+    function refreshScoreForCurrentLocation() {
+        if (!lastScoreState || !lastLocation) return;
+        const cloudPctForScore = getEffectiveCloudPct(lastLocation.lat, lastLocation.lng, currentForecastMode);
+        lastScoreState.cloudPctForScore = cloudPctForScore;
+        const updatedScore = calculateObservationScore(
+            lastScoreState.eclipse,
+            lastScoreState.observer,
+            lastScoreState.inBand,
+            lastScoreState.sunAltForScore,
+            cloudPctForScore,
+            lastScoreState.isHorizonBlocked || false,
+            lastScoreState.warningSunset,
+            lastScoreState.sunsetDate,
+            lastScoreState.maxHorizonAngle || 0
+        );
+        updateScoreBadge(updatedScore);
+    }
+
+    function initWeatherModeTabs() {
+        const tabHist = document.getElementById('tab-mode-historical');
+        const tabFore = document.getElementById('tab-mode-forecast');
+        if (window.weatherForecastData && window.weatherForecastData.generated_at) {
+            const d = new Date(window.weatherForecastData.generated_at);
+            const dStr = d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+            const tStr = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+            tabFore.title = `Previsión meteorológica calculada el ${dStr} a las ${tStr}`;
+        }
+
+        tabHist.addEventListener('click', () => {
+            if (currentForecastMode === 'historical') return;
+            currentForecastMode = 'historical';
+            tabHist.classList.add('active');
+            tabFore.classList.remove('active');
+            tabHist.style.background = 'rgba(255, 204, 0, 0.2)';
+            tabHist.style.color = '#ffcc00';
+            tabFore.style.background = 'transparent';
+            tabFore.style.color = '#a4b0be';
+            if (lastLocation && lastLocation.lat) {
+                updateWeatherData(lastLocation.lat, lastLocation.lng);
+                refreshScoreForCurrentLocation();
+            }
+        });
+
+        tabFore.addEventListener('click', () => {
+            if (currentForecastMode === 'forecast') return;
+            currentForecastMode = 'forecast';
+            tabFore.classList.add('active');
+            tabHist.classList.remove('active');
+            tabFore.style.background = 'rgba(255, 204, 0, 0.2)';
+            tabFore.style.color = '#ffcc00';
+            tabHist.style.background = 'transparent';
+            tabHist.style.color = '#a4b0be';
+            if (lastLocation && lastLocation.lat) {
+                updateWeatherData(lastLocation.lat, lastLocation.lng);
+                refreshScoreForCurrentLocation();
+            }
+        });
+    }
+
+    initWeatherModeTabs();
+
+    // --- WEATHER CALCULATION (Historical ERA5 or Live Pregenerated Forecast) ---
     function updateWeatherData(lat, lng) {
         const weatherEl = document.getElementById('weather-info');
         const cloudsEl = document.getElementById('weather-clouds');
         const sourceEl = document.getElementById('weather-source');
         const iconEl = document.getElementById('weather-icon');
+        const titleLabel = document.getElementById('weather-title-label');
+        const forecastDetails = document.getElementById('weather-forecast-details');
 
-        // Reset
-        weatherEl.classList.add('hidden');
+        if (!weatherEl || !cloudsEl) return;
 
-        if (typeof window.cloudHeatmapData === 'undefined' || window.cloudHeatmapData.length === 0) {
-            console.warn('Weather data unavailable: cloudHeatmapData not loaded');
-            return;
-        }
+        const historicalPct = getCloudPct(lat, lng);
+        const forecast = getWeatherForecast(lat, lng);
 
-        try {
-            // Calculate distances to all points
-            const pointsWithDist = window.cloudHeatmapData.map(p => ({
-                ...p,
-                dist: haversineDist(lat, lng, p.lat, p.lon)
-            }));
+        if (currentForecastMode === 'forecast' && forecast) {
+            // SHOW REAL PREGENERATED FORECAST
+            if (titleLabel) titleLabel.textContent = 'Previsión Real (Open-Meteo):';
+            cloudsEl.textContent = `${forecast.c_total}%`;
+            cloudsEl.style.color = forecast.c_total <= 30 ? '#2ecc71' : (forecast.c_total <= 60 ? '#f1c40f' : '#e74c3c');
 
-            // Sort by distance
-            pointsWithDist.sort((a, b) => a.dist - b.dist);
-
-            // Take the 4 closest points for IDW (Inverse Distance Weighting) interpolation
-            const nearestPoints = pointsWithDist.slice(0, 4);
-
-            let pct = 0;
-
-            // Use 'accumulated' (primary) or 'cloudcover' (legacy fallback)
-            const getVal = (p) => p.accumulated !== undefined ? p.accumulated : (p.cloudcover !== undefined ? p.cloudcover : null);
-
-            // If the closest point is extremely close (e.g. < 1km), just use its value
-            if (nearestPoints[0].dist < 1) {
-                pct = getVal(nearestPoints[0]);
-            } else {
-                // IDW Formula
-                let sumWeights = 0;
-                let sumValues = 0;
-                for (const p of nearestPoints) {
-                    const val = getVal(p);
-                    if (val === null) continue;
-                    const weight = 1 / Math.pow(p.dist, 2);
-                    sumWeights += weight;
-                    sumValues += val * weight;
-                }
-                pct = sumWeights > 0 ? sumValues / sumWeights : null;
+            const wmo = getWMOWeatherInfo(forecast.w_code);
+            if (iconEl) {
+                iconEl.className = `fa-solid ${wmo.icon}`;
+                iconEl.style.color = wmo.color;
             }
 
-            if (pct === null) return;
-            pct = Math.round(pct);
+            if (forecastDetails) forecastDetails.classList.remove('hidden');
 
-            if (!isNaN(pct)) {
-                cloudsEl.textContent = `${pct}%`;
-                const hc = window.EclipseConfig.heatmap;
-                sourceEl.textContent = `Promedio ${hc.day_start}-${hc.day_end} Ago (${hc.year_start}-${hc.year_end})`;
+            const condText = document.getElementById('weather-condition-text');
+            if (condText) {
+                condText.innerHTML = `<i class="fa-solid ${wmo.icon}"></i> ${wmo.text} (${forecast.temp}°C)`;
+            }
 
-                // Color code
-                iconEl.className = 'fa-solid ';
-                if (pct <= 30) {
-                    iconEl.className += 'fa-sun weather-good';
-                } else if (pct <= 60) {
-                    iconEl.className += 'fa-cloud-sun weather-ok';
+            // Update cloud layer progress bars
+            const barLow = document.getElementById('bar-cloud-low');
+            const valLow = document.getElementById('val-cloud-low');
+            if (barLow && valLow) {
+                barLow.style.width = `${forecast.c_low}%`;
+                valLow.textContent = `${forecast.c_low}%`;
+            }
+
+            const barMid = document.getElementById('bar-cloud-mid');
+            const valMid = document.getElementById('val-cloud-mid');
+            if (barMid && valMid) {
+                barMid.style.width = `${forecast.c_mid}%`;
+                valMid.textContent = `${forecast.c_mid}%`;
+            }
+
+            const barHigh = document.getElementById('bar-cloud-high');
+            const valHigh = document.getElementById('val-cloud-high');
+            if (barHigh && valHigh) {
+                barHigh.style.width = `${forecast.c_high}%`;
+                valHigh.textContent = `${forecast.c_high}%`;
+            }
+
+            const valPrecip = document.getElementById('val-precip');
+            if (valPrecip) valPrecip.textContent = `${forecast.precip}%`;
+
+            const updateBadge = document.getElementById('forecast-update-badge');
+            let formattedGenDate = '';
+            if (forecast.generated_at) {
+                const dateObj = new Date(forecast.generated_at);
+                const dayStr = dateObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+                const timeStr = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                formattedGenDate = `${dayStr} ${timeStr}`;
+
+                if (updateBadge) {
+                    updateBadge.title = `Previsión meteorológica calculada el ${dayStr} a las ${timeStr}`;
+                    updateBadge.innerHTML = `<i class="fa-solid fa-clock-rotate-left"></i> Calculado: ${dayStr} (${timeStr})`;
+                }
+            }
+
+            const diffBadge = document.getElementById('cloud-diff-badge');
+            if (diffBadge && historicalPct !== null) {
+                const diff = forecast.c_total - historicalPct;
+                if (diff < -5) {
+                    diffBadge.style.color = '#2ecc71';
+                    diffBadge.textContent = `${diff}% nubes vs hist. 🟢`;
+                } else if (diff > 5) {
+                    diffBadge.style.color = '#e74c3c';
+                    diffBadge.textContent = `+${diff}% nubes vs hist. 🔴`;
                 } else {
-                    iconEl.className += 'fa-cloud weather-bad';
+                    diffBadge.style.color = '#f1c40f';
+                    diffBadge.textContent = `Similar a hist. (±5%)`;
+                }
+            }
+
+            if (sourceEl) {
+                sourceEl.innerHTML = `<i class="fa-regular fa-calendar-check"></i> Calculado el <strong>${formattedGenDate}</strong> • Modelo ${forecast.model}`;
+            }
+
+        } else {
+            // SHOW HISTORICAL ERA5
+            if (titleLabel) titleLabel.textContent = 'Nubosidad Histórica (ERA5):';
+            if (forecastDetails) forecastDetails.classList.add('hidden');
+
+            if (historicalPct !== null && !isNaN(historicalPct)) {
+                cloudsEl.textContent = `${historicalPct}%`;
+                cloudsEl.style.color = historicalPct <= 30 ? '#2ecc71' : (historicalPct <= 60 ? '#f1c40f' : '#e74c3c');
+
+                if (iconEl) {
+                    iconEl.className = 'fa-solid ';
+                    if (historicalPct <= 30) iconEl.className += 'fa-sun weather-good';
+                    else if (historicalPct <= 60) iconEl.className += 'fa-cloud-sun weather-ok';
+                    else iconEl.className += 'fa-cloud weather-bad';
                 }
 
-                weatherEl.classList.remove('hidden');
+                const hc = window.EclipseConfig ? window.EclipseConfig.heatmap : { day_start: 8, day_end: 14, year_start: 2008, year_end: 2025 };
+                if (sourceEl) sourceEl.textContent = `Promedio ${hc.day_start}-${hc.day_end} Ago (${hc.year_start}-${hc.year_end})`;
             }
-        } catch (err) {
-            console.warn('Weather data calculation failed:', err);
         }
+
+        weatherEl.classList.remove('hidden');
     }
 
     function formatDuration(ms) {
