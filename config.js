@@ -1,6 +1,6 @@
 window.EclipseConfig = {
-  "version": "2.3.0",
-  "version_date": "2026-05-07",
+  "version": "2.4.0",
+  "version_date": "2026-07-30",
   "besselian": {
     "eclipse_date": "2026-08-12",
     "T0": 18.0,
@@ -65,7 +65,7 @@ window.EclipseConfig = {
   "topography": {
     "dataset": "CGIAR/SRTM90_V4",
     "band": "elevation",
-    "scale_meters": 5000,
+    "scale_meters": 1100,
     "api_endpoint": "https://api.open-meteo.com/v1/elevation"
   }
 };

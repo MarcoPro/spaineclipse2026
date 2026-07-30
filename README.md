@@ -15,17 +15,21 @@ Permite a cualquier usuario buscar su localidad (o hacer clic en el mapa) y obte
 La aplicación muestra:
 
 - 🗺️ **Múltiples Mapas Base** interactivos (Estándar, Satélite y Relieve Topográfico)
-- ⛰️ **Análisis de Altitud 3D**, calculando el impacto de tu elevación (0-3000m) en los tiempos del eclipse
-- 📡 **Radar de Horizonte en Vivo**, generando gráficas de perfiles montañosos cruzados con la trayectoria del sol
-- ☁️ **Mapa de nubes histórico** (Heatmap) basado en probabilidad estadística interactivo (Acumulado y desglosado por año, 2008-2025)
-- ⭐ **Índice de Observación** (0-10): puntuación astrofísica objetiva con 5 criterios (duración, altitud solar, nubosidad, horizonte, puesta de sol)
-- 🌑 **Simulación de la sombra (Umbra)** animada en tiempo real
-- 💎 **Simulador de Perlas de Baily** con perfil lunar real y modos fotorrealista/técnico
-- 🔍 **Buscador de localidades** con autocompletado vía Photon (OpenStreetMap)
-- 📍 **Geolocalización** para detectar tu posición automáticamente
-- 📊 **Panel informativo** con tiempos de contacto (C1–C4) ajustados a la curvatura terrestre
-- 🌅 **Alertas de visibilidad**: puesta de sol y montañas bloqueando la totalidad
-- 📱 **Diseño adaptado** para una visualización perfecta en dispositivos móviles
+- ⚡ **Previsión Meteorológica Real Pregenerada (Open-Meteo)**: predicción numérico-climática en vivo para el día del eclipse con desglose de **Nubes Bajas, Medias y Altas (Cirros)**, temperatura y probabilidad de lluvia.
+- 🟢 **Etiqueta Dinámica de Claridad**: interpretación automática del % de nubosidad (ej. *80% despejado - Óptimo*).
+- 🕒 **Marca de Tiempo de Cálculo**: fecha y hora exacta en la que se calculó el pronóstico actual.
+- ☁️ **Mapa de Nubes Histórico (Heatmap)**: basado en probabilidad estadística interactiva (Acumulado y por año, 2008-2025).
+- ⛰️ **Análisis de Altitud 3D**, calculando el impacto de tu elevación (0-3000m) en los tiempos del eclipse.
+- 📡 **Radar de Horizonte en Vivo**, generando gráficas de perfiles montañosos cruzados con la trayectoria del sol.
+- ⭐ **Índice de Observación** (0-10): puntuación astrofísica objetiva con 5 criterios (duración, altitud solar, nubosidad prevista/histórica, horizonte, puesta de sol).
+- 🌑 **Simulación de la sombra (Umbra)** animada en tiempo real.
+- 💎 **Simulador de Perlas de Baily** con perfil lunar real y modos fotorrealista/técnico.
+- 🔍 **Buscador de localidades** con autocompletado vía Photon (OpenStreetMap).
+- 📍 **Geolocalización** para detectar tu posición automáticamente.
+- 📊 **Panel informativo** con tiempos de contacto (C1–C4) ajustados a la curvatura terrestre.
+- 🌅 **Alertas de visibilidad**: puesta de sol y montañas bloqueando la totalidad.
+- 🐙 **Enlace al Repositorio Oficial en GitHub** en la barra principal de controles.
+- 📱 **Diseño responsivo optimizado** para una visualización perfecta en iPhones (iOS/Safari) y dispositivos móviles.
 
 ---
 
@@ -33,24 +37,26 @@ La aplicación muestra:
 
 ### Archivos del Frontend (Web App)
 - `index.html`: Punto de entrada principal. Contiene la estructura DOM, el modal de información y el contenedor del mapa.
-- `app.js`: Motor principal de la aplicación. Maneja el mapa Leaflet, la geolocalización, la búsqueda, la animación de la sombra, el gráfico de horizonte, el índice de observación y la interfaz.
+- `app.js`: Motor principal de la aplicación. Maneja el mapa Leaflet, la geolocalización, la búsqueda, la animación de la sombra, el gráfico de horizonte, la previsión meteorológica real/histórica, el índice de observación y la interfaz.
 - `besselian_calculator.js`: Motor matemático puro. Utiliza los elementos besselianos para calcular el instante exacto, duración y oscurecimiento con precisión de sub-segundos corrigiendo la altitud terrestre.
 - `limb_simulator.js`: Simulador de Perlas de Baily con renderizado dual (fotorrealista y técnico) basado en el perfil real del limbo lunar.
 - `lunar_limb_profile.js`: Perfil de elevación del limbo lunar real para el simulador de Perlas de Baily.
 - `horizon_3d.js`: Motor de visualización 3D del terreno con interpolación IDW y ruido fractal procedural.
-- `config.js`: Archivo de configuración centralizado (única fuente de la verdad). Almacena los elementos besselianos, deltas de tiempo, y parámetros de conexión para APIs y capas topográficas.
-- `styles.css`: Hoja de estilos principal con diseño *glassmorphism*, dark mode y diseño responsive para móviles.
+- `config.js`: Archivo de configuración centralizado (única fuente de la verdad, v2.4.0). Almacena los elementos besselianos, deltas de tiempo, y parámetros de conexión para APIs y capas topográficas.
+- `styles.css`: Hoja de estilos principal con diseño *glassmorphism*, dark mode y diseño responsive optimizado para móviles e iPhones.
 - `pois.js`: Base de datos local con Puntos de Interés (miradores, ciudades clave) para autocompletado y marcadores sugeridos en el mapa.
 - `sw.js`: *Service Worker*. Cachea todos los archivos de la app para que funcione 100% offline (sin internet) el día del eclipse.
 - `manifest.json`: Archivo de manifiesto que permite instalar la web como una app nativa en el móvil (PWA).
 
 ### Archivos de Datos (Generados)
+- `weather_forecast_data.js`: Matriz estática pregenerada diariamente con la previsión numérico-climática (534 puntos de muestreo en España) de Open-Meteo (nubes totales, bajas, medias, cirros, precipitación, temp, fecha/hora de cálculo).
+- `cloud_heatmap.js`: Matriz estadística con la probabilidad histórica de nubes en cada coordenada de la franja de totalidad (ERA5 Copernicus 2008-2025).
 - `eclipse_data.js`: Contiene el polígono WGS84 de la franja de totalidad, ajustado por los algoritmos asimétricos del limbo lunar.
-- `cloud_heatmap.js`: Matriz estadística con la probabilidad de nubes en cada coordenada de la franja de totalidad.
 - `topography_data.js`: Cuadrícula con las altitudes locales (modelo SRTM) utilizada para los cálculos matemáticos de fase y precisión.
 - `eclipse_2026.geojson`: El archivo crudo GeoJSON de la franja, ideal para exportar a QGIS o herramientas GIS de terceros.
 
 ### Scripts de Backend (Python)
+- `scripts/generate_weather_forecast.py`: Generador diario de previsión meteorológica. Consulta la API de Open-Meteo sobre la franja de totalidad para el 12 de agosto de 2026 a las 18:00 UTC y genera `weather_forecast_data.js`.
 - `scripts/generate_eclipse_geojson.py`: Motor de geometría espacial. Lee los elementos besselianos, genera la franja en WGS84 aplicando un modelo polinómico avanzado para los límites norte y sur, y crea el GeoJSON.
 - `scripts/generate_topography_gee.py`: Se conecta a Google Earth Engine, escanea la franja del eclipse sobre el modelo SRTM de la Tierra y exporta la cuadrícula de altitudes.
 - `scripts/generate_cloud_heatmap_gee.py`: Extrae y promedia 15 años de datos climáticos del modelo ERA5 (Copernicus) a través de Google Earth Engine para construir el mapa de probabilidad de nubes.
@@ -103,9 +109,15 @@ El script Python (`scripts/generate_eclipse_geojson.py`) calcula la geometría d
 - **Precisión Altimétrica Offline (`topography_data.js`)**: El script `scripts/generate_topography_gee.py` extrae un mapa offline con la altitud sobre el nivel del mar a partir del modelo digital de elevaciones (SRTM). Al hacer clic en un valle o una montaña alta (ej. 2.500m), la aplicación introduce matemáticamente esa ganancia de altitud en las ecuaciones geométricas de Bessel para arrojar el segundo exacto en el que el cono de sombra de la Luna barrerá físicamente tu ubicación (en las alturas los contactos suceden fracciones de segundo antes).
 - **Radar de Horizonte en Tiempo Real (Open-Meteo)**: Un sofisticado motor de *ray-casting* direccional. Al hacer clic, se calcula la posición del sol en el cielo (Azimut y Elevación). Acto seguido, dispara 20 trazadores a lo largo de 20 km sobre la superficie terrestre en la dirección óptica del Sol. Obtiene el perfil del terreno usando la API en vivo de Open-Meteo Elevation, corrige la curvatura de la Tierra de las montañas, y grafica un perfil del terreno contra la línea de visión del Sol informando de forma visual (y mediante alertas) si la montaña cortará el eclipse o no.
 
-### Meteorología Estadística
+### Meteorología (Previsión Real vs Climatología Histórica)
 
-- **Mapa Histórico de Nubes Interactivo (Heatmap):** El script `scripts/generate_cloud_heatmap_gee.py` obtiene datos históricos de cobertura nubosa exacta para el 12 de agosto a las 18:00 UTC a lo largo de un amplio rango de años (2008-2025). Utiliza el motor de Google Earth Engine para extraer información del modelo climático global ERA5 del ECMWF, devolviendo tanto una media ponderada como los datos precisos de cada año, que el usuario puede explorar visualmente mediante un control de línea de tiempo (slider) en la aplicación.
+El sistema incorpora un modelo dual meteorológico offline-first:
+
+- **Previsión Meteorológica Real Pregenerada (Open-Meteo API):** El script `scripts/generate_weather_forecast.py` realiza un muestreo espacial de alta resolución (534 puntos) sobre toda la franja de totalidad en España para el 12 de agosto de 2026 a las 18:00 UTC. Genera `weather_forecast_data.js` desglosando:
+  - **Nubes Bajas y Medias:** Nubes densas opacas que tapan completamente el disco solar.
+  - **Nubes Altas (Cirros):** Nubes translúcidas compuestas de cristales de hielo que permiten visibilidad parcial de la corona.
+  - **Probabilidad de lluvia, temperatura y fecha/hora exacta del cálculo.**
+- **Mapa Histórico de Nubes (Climatología ERA5):** El script `scripts/generate_cloud_heatmap_gee.py` extrae 15 años de datos históricos del reanálisis climático ERA5 (Copernicus / ECMWF) a través de Google Earth Engine, permitiendo explorar la evolución estadística de 2008 a 2025 mediante un slider interactivo.
 
 ### Cálculos en el frontend
 
@@ -121,22 +133,22 @@ Adicionalmente, se sigue empleando la librería **[Astronomy Engine](https://git
 
 La **determinación estricta de totalidad** usa un test **point-in-polygon** (ray casting) contra el polígono GeoJSON como fuente de verdad, ya que el polígono contiene las asimetrías y deformaciones exactas de la sombra por el relieve lunar.
 
-### Índice de Observación del Eclipse
+### Índice de Observación del Eclipse (Score 0–10)
 
-El sistema implementa una **puntuación objetiva de 0 a 10** basada en criterios astrofísicos para evaluar la calidad de observación en cada ubicación:
+El sistema implementa una **puntuación objetiva de 0 a 10** basada en criterios astrofísicos para evaluar la calidad de observación en cualquier coordenada:
 
 | Criterio | Peso | Método |
 |----------|------|--------|
 | **Duración de totalidad** | 3.0 pts (30%) | Lineal: 0s → 0 pts, 100s+ → 3.0 pts |
 | **Altitud solar** | 1.5 pts (15%) | Lineal: 0° → 0 pts, 20°+ → 1.5 pts |
-| **Cielo despejado** | 2.0 pts (20%) | Curva potencial (exp. 1.5) sobre media histórica IDW |
+| **Cielo despejado** | 2.0 pts (20%) | Curva potencial (exp. 1.5) sobre la previsión real o histórico IDW |
 | **Horizonte libre** | 2.0 pts (20%) | Escalonado por altitud: bloqueo a ≤5° = 0 pts, a ≤10° = 0.4 pts |
 | **Puesta de sol** | 1.5 pts (15%) | Puesta astronómica + bloqueo orográfico como puesta efectiva |
 
 **Reglas especiales:**
+- **Previsión Real Prioritaria:** Por defecto, el criterio de cielo despejado utiliza la nubosidad de la **Previsión Real**. Si el usuario cambia a la pestaña *Histórico ERA5*, la puntuación se recalcula en tiempo real adaptándose a los datos climatológicos.
 - **Eclipses parciales** reciben puntuación **0** (sin totalidad = sin valor de observación para un evento de eclipse total).
 - Los criterios **horizonte** y **puesta de sol** están **correlacionados**: si el terreno bloquea el sol, ambos se penalizan simultáneamente.
-- La puntuación se recalcula automáticamente cuando el análisis asíncrono de horizonte (Open-Meteo) finaliza.
 
 ---
 

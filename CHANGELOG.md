@@ -6,6 +6,28 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ---
 
+## [2.4.0] — 2026-07-30
+
+### ✨ Añadido
+- **Previsión Meteorológica Diaria Offline (Open-Meteo)**
+  - Script `scripts/generate_weather_forecast.py` para pregenerar diariamente la predicción numérico-climática (534 puntos de muestreo en España) para el 12 de agosto de 2026 a las 18:00 UTC.
+  - Cero peticiones AJAX en tiempo de ejecución (funcionamiento estático 100% offline).
+  - Desglose detallado por capas de nubes: **Nubes Bajas, Medias y Altas (Cirros)**, probabilidad de lluvia y temperatura.
+  - Marca de tiempo explícita con la fecha y hora exacta en la que se calculó la última previsión.
+  - Etiqueta dinámica de claridad de cielo (ej. *80% despejado - Óptimo*).
+  - Conmutador interactivo entre **Previsión Real (Open-Meteo)** (activa por defecto) e **Histórico ERA5 (Copernicus)**.
+  - Capa temática en el mapa de calor de nubes sincronizada dinámicamente con la previsión real en vivo.
+  - Recálculo en tiempo real del **Índice de Observación (Score 0–10)** priorizando la previsión real.
+- **Enlace al Código Fuente**
+  - Añadido enlace directo al repositorio oficial del proyecto en GitHub (`https://github.com/marcopro/spaineclipse2026/`) en la barra principal de controles.
+
+### 💄 UX & Móvil (iPhones)
+- **Solución de visualización en pantallas móviles e iPhones**:
+  - Ajustado el tamaño de fuente, interlineado y paddings de `.info-header` y `#locality-name` en pantallas móviles (`@media (max-width: 600px)`).
+  - Resuelto el problema donde el nombre de la localidad quedaba recortado o tapado en iPhone/Safari debido a la Dynamic Island, notch y barras dinámicas de navegación mediante `100dvh` y `safe-area-inset`.
+
+---
+
 ## [2.3.0] — 2026-05-08
 
 ### ✨ Añadido
