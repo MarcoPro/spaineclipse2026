@@ -18,6 +18,9 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
   - Conmutador interactivo entre **Previsión Real (Open-Meteo)** (activa por defecto) e **Histórico ERA5 (Copernicus)**.
   - Capa temática en el mapa de calor de nubes sincronizada dinámicamente con la previsión real en vivo.
   - Recálculo en tiempo real del **Índice de Observación (Score 0–10)** priorizando la previsión real.
+- **Base de Datos Centralizada de Actividades y Eventos (`events.json`)**
+  - Migración del catálogo de actividades y puntos de observación a un archivo `events.json` desacoplado e independiente para facilitar su edición y actualización.
+  - Enriquecimiento masivo con **30 ubicaciones y eventos reales** (Osorno, Guardo, Paredes de Nava, Arévalo, Íscar, Alaejos, Arija, Torre de Hércules, GALÁCTICA Teruel, etc.) incluyendo enlaces a webs oficiales y badges de inscripción.
 - **Enlace al Código Fuente**
   - Añadido enlace directo al repositorio oficial del proyecto en GitHub (`https://github.com/marcopro/spaineclipse2026/`) en la barra principal de controles.
 

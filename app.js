@@ -337,37 +337,76 @@ document.addEventListener("DOMContentLoaded", () => {
         introMessage.classList.add('hidden');
     });
 
-    // --- POINTS OF INTEREST ---
+    // --- POINTS OF INTEREST & ACTIVITIES ---
     const btnPois = document.getElementById('btn-pois');
     let poiLayerGroup = null;
     let poisVisible = false;
 
     const poiTypeLabels = {
+        public_zone: 'Zona de Observación Pública',
+        event: 'Evento Organizado',
         observatory: 'Observatorio',
         viewpoint: 'Mirador',
         planetarium: 'Planetario'
     };
 
-    function createPOIMarkers() {
-        if (typeof eclipsePOIs === 'undefined' || !eclipsePOIs.length) return;
+    async function loadEventsData() {
+        try {
+            const res = await fetch('events.json');
+            if (res.ok) {
+                return await res.json();
+            }
+        } catch (e) {
+            console.warn('Could not fetch events.json:', e);
+        }
+        return [];
+    }
+
+    async function createPOIMarkers() {
+        const eventsList = await loadEventsData();
+        if (!eventsList || !eventsList.length) return;
 
         poiLayerGroup = L.layerGroup();
 
-        eclipsePOIs.forEach((poi) => {
+        eventsList.forEach((poi) => {
+            const iconClass = poi.icon || 'fa-location-dot';
             const icon = L.divIcon({
                 className: '',
-                html: `<div class="poi-marker"><i class="fa-solid ${poi.icon}"></i></div>`,
+                html: `<div class="poi-marker"><i class="fa-solid ${iconClass}"></i></div>`,
                 iconSize: [32, 32],
                 iconAnchor: [16, 16],
                 popupAnchor: [0, -20]
             });
 
-            const typeLabel = poiTypeLabels[poi.type] || poi.type;
+            const typeLabel = poi.category || poiTypeLabels[poi.type] || poi.type;
+            const locationStr = poi.town ? `${poi.town} (${poi.province})` : (poi.province ? poi.province : '');
+
+            let urlHtml = '';
+            if (poi.url) {
+                urlHtml = `
+                    <a href="${poi.url}" target="_blank" rel="noopener" class="poi-popup-url-btn" style="display: flex; align-items: center; justify-content: center; gap: 5px; background: rgba(52, 152, 219, 0.15); color: #3498db; border: 1px solid rgba(52, 152, 219, 0.3); padding: 5px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; text-decoration: none; margin-bottom: 6px; transition: all 0.2s ease;">
+                        <i class="fa-solid fa-up-right-from-square"></i> Ver programa / Web oficial
+                    </a>
+                `;
+            }
+
+            let regHtml = '';
+            if (poi.registration_required) {
+                regHtml = `
+                    <div style="font-size: 0.68rem; color: #f1c40f; background: rgba(241,196,15,0.15); padding: 2px 6px; border-radius: 4px; margin-bottom: 6px; display: inline-flex; align-items: center; gap: 4px; font-weight: 500;">
+                        <i class="fa-solid fa-ticket"></i> Requiere inscripción previa
+                    </div>
+                `;
+            }
+
             const popupContent = `
                 <div class="poi-popup-title">${poi.name}</div>
-                <div class="poi-popup-type"><i class="fa-solid ${poi.icon}"></i> ${typeLabel}</div>
-                <div class="poi-popup-desc">${poi.description}</div>
-                <button class="poi-popup-btn" onclick="document.dispatchEvent(new CustomEvent('poi-calc', {detail: {lat: ${poi.lat}, lng: ${poi.lng}, name: '${poi.name.replace(/'/g, "\\'")}'}}))"">
+                <div class="poi-popup-type"><i class="fa-solid ${iconClass}"></i> ${typeLabel}</div>
+                ${locationStr ? `<div style="font-size: 0.72rem; color: #a4b0be; margin-bottom: 4px;"><i class="fa-solid fa-location-dot"></i> ${locationStr}</div>` : ''}
+                <div class="poi-popup-desc" style="margin-bottom: 8px;">${poi.description}</div>
+                ${regHtml}
+                ${urlHtml}
+                <button class="poi-popup-btn" onclick="document.dispatchEvent(new CustomEvent('poi-calc', {detail: {lat: ${poi.lat}, lng: ${poi.lng}, name: '${poi.name.replace(/'/g, "\\'")}'}}))">
                     <i class="fa-solid fa-calculator"></i> Ver datos del eclipse
                 </button>
             `;
@@ -375,11 +414,15 @@ document.addEventListener("DOMContentLoaded", () => {
             const marker = L.marker([poi.lat, poi.lng], { icon })
                 .bindPopup(popupContent, {
                     className: 'poi-popup',
-                    maxWidth: 280
+                    maxWidth: 300
                 });
 
             poiLayerGroup.addLayer(marker);
         });
+
+        if (poisVisible && poiLayerGroup) {
+            poiLayerGroup.addTo(map);
+        }
     }
 
     createPOIMarkers();

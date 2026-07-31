@@ -44,11 +44,11 @@ La aplicación muestra:
 - `horizon_3d.js`: Motor de visualización 3D del terreno con interpolación IDW y ruido fractal procedural.
 - `config.js`: Archivo de configuración centralizado (única fuente de la verdad, v2.4.0). Almacena los elementos besselianos, deltas de tiempo, y parámetros de conexión para APIs y capas topográficas.
 - `styles.css`: Hoja de estilos principal con diseño *glassmorphism*, dark mode y diseño responsive optimizado para móviles e iPhones.
-- `pois.js`: Base de datos local con Puntos de Interés (miradores, ciudades clave) para autocompletado y marcadores sugeridos en el mapa.
 - `sw.js`: *Service Worker*. Cachea todos los archivos de la app para que funcione 100% offline (sin internet) el día del eclipse.
 - `manifest.json`: Archivo de manifiesto que permite instalar la web como una app nativa en el móvil (PWA).
 
-### Archivos de Datos (Generados)
+### Archivos de Datos (Generados / Estáticos)
+- `events.json`: **Fuente única centralizada** de actividades, zonas de observación pública, observatorios, miradores y planetarios para el eclipse solar 2026.
 - `weather_forecast_data.js`: Matriz estática pregenerada diariamente con la previsión numérico-climática (534 puntos de muestreo en España) de Open-Meteo (nubes totales, bajas, medias, cirros, precipitación, temp, fecha/hora de cálculo).
 - `cloud_heatmap.js`: Matriz estadística con la probabilidad histórica de nubes en cada coordenada de la franja de totalidad (ERA5 Copernicus 2008-2025).
 - `eclipse_data.js`: Contiene el polígono WGS84 de la franja de totalidad, ajustado por los algoritmos asimétricos del limbo lunar.
