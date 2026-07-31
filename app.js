@@ -821,7 +821,7 @@ document.addEventListener("DOMContentLoaded", () => {
             criteria.push({
                 icon: 'fa-cloud-sun',
                 label: 'Cielo despejado',
-                detail: cloudPct !== null && !isNaN(cloudPct) ? `${Math.round(100 - cloudPct)}% despejado (${sourceLabelStr})` : 'Sin datos',
+                detail: cloudPct !== null && !isNaN(cloudPct) ? `${Math.round(100 - cloudPct)}% despejado (${sourceLabelStr})` : 'Sin datos (Fuera de cobertura)',
                 pts: cloudScore,
                 max: 3.0,
                 color: '#3498db'
@@ -1691,12 +1691,21 @@ document.addEventListener("DOMContentLoaded", () => {
             return null;
         }
         try {
-            const pointsWithDist = window.weatherForecastData.points.map(p => ({
+            // Filtrar únicamente puntos que tengan c_total válido (no nulo ni undefined)
+            const validPoints = window.weatherForecastData.points.filter(p => p.c_total !== null && p.c_total !== undefined && !isNaN(p.c_total));
+            if (validPoints.length === 0) return null;
+
+            const pointsWithDist = validPoints.map(p => ({
                 ...p,
                 dist: haversineDist(lat, lng, p.lat, p.lon)
             }));
             pointsWithDist.sort((a, b) => a.dist - b.dist);
             const nearestPoints = pointsWithDist.slice(0, 4);
+
+            // Si el punto más cercano está a más de 60 km, considerarlo fuera de la zona de cobertura
+            if (nearestPoints[0].dist > 60) {
+                return null;
+            }
 
             if (nearestPoints[0].dist < 2) {
                 return { ...nearestPoints[0], generated_at: window.weatherForecastData.generated_at, model: window.weatherForecastData.model };
@@ -1707,10 +1716,10 @@ document.addEventListener("DOMContentLoaded", () => {
             for (const p of nearestPoints) {
                 const weight = 1 / Math.pow(Math.max(0.1, p.dist), 2);
                 sumWeights += weight;
-                sumCTotal += (p.c_total || 0) * weight;
-                sumCLow += (p.c_low || 0) * weight;
-                sumCMid += (p.c_mid || 0) * weight;
-                sumCHigh += (p.c_high || 0) * weight;
+                sumCTotal += p.c_total * weight;
+                sumCLow += (p.c_low !== null && p.c_low !== undefined ? p.c_low : p.c_total) * weight;
+                sumCMid += (p.c_mid !== null && p.c_mid !== undefined ? p.c_mid : p.c_total) * weight;
+                sumCHigh += (p.c_high !== null && p.c_high !== undefined ? p.c_high : p.c_total) * weight;
                 sumPrecip += (p.precip || 0) * weight;
                 sumTemp += (p.temp || 25.0) * weight;
             }
@@ -1762,23 +1771,23 @@ document.addEventListener("DOMContentLoaded", () => {
             pointsWithDist.sort((a, b) => a.dist - b.dist);
             const nearestPoints = pointsWithDist.slice(0, 4);
 
+            // Si el punto más cercano está a más de 60 km, considerarlo fuera de la zona de datos
+            if (nearestPoints[0].dist > 60) {
+                return null;
+            }
+
             const getVal = (p) => p.accumulated !== undefined ? p.accumulated : (p.cloudcover !== undefined ? p.cloudcover : null);
 
-            let pct = 0;
-            if (nearestPoints[0].dist < 1) {
-                pct = getVal(nearestPoints[0]);
-            } else {
-                let sumWeights = 0;
-                let sumValues = 0;
-                for (const p of nearestPoints) {
-                    const val = getVal(p);
-                    if (val === null) continue;
-                    const weight = 1 / Math.pow(p.dist, 2);
-                    sumWeights += weight;
-                    sumValues += val * weight;
-                }
-                pct = sumWeights > 0 ? sumValues / sumWeights : null;
+            let sumWeights = 0;
+            let sumValues = 0;
+            for (const p of nearestPoints) {
+                const val = getVal(p);
+                if (val === null || isNaN(val)) continue;
+                const weight = 1 / Math.pow(Math.max(0.1, p.dist), 2);
+                sumWeights += weight;
+                sumValues += val * weight;
             }
+            const pct = sumWeights > 0 ? sumValues / sumWeights : null;
             return pct !== null ? Math.round(pct) : null;
         } catch (err) {
             return null;
@@ -1875,7 +1884,26 @@ document.addEventListener("DOMContentLoaded", () => {
         const clarityTag = document.getElementById('weather-clarity-tag');
         const activeCloudPct = (currentForecastMode === 'forecast' && forecast) ? forecast.c_total : historicalPct;
 
-        if (clarityTag && activeCloudPct !== null && !isNaN(activeCloudPct)) {
+        if (activeCloudPct === null || isNaN(activeCloudPct)) {
+            if (titleLabel) titleLabel.textContent = 'Cobertura de Nubes:';
+            cloudsEl.textContent = 'Sin datos';
+            cloudsEl.style.color = '#a4b0be';
+            if (iconEl) {
+                iconEl.className = 'fa-solid fa-cloud-slash';
+                iconEl.style.color = '#a4b0be';
+            }
+            if (clarityTag) {
+                clarityTag.style.background = 'rgba(255, 255, 255, 0.08)';
+                clarityTag.style.color = '#a4b0be';
+                clarityTag.innerHTML = `<i class="fa-solid fa-circle-question"></i> Fuera de zona`;
+            }
+            if (forecastDetails) forecastDetails.classList.add('hidden');
+            if (sourceEl) sourceEl.textContent = '📍 Ubicación fuera de la franja de cobertura meteorológica';
+            weatherEl.classList.remove('hidden');
+            return;
+        }
+
+        if (clarityTag) {
             const clearPct = 100 - activeCloudPct;
             if (activeCloudPct <= 30) {
                 clarityTag.style.background = 'rgba(46, 204, 113, 0.15)';

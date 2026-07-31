@@ -123,11 +123,11 @@ def main():
         if elev is None or elev <= 0: # Ignoramos el mar o valores faltantes
             continue
             
-        puntos_json.append({
-            "lat": round(lat, 4),
-            "lng": round(lon, 4),
-            "alt": round(elev)
-        })
+        puntos_json.append([
+            round(lat, 4),
+            round(lon, 4),
+            round(elev)
+        ])
 
     print(f"Puntos topográficos terrestres finales: {len(puntos_json)}")
 
