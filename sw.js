@@ -65,9 +65,10 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // API calls (meteo, nominatim): network only
+    // API & Analytics calls (meteo, nominatim, analytics): network only
     if (url.hostname.includes('api.open-meteo.com') ||
-        url.hostname.includes('nominatim.openstreetmap.org')) {
+        url.hostname.includes('nominatim.openstreetmap.org') ||
+        url.hostname.includes('cloudflareinsights.com')) {
         event.respondWith(fetch(event.request));
         return;
     }
