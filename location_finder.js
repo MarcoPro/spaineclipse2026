@@ -30,11 +30,19 @@
         const sliderRadius = document.getElementById('finder-radius-slider');
         const valRadius = document.getElementById('finder-radius-val');
         const btnSearch = document.getElementById('finder-btn-search');
-        const selectPriority = document.getElementById('finder-priority');
 
         if (openBtn && modal) {
             openBtn.addEventListener('click', () => {
                 modal.classList.remove('hidden');
+
+                // Si hay un municipio activo seleccionado en el mapa, ponerlo por defecto
+                if (inputOrigin) {
+                    if (window.lastLocation && window.lastLocation.name && !window.lastLocation.name.startsWith('Lat:')) {
+                        inputOrigin.value = window.lastLocation.name;
+                    } else if (!inputOrigin.value.trim()) {
+                        inputOrigin.value = 'Palencia';
+                    }
+                }
                 executeLocationSearch();
             });
         }
@@ -54,6 +62,14 @@
         if (btnSearch) {
             btnSearch.addEventListener('click', executeLocationSearch);
         }
+
+        if (inputOrigin) {
+            inputOrigin.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    executeLocationSearch();
+                }
+            });
+        }
     }
 
     function haversineKm(lat1, lon1, lat2, lon2) {
@@ -67,19 +83,100 @@
         return R * c;
     }
 
-    function executeLocationSearch() {
+    async function resolveOriginCoordinates(query) {
+        const qLower = query.trim().toLowerCase();
+        // 1. Buscar en tabla de conocidos
+        const found = KNOWN_ORIGINS.find(o => o.name.toLowerCase() === qLower);
+        if (found) return found;
+
+        // 2. Si coincide con la ubicación actual seleccionada
+        if (window.lastLocation && window.lastLocation.name && window.lastLocation.name.toLowerCase().includes(qLower)) {
+            return { name: window.lastLocation.name, lat: window.lastLocation.lat, lng: window.lastLocation.lng };
+        }
+
+        // 3. Buscar vía API Geocoding Komoot Photon
+        try {
+            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lang=es&limit=1`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.features && data.features.length > 0) {
+                    const coords = data.features[0].geometry.coordinates; // [lon, lat]
+                    const props = data.features[0].properties;
+                    const resolvedName = props.name || props.city || props.town || query;
+                    return { name: resolvedName, lat: coords[1], lng: coords[0] };
+                }
+            }
+        } catch (e) {
+            console.warn('Geocoding origin error:', e);
+        }
+
+        // Fallback por defecto si no se encuentra
+        if (window.lastLocation && window.lastLocation.lat) {
+            return { name: window.lastLocation.name || query, lat: window.lastLocation.lat, lng: window.lastLocation.lng };
+        }
+        return { name: "Palencia", lat: 42.0096, lng: -4.5288 };
+    }
+
+    async function resolveCandidateTown(cand) {
+        if (cand.isEvent || cand.resolved) return cand;
+
+        // Buscar coincidencia cercana con events.json
+        const eventsList = (typeof window.eclipseEvents !== 'undefined') ? window.eclipseEvents : [];
+        let nearestEvent = null;
+        let minD = Infinity;
+        eventsList.forEach(e => {
+            const d = haversineKm(cand.lat, cand.lng, e.lat, e.lng);
+            if (d < minD) {
+                minD = d;
+                nearestEvent = e;
+            }
+        });
+
+        if (nearestEvent && minD <= 15) {
+            cand.name = `Entorno de ${nearestEvent.town}`;
+            cand.town = nearestEvent.town;
+            cand.province = nearestEvent.province;
+            cand.resolved = true;
+            return cand;
+        }
+
+        // Geocodificación inversa con Photon
+        try {
+            const res = await fetch(`https://photon.komoot.io/reverse?lat=${cand.lat}&lon=${cand.lng}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.features && data.features.length > 0) {
+                    const props = data.features[0].properties;
+                    const townName = props.city || props.town || props.village || props.locality || props.county || "Municipio";
+                    const provName = props.state || props.county || "España";
+                    cand.name = `Entorno de ${townName}`;
+                    cand.town = townName;
+                    cand.province = provName;
+                    cand.resolved = true;
+                    return cand;
+                }
+            }
+        } catch (e) {
+            console.warn('Reverse geocode candidate error:', e);
+        }
+
+        cand.name = `Zona Rural (${cand.lat.toFixed(2)}°, ${cand.lng.toFixed(2)}°)`;
+        cand.town = 'Franja de Totalidad';
+        return cand;
+    }
+
+    async function executeLocationSearch() {
+        const container = document.getElementById('finder-results-container');
+        if (container) {
+            container.innerHTML = '<div style="text-align:center; padding: 2rem; color: #a4b0be;"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><p style="margin-top:0.5rem;">Buscando mejores destinos...</p></div>';
+        }
+
         const originInputStr = document.getElementById('finder-origin-input')?.value.trim() || 'Palencia';
         const maxRadiusKm = parseFloat(document.getElementById('finder-radius-slider')?.value || '75');
         const priority = document.getElementById('finder-priority')?.value || 'weather';
 
-        // Determinar coordenadas de origen
-        let origin = KNOWN_ORIGINS.find(o => o.name.toLowerCase() === originInputStr.toLowerCase());
-
-        if (!origin && window.lastLocation) {
-            origin = { name: window.lastLocation.name || 'Mi Ubicación', lat: window.lastLocation.lat, lng: window.lastLocation.lng };
-        } else if (!origin) {
-            origin = { name: "Palencia", lat: 42.0096, lng: -4.5288 };
-        }
+        // Determinar coordenadas de origen (asíncrono con geocodificación)
+        const origin = await resolveOriginCoordinates(originInputStr);
 
         const candidates = [];
 
@@ -88,9 +185,7 @@
         eventsList.forEach(e => {
             const dist = haversineKm(origin.lat, origin.lng, e.lat, e.lng);
             if (dist <= maxRadiusKm) {
-                // Obtener previsión del punto
                 let cloudPct = 50;
-                let durationSec = 100;
                 if (typeof window.getWeatherForecast === 'function') {
                     const fc = window.getWeatherForecast(e.lat, e.lng);
                     if (fc && fc.c_total !== null) cloudPct = fc.c_total;
@@ -110,15 +205,15 @@
             }
         });
 
-        // 2. Evaluar puntos de la matriz meteorológica si no hay suficientes
+        // 2. Evaluar puntos de la matriz meteorológica
         const gridPoints = (typeof window.weatherForecastData !== 'undefined' && window.weatherForecastData.points) ? window.weatherForecastData.points : [];
         gridPoints.forEach(p => {
             const dist = haversineKm(origin.lat, origin.lng, p.lat, p.lon);
             if (dist <= maxRadiusKm && p.c_total !== null) {
                 candidates.push({
-                    name: `Punto Astronómico (${p.lat.toFixed(2)}, ${p.lon.toFixed(2)})`,
-                    town: 'Franja de Totalidad',
-                    province: 'Castilla / Norte',
+                    name: `Punto Muestreo (${p.lat.toFixed(2)}, ${p.lon.toFixed(2)})`,
+                    town: 'Buscando municipio...',
+                    province: 'España',
                     lat: p.lat,
                     lng: p.lon,
                     distKm: Math.round(dist),
@@ -130,7 +225,7 @@
             }
         });
 
-        // Ordenar candidatos según la prioridad elegida
+        // Ordenar candidatos
         candidates.sort((a, b) => {
             if (priority === 'weather') {
                 return a.cloudPct - b.cloudPct || a.distKm - b.distKm;
@@ -138,6 +233,21 @@
                 if (a.isEvent && !b.isEvent) return -1;
                 if (!a.isEvent && b.isEvent) return 1;
                 return a.cloudPct - b.cloudPct;
+            } else {
+                return a.distKm - b.distKm;
+            }
+        });
+
+        const top3 = candidates.slice(0, 3);
+
+        // Resolver nombres de municipio para el Top 3
+        for (let i = 0; i < top3.length; i++) {
+            top3[i] = await resolveCandidateTown(top3[i]);
+        }
+
+        renderTopDestinations(origin, top3, maxRadiusKm);
+        highlightTopDestinationsOnMap(top3);
+    }
             } else {
                 return a.distKm - b.distKm;
             }

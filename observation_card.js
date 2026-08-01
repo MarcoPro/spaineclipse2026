@@ -38,43 +38,44 @@
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
 
-        // Tamaño HD para tarjeta exportable (800x1100 px)
-        canvas.width = 800;
-        canvas.height = 1100;
+        // Tamaño de alta resolución adaptado exactamente a la proporción DIN A4 (1200x1697 px / 1:1.4142)
+        canvas.width = 1200;
+        canvas.height = 1697;
 
         const w = canvas.width;
         const h = canvas.height;
 
         // Fondo oscuro astronómico con degradado premium
         const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-        bgGrad.addColorStop(0, '#0a0d14');
-        bgGrad.addColorStop(0.5, '#121824');
-        bgGrad.addColorStop(1, '#05070a');
+        bgGrad.addColorStop(0, '#06080e');
+        bgGrad.addColorStop(0.5, '#101622');
+        bgGrad.addColorStop(1, '#030407');
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, w, h);
 
-        // Borde dorado de gala
+        // Borde dorado de gala doble
         ctx.strokeStyle = '#f1c40f';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(16, 16, w - 32, h - 32);
+        ctx.lineWidth = 6;
+        ctx.strokeRect(24, 24, w - 48, h - 48);
 
         ctx.strokeStyle = 'rgba(241, 196, 15, 0.3)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(22, 22, w - 44, h - 44);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(34, 34, w - 68, h - 68);
 
         // --- ENCABEZADO ---
         ctx.textAlign = 'center';
         ctx.fillStyle = '#f1c40f';
-        ctx.font = 'bold 22px Outfit, sans-serif';
-        ctx.fillText('PASE OFICIAL DE OBSERVADOR DE ECLIPSE SOLAR', w / 2, 60);
+        ctx.font = 'bold 30px Outfit, sans-serif';
+        ctx.fillText('PASE OFICIAL DE OBSERVADOR DE ECLIPSE SOLAR', w / 2, 95);
 
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 36px Outfit, sans-serif';
-        ctx.fillText('ESPAÑA — 12 DE AGOSTO DE 2026', w / 2, 105);
+        ctx.font = 'bold 50px Outfit, sans-serif';
+        ctx.fillText('ESPAÑA — 12 DE AGOSTO DE 2026', w / 2, 160);
 
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(50, 125); ctx.lineTo(w - 50, 125);
+        ctx.moveTo(80, 195); ctx.lineTo(w - 80, 195);
         ctx.stroke();
 
         // --- DATOS DE UBICACIÓN ---
@@ -85,27 +86,27 @@
 
         ctx.textAlign = 'left';
         ctx.fillStyle = '#3498db';
-        ctx.font = 'bold 16px Outfit, sans-serif';
-        ctx.fillText('📍 UBICACIÓN SELECCIONADA', 50, 160);
+        ctx.font = 'bold 24px Outfit, sans-serif';
+        ctx.fillText('📍 UBICACIÓN SELECCIONADA', 80, 250);
 
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 28px Outfit, sans-serif';
-        ctx.fillText(locName, 50, 195);
+        ctx.font = 'bold 42px Outfit, sans-serif';
+        ctx.fillText(locName, 80, 305);
 
         ctx.fillStyle = '#a4b0be';
-        ctx.font = '16px Outfit, sans-serif';
-        ctx.fillText(`Coordenadas: Lat ${lat}° N, Lon ${lng}° W  |  Altitud: ${ele}`, 50, 225);
+        ctx.font = '24px Outfit, sans-serif';
+        ctx.fillText(`Coordenadas: Lat ${lat}° N, Lon ${lng}° W  |  Altitud: ${ele}`, 80, 350);
 
         // --- TABLA DE CONTACTOS ASTRONÓMICOS ---
         ctx.fillStyle = '#f1c40f';
-        ctx.font = 'bold 18px Outfit, sans-serif';
-        ctx.fillText('⏱️ HORARIOS OFICIALES DE CONTACTO (HORA LOCAL CEST / UTC+2)', 50, 275);
+        ctx.font = 'bold 26px Outfit, sans-serif';
+        ctx.fillText('⏱️ HORARIOS OFICIALES DE CONTACTO (HORA LOCAL CEST / UTC+2)', 80, 420);
 
         // Fondo de la tabla
         ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-        ctx.fillRect(50, 290, w - 100, 260);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.strokeRect(50, 290, w - 100, 260);
+        ctx.fillRect(80, 445, w - 160, 400);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.strokeRect(80, 445, w - 160, 400);
 
         const contacts = [
             { code: 'C1', name: 'Inicio Eclipse Parcial', time: data?.c1?.timeStr || '19:30:12 CEST', note: 'Gafas solares PUESTAS' },
@@ -115,84 +116,83 @@
             { code: 'C4', name: 'Fin Eclipse Parcial', time: data?.c4?.timeStr || '21:22:00 CEST', note: 'Puesta de sol solapada' }
         ];
 
-        let yPos = 330;
+        let yPos = 505;
         contacts.forEach((c) => {
             const isTotalityRow = (c.code === 'C2' || c.code === 'MAX' || c.code === 'C3');
 
             ctx.fillStyle = isTotalityRow ? '#f1c40f' : '#ffffff';
-            ctx.font = 'bold 18px Outfit, sans-serif';
-            ctx.fillText(c.code, 70, yPos);
+            ctx.font = 'bold 26px Outfit, sans-serif';
+            ctx.fillText(c.code, 110, yPos);
 
             ctx.fillStyle = '#ffffff';
-            ctx.font = '16px Outfit, sans-serif';
-            ctx.fillText(c.name, 130, yPos);
+            ctx.font = '24px Outfit, sans-serif';
+            ctx.fillText(c.name, 200, yPos);
 
             ctx.fillStyle = isTotalityRow ? '#2ecc71' : '#3498db';
-            ctx.font = 'bold 18px Outfit, sans-serif';
-            ctx.fillText(c.time, 370, yPos);
+            ctx.font = 'bold 26px Outfit, sans-serif';
+            ctx.fillText(c.time, 560, yPos);
 
             ctx.fillStyle = isTotalityRow ? '#e74c3c' : '#a4b0be';
-            ctx.font = 'italic 14px Outfit, sans-serif';
-            ctx.fillText(c.note, 580, yPos);
+            ctx.font = 'italic 21px Outfit, sans-serif';
+            ctx.fillText(c.note, 860, yPos);
 
-            yPos += 45;
+            yPos += 70;
         });
 
         // --- PREVISIÓN METEOROLÓGICA ---
         ctx.fillStyle = '#3498db';
-        ctx.font = 'bold 18px Outfit, sans-serif';
-        ctx.fillText('🌤️ PREVISIÓN CLIMÁTICA Y CONDICIONES', 50, 595);
+        ctx.font = 'bold 26px Outfit, sans-serif';
+        ctx.fillText('🌤️ PREVISIÓN CLIMÁTICA Y CONDICIONES', 80, 915);
 
         ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-        ctx.fillRect(50, 610, w - 100, 130);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.strokeRect(50, 610, w - 100, 130);
+        ctx.fillRect(80, 940, w - 160, 200);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.strokeRect(80, 940, w - 160, 200);
 
-        const cloudVal = data?.cloudPct !== undefined ? `${data.cloudPct}% nubes` : '20% nubes';
+        const cloudVal = data?.cloudPct !== undefined && data?.cloudPct !== null ? `${data.cloudPct}% nubes` : '20% nubes';
         const sunAlt = data?.sunAlt ? `${data.sunAlt.toFixed(1)}°` : '10.5° sobre horizonte';
 
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '16px Outfit, sans-serif';
-        ctx.fillText(`· Cobertura Nubosa Prevista: `, 70, 645);
-        ctx.fillStyle = '#2ecc71'; ctx.font = 'bold 16px Outfit, sans-serif';
-        ctx.fillText(`${cloudVal} (Previsión Diaria Open-Meteo)`, 280, 645);
+        ctx.fillStyle = '#ffffff'; ctx.font = '24px Outfit, sans-serif';
+        ctx.fillText(`· Cobertura Nubosa Prevista: `, 110, 995);
+        ctx.fillStyle = '#2ecc71'; ctx.font = 'bold 24px Outfit, sans-serif';
+        ctx.fillText(`${cloudVal} (Previsión Diaria Open-Meteo)`, 420, 995);
 
-        ctx.fillStyle = '#ffffff'; ctx.font = '16px Outfit, sans-serif';
-        ctx.fillText(`· Altura del Sol al Eclipsarse: `, 70, 680);
-        ctx.fillStyle = '#f1c40f'; ctx.font = 'bold 16px Outfit, sans-serif';
-        ctx.fillText(`${sunAlt} (Oeste-Noroeste / WNW)`, 280, 680);
+        ctx.fillStyle = '#ffffff'; ctx.font = '24px Outfit, sans-serif';
+        ctx.fillText(`· Altura del Sol al Eclipsarse: `, 110, 1050);
+        ctx.fillStyle = '#f1c40f'; ctx.font = 'bold 24px Outfit, sans-serif';
+        ctx.fillText(`${sunAlt} (Oeste-Noroeste / WNW)`, 420, 1050);
 
-        ctx.fillStyle = '#ffffff'; ctx.font = '16px Outfit, sans-serif';
-        ctx.fillText(`· Calidad de Observación Esperada: `, 70, 715);
-        ctx.fillStyle = '#2ecc71'; ctx.font = 'bold 16px Outfit, sans-serif';
-        ctx.fillText(`ÓPTIMA — Excelente visibilidad`, 310, 715);
+        ctx.fillStyle = '#ffffff'; ctx.font = '24px Outfit, sans-serif';
+        ctx.fillText(`· Calidad de Observación Esperada: `, 110, 1105);
+        ctx.fillStyle = '#2ecc71'; ctx.font = 'bold 24px Outfit, sans-serif';
+        ctx.fillText(`ÓPTIMA — Excelente visibilidad`, 480, 1105);
 
         // --- CHECKLIST DEL OBSERVADOR ---
         ctx.fillStyle = '#f1c40f';
-        ctx.font = 'bold 18px Outfit, sans-serif';
-        ctx.fillText('🛡️ CHECKLIST DE EQUIPAMIENTO DEL OBSERVADOR', 50, 780);
+        ctx.font = 'bold 26px Outfit, sans-serif';
+        ctx.fillText('🛡️ CHECKLIST DE EQUIPAMIENTO DEL OBSERVADOR', 80, 1200);
 
         const items = [
             ' Gafas de eclipse homologadas ISO 12312-2 (NUNCA usar gafas de sol comunes)',
             ' Filtro solar ND5.0 para cámaras, telescopios o prismáticos',
             ' Trípode y cámara con batería de repuesto cargada al 100%',
-            ' Agua, protección solar de piel y ropa de abrigo ligera para la baja de temp.',
+            ' Agua, protección solar de piel y ropa de abrigo ligera para el bajón térmico',
             ' App Eclipse Solar España 2026 cargada en modo offline PWA'
         ];
 
-        let itemY = 815;
+        let itemY = 1255;
         ctx.fillStyle = '#a4b0be';
-        ctx.font = '15px Outfit, sans-serif';
+        ctx.font = '22px Outfit, sans-serif';
         items.forEach(item => {
-            ctx.fillText(`[✓] ${item}`, 70, itemY);
-            itemY += 32;
+            ctx.fillText(`[✓] ${item}`, 110, itemY);
+            itemY += 50;
         });
 
         // --- PIE DE PÁGINA ---
         ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.font = '13px Outfit, sans-serif';
-        ctx.fillText('Generado por Eclipse Solar España 2026 — Proyecto de Divulgación Astronómica', w / 2, 1060);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.font = '20px Outfit, sans-serif';
+        ctx.fillText('Generado por Eclipse Solar España 2026 — Proyecto de Divulgación Astronómica', w / 2, 1630);
     }
 
     function downloadPassAsImage() {
