@@ -1789,7 +1789,15 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function getWMOWeatherInfo(code) {
+    function getWMOWeatherInfo(code, cloudPct, precip, cLow) {
+        // Corregir códigos WMO contradictorios de lluvia/llovizna si la probabilidad de lluvia es 0% o si nubes bajas es 0%
+        if (code >= 51 && (precip === 0 || precip === null || cLow === 0)) {
+            const totalClouds = cloudPct || 0;
+            if (totalClouds >= 70) return { text: 'Nublado / Cubierto', icon: 'fa-cloud', color: '#e67e22' };
+            if (totalClouds >= 30) return { text: 'Parcialmente Nublado', icon: 'fa-cloud-sun', color: '#f1c40f' };
+            return { text: 'Poco Nuboso', icon: 'fa-cloud-sun', color: '#2ecc71' };
+        }
+
         if (code === 0) return { text: 'Cielo Despejado', icon: 'fa-sun', color: '#2ecc71' };
         if (code === 1) return { text: 'Principalmente Despejado', icon: 'fa-cloud-sun', color: '#2ecc71' };
         if (code === 2) return { text: 'Parcialmente Nublado', icon: 'fa-cloud-sun', color: '#f1c40f' };
@@ -1969,7 +1977,7 @@ document.addEventListener("DOMContentLoaded", () => {
             cloudsEl.textContent = `${forecast.c_total}%`;
             cloudsEl.style.color = forecast.c_total <= 30 ? '#2ecc71' : (forecast.c_total <= 60 ? '#f1c40f' : '#e74c3c');
 
-            const wmo = getWMOWeatherInfo(forecast.w_code);
+            const wmo = getWMOWeatherInfo(forecast.w_code, forecast.c_total, forecast.precip, forecast.c_low);
             if (iconEl) {
                 iconEl.className = `fa-solid ${wmo.icon}`;
                 iconEl.style.color = wmo.color;
