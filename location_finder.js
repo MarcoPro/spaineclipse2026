@@ -204,10 +204,12 @@
     }
 
     function highlightTopDestinationsOnMap(top3) {
-        if (typeof L === 'undefined' || !window.map) return;
+        if (typeof L === 'undefined') return;
+        const targetMap = window.eclipseMap || (window.map && typeof window.map.addLayer === 'function' ? window.map : null);
+        if (!targetMap) return;
 
         if (finderMarkersGroup) {
-            window.map.removeLayer(finderMarkersGroup);
+            targetMap.removeLayer(finderMarkersGroup);
         }
         finderMarkersGroup = L.layerGroup();
 
@@ -225,7 +227,7 @@
             finderMarkersGroup.addLayer(marker);
         });
 
-        finderMarkersGroup.addTo(window.map);
+        finderMarkersGroup.addTo(targetMap);
     }
 
     document.addEventListener('DOMContentLoaded', () => {

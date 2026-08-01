@@ -83,6 +83,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- LEAFLET MAP INITIALIZATION ---
     // Madrid center as default
     const map = L.map('map', { zoomControl: false }).setView([40.4168, -3.7038], 6);
+    window.map = map;
+    window.eclipseMap = map;
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     // Capas base
@@ -689,12 +691,23 @@ document.addEventListener("DOMContentLoaded", () => {
         const eclipse = window.BesselianCalculator.calculateLocalCircumstances(lat, lng, localElev);
 
         if (eclipse && eclipse.peak) {
-            // Guardar estado para simuladores
+            // Guardar estado para simuladores y herramientas astronómicas
             lastEclipseData = eclipse;
+
+            window.currentEclipseDetails = {
+                isTotality: Boolean(eclipse.total_begin && eclipse.total_end),
+                c1: eclipse.c1,
+                c2: eclipse.c2 || eclipse.total_begin,
+                c3: eclipse.c3 || eclipse.total_end,
+                c4: eclipse.c4,
+                max: eclipse.peak,
+                c2Date: eclipse.total_begin ? eclipse.total_begin.time.date : null,
+                c3Date: eclipse.total_end ? eclipse.total_end.time.date : null
+            };
 
             const equ_peak = window.Astronomy.Equator('Sun', eclipse.peak.time.date, observer, true, true);
             const hor_peak = window.Astronomy.Horizon(eclipse.peak.time.date, observer, equ_peak.ra, equ_peak.dec, 'normal');
-            lastLocation = { lat, lng, alt: hor_peak.altitude, az: hor_peak.azimuth };
+            lastLocation = { name: name || 'Ubicación Seleccionada', lat, lng, alt: hor_peak.altitude, az: hor_peak.azimuth, elevation: localElev };
 
             drawSunDirection(lat, lng, eclipse.peak.time.date, localElev);
             renderEclipseInfo(eclipse, observer, name, context, localElev);
@@ -2497,15 +2510,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnGenPass = document.getElementById('btn-gen-pass');
     if (btnGenPass) {
         btnGenPass.addEventListener('click', () => {
-            if (window.EclipseObservationCard && window.currentEclipseDetails) {
+            if (window.EclipseObservationCard) {
+                const details = window.currentEclipseDetails || {};
+                const locLat = (lastLocation && lastLocation.lat) ? lastLocation.lat : 42.0096;
+                const locLng = (lastLocation && lastLocation.lng) ? lastLocation.lng : -4.5288;
                 window.EclipseObservationCard.openObservationPass({
-                    ...window.currentEclipseDetails,
-                    name: lastLocation.name,
-                    lat: lastLocation.lat,
-                    lng: lastLocation.lng,
-                    elevation: lastLocation.elevation || 250,
-                    cloudPct: getEffectiveCloudPct(lastLocation.lat, lastLocation.lng, currentForecastMode),
-                    sunAlt: lastLocation.alt
+                    ...details,
+                    name: (lastLocation && lastLocation.name) ? lastLocation.name : 'Ubicación Seleccionada',
+                    lat: locLat,
+                    lng: locLng,
+                    elevation: (lastLocation && lastLocation.elevation) ? lastLocation.elevation : 250,
+                    cloudPct: getEffectiveCloudPct(locLat, locLng, currentForecastMode),
+                    sunAlt: (lastLocation && lastLocation.alt) ? lastLocation.alt : 10.5
                 });
             }
         });
