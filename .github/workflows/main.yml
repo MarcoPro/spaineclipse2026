@@ -1,0 +1,34 @@
+name: Actualizar Predicción del Tiempo
+
+on:
+  schedule:
+    # Se ejecuta automáticamente cada 12 horas (a las 00:00 y 12:00 UTC)
+    - cron: '0 */12 * * *'
+  workflow_dispatch: # Permite ejecutar el flujo manualmente desde la pestaña Actions en GitHub
+
+# Otorgar permisos de escritura para realizar commits y push a la rama principal
+permissions:
+  contents: write
+
+jobs:
+  update-weather:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clonar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Ejecutar script de predicción meteorológica
+        run: python scripts/generate_weather_forecast.py
+
+      - name: Guardar cambios y subir a GitHub
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add weather_forecast_data.js
+          git diff-index --quiet HEAD || git commit -m "bot: actualización de predicción meteorológica [skip ci]"
+          git push
