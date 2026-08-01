@@ -626,7 +626,7 @@
         <!-- Version Badge -->
         <div class="version-badge" id="version-badge" title="Ver changelog">
             <i class="fa-solid fa-code-branch"></i>
-            <span id="version-text">v2.4.0</span>
+            <span id="version-text">v2.5.0</span>
         </div>
 
         <!-- Changelog Modal -->
@@ -736,9 +736,10 @@
             </div>
             <div class="modal-body">
                 <div class="finder-inputs-row">
-                    <div class="finder-field">
+                    <div class="finder-field" style="position: relative;">
                         <label>Origen (Municipio / Ciudad):</label>
-                        <input type="text" id="finder-origin-input" value="Palencia" placeholder="Ej. Palencia, Valladolid, Oviedo...">
+                        <input type="text" id="finder-origin-input" value="Palencia" placeholder="Ej. Peñaranda de Bracamonte, Burgos, Madrid..." autocomplete="off">
+                        <div id="finder-autocomplete-list" class="finder-autocomplete-dropdown hidden"></div>
                     </div>
                     <div class="finder-field">
                         <label>Radio Máx. Desplazamiento:</label>

@@ -42,7 +42,7 @@ La aplicación muestra:
 - `limb_simulator.js`: Simulador de Perlas de Baily con renderizado dual (fotorrealista y técnico) basado en el perfil real del limbo lunar.
 - `lunar_limb_profile.js`: Perfil de elevación del limbo lunar real para el simulador de Perlas de Baily.
 - `horizon_3d.js`: Motor de visualización 3D del terreno con interpolación IDW y ruido fractal procedural.
-- `config.js`: Archivo de configuración centralizado (única fuente de la verdad, v2.4.0). Almacena los elementos besselianos, deltas de tiempo, y parámetros de conexión para APIs y capas topográficas.
+- `config.js`: Archivo de configuración centralizado (única fuente de la verdad, v2.5.0). Almacena los elementos besselianos, deltas de tiempo, y parámetros de conexión para APIs y capas topográficas.
 - `styles.css`: Hoja de estilos principal con diseño *glassmorphism*, dark mode y diseño responsive optimizado para móviles e iPhones.
 - `sw.js`: *Service Worker*. Cachea todos los archivos de la app para que funcione 100% offline (sin internet) el día del eclipse.
 - `manifest.json`: Archivo de manifiesto que permite instalar la web como una app nativa en el móvil (PWA).

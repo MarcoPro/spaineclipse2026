@@ -4,6 +4,23 @@ Todos los cambios notables del proyecto Eclipse Solar España 2026.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
+## [2.5.0] — 2026-08-02
+
+### ✨ Añadido
+- **Suite Avanzada de Herramientas Astronómicas**
+  - **Reloj Día D & Alertas de Voz en Vivo (`phase_clock.js`)**: Cuenta atrás interactiva en tiempo real con horas exactas de contactos C1, C2, MAX, C3 y C4 y avisos hablados en español (Web Speech API) para guiar la observación sin mirar la pantalla.
+  - **Calculador & Encuadre Fotográfico Solar (`astrophoto_calc.js`)**: Simulador Canvas del visor según tipo de sensor de cámara (Full Frame, APS-C, Micro 4/3, Smartphone) y focal (10mm a 1000mm) con tabla de exposiciones recomendadas.
+  - **Recomendador Inteligente por Radio de Km (`location_finder.js`)**: Búsqueda geoespacial desde la localidad seleccionada o tecleando cualquier municipio de España con **autocompletado interactivo en tiempo real**. Muestra las 3 mejores opciones con geocodificación inversa de municipios y marcadores numerados (1, 2, 3) en el mapa Leaflet.
+  - **Pase Oficial de Observación Exportable (`observation_card.js`)**: Generación de credencial astronómica HD en Canvas con los datos del observador, tiempos C1-C4 al segundo, previsión y checklist de seguridad.
+  - **Impresión a Sangre DIN A4**: Adaptación del pase a la proporción matemática A4 (1200x1697 px) y reglas `@media print` para imprimir o guardar en PDF al 100% del folio A4 sin márgenes.
+- **Integración de Analytics Libre de Cache de Service Worker**
+  - Snippet oficial de Cloudflare Web Analytics integrado respetando la privacidad del usuario.
+
+### 🐛 Corregido
+- **Geocodificación de Origen y Fallback de Komoot Photon**: Eliminado parámetro `lang=es` no soportado que producía error HTTP 400 Bad Request en peticiones Photon e integrado fallback con Nominatim.
+- **Referencia de Mapa Leaflet**: Exportación de `window.eclipseMap` en `app.js` solucionando el error `TypeError: t.addLayer is not a function`.
+- **Superposición de Modales**: Reglas CSS para `.modal-overlay` y `.modal-container` en `styles.css`.
+
 ---
 
 ## [2.4.0] — 2026-07-30

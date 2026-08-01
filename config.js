@@ -1,6 +1,6 @@
 window.EclipseConfig = {
-  "version": "2.4.0",
-  "version_date": "2026-07-30",
+  "version": "2.5.0",
+  "version_date": "2026-08-02",
   "besselian": {
     "eclipse_date": "2026-08-12",
     "T0": 18.0,

@@ -60,20 +60,125 @@
         }
 
         if (btnSearch) {
-            btnSearch.addEventListener('click', executeLocationSearch);
+            btnSearch.addEventListener('click', () => {
+                hideAutocomplete();
+                executeLocationSearch();
+            });
         }
 
         if (inputOrigin) {
+            inputOrigin.addEventListener('input', (e) => {
+                const val = e.target.value.trim();
+                clearTimeout(autocompleteDebounce);
+                if (val.length < 2) {
+                    hideAutocomplete();
+                    return;
+                }
+                autocompleteDebounce = setTimeout(() => {
+                    showAutocompleteSuggestions(val);
+                }, 200);
+            });
+
             inputOrigin.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
+                    hideAutocomplete();
                     executeLocationSearch();
                 }
             });
         }
+
+        document.addEventListener('click', (ev) => {
+            const inputEl = document.getElementById('finder-origin-input');
+            const dropEl = document.getElementById('finder-autocomplete-list');
+            if (inputEl && dropEl && !inputEl.contains(ev.target) && !dropEl.contains(ev.target)) {
+                hideAutocomplete();
+            }
+        });
+    }
+
+    let autocompleteDebounce = null;
+
+    function hideAutocomplete() {
+        const drop = document.getElementById('finder-autocomplete-list');
+        if (drop) drop.classList.add('hidden');
+    }
+
+    async function showAutocompleteSuggestions(query) {
+        const drop = document.getElementById('finder-autocomplete-list');
+        if (!drop) return;
+
+        const qLower = query.toLowerCase();
+        const suggestions = [];
+
+        // 1. Filtrar locales conocidos
+        KNOWN_ORIGINS.forEach(o => {
+            if (o.name.toLowerCase().includes(qLower)) {
+                suggestions.push({ name: o.name, sub: 'Municipio', lat: o.lat, lng: o.lng });
+            }
+        });
+
+        // 2. Filtrar eventos conocidos
+        const eventsList = (typeof window.eclipseEvents !== 'undefined') ? window.eclipseEvents : [];
+        eventsList.forEach(e => {
+            if (e.town && e.town.toLowerCase().includes(qLower) && !suggestions.some(s => s.name.toLowerCase() === e.town.toLowerCase())) {
+                suggestions.push({ name: e.town, sub: e.province || 'España', lat: e.lat, lng: e.lng });
+            }
+        });
+
+        // 3. Buscar sugerencias online con Photon (sin lang=es para evitar HTTP 400 Bad Request)
+        if (suggestions.length < 4) {
+            try {
+                const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.features) {
+                        data.features.forEach(f => {
+                            const p = f.properties;
+                            const coords = f.geometry.coordinates;
+                            const name = p.name || p.city || p.town || p.village;
+                            const sub = p.state || p.county || p.country || 'España';
+                            if (name && !suggestions.some(s => s.name.toLowerCase() === name.toLowerCase())) {
+                                suggestions.push({ name: name, sub: sub, lat: coords[1], lng: coords[0] });
+                            }
+                        });
+                    }
+                }
+            } catch (e) {
+                console.warn('Autocomplete fetch error:', e);
+            }
+        }
+
+        if (suggestions.length === 0) {
+            hideAutocomplete();
+            return;
+        }
+
+        let html = '';
+        suggestions.slice(0, 6).forEach(s => {
+            html += `<div class="finder-autocomplete-item" data-lat="${s.lat}" data-lng="${s.lng}" data-name="${s.name.replace(/"/g, '&quot;')}">
+                <span>📍 <strong>${s.name}</strong></span>
+                <span class="item-sub">${s.sub}</span>
+            </div>`;
+        });
+
+        drop.innerHTML = html;
+        drop.classList.remove('hidden');
+
+        const items = drop.querySelectorAll('.finder-autocomplete-item');
+        items.forEach(item => {
+            item.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                const name = item.getAttribute('data-name');
+                const inputOrigin = document.getElementById('finder-origin-input');
+                if (inputOrigin) inputOrigin.value = name;
+                hideAutocomplete();
+                executeLocationSearch();
+            });
+        });
     }
 
     function haversineKm(lat1, lon1, lat2, lon2) {
-        const R = 6371; // Radio terrestre en km
+        const R = 6371;
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
         const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -89,14 +194,19 @@
         const found = KNOWN_ORIGINS.find(o => o.name.toLowerCase() === qLower);
         if (found) return found;
 
-        // 2. Si coincide con la ubicación actual seleccionada
+        // 2. Buscar en eventos conocidos
+        const eventsList = (typeof window.eclipseEvents !== 'undefined') ? window.eclipseEvents : [];
+        const foundEv = eventsList.find(e => e.town && e.town.toLowerCase() === qLower);
+        if (foundEv) return { name: foundEv.town, lat: foundEv.lat, lng: foundEv.lng };
+
+        // 3. Si coincide con la ubicación actual seleccionada
         if (window.lastLocation && window.lastLocation.name && window.lastLocation.name.toLowerCase().includes(qLower)) {
             return { name: window.lastLocation.name, lat: window.lastLocation.lat, lng: window.lastLocation.lng };
         }
 
-        // 3. Buscar vía API Geocoding Komoot Photon
+        // 4. Buscar vía API Geocoding Komoot Photon (sin lang=es para evitar 400 Bad Request)
         try {
-            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lang=es&limit=1`);
+            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`);
             if (res.ok) {
                 const data = await res.json();
                 if (data && data.features && data.features.length > 0) {
@@ -108,6 +218,19 @@
             }
         } catch (e) {
             console.warn('Geocoding origin error:', e);
+        }
+
+        // 5. Fallback con Nominatim
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=es`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    return { name: data[0].display_name.split(',')[0], lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+                }
+            }
+        } catch (e) {
+            console.warn('Nominatim fallback error:', e);
         }
 
         // Fallback por defecto si no se encuentra
