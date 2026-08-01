@@ -95,11 +95,11 @@ def main():
     print(f"📍 Se generaron {len(grid_points)} puntos de muestreo en la franja.")
 
     # 3. Consultar Open-Meteo Forecast API
-    BATCH_SIZE = 40
+    BATCH_SIZE = 60
     results = []
     
     now_utc_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    print(f"📡 Consultando Open-Meteo API (Fecha objetivo: {TARGET_DATE} {TARGET_HOUR_UTC}:00 UTC)...")
+    print(f"📡 Consultando Open-Meteo API (Fecha objetivo: {TARGET_DATE} {TARGET_HOUR_UTC}:00 UTC)...", flush=True)
 
     for i in range(0, len(grid_points), BATCH_SIZE):
         batch = grid_points[i:i+BATCH_SIZE]
@@ -108,7 +108,7 @@ def main():
         
         batch_num = i // BATCH_SIZE + 1
         total_batches = (len(grid_points) + BATCH_SIZE - 1) // BATCH_SIZE
-        print(f"  ⚡ Procesando lote {batch_num}/{total_batches} ({len(batch)} puntos)...")
+        print(f"  ⚡ Procesando lote {batch_num}/{total_batches} ({len(batch)} puntos)...", flush=True)
 
         url = (
             f"https://api.open-meteo.com/v1/forecast?"
@@ -123,7 +123,7 @@ def main():
         for attempt in range(max_retries):
             try:
                 req = urllib.request.Request(url, headers={'User-Agent': 'Eclipse2026Forecast/1.0'})
-                with urllib.request.urlopen(req) as response:
+                with urllib.request.urlopen(req, timeout=10) as response:
                     res_body = response.read().decode('utf-8')
                     batch_data = json.loads(res_body)
                     if isinstance(batch_data, dict):
@@ -131,13 +131,13 @@ def main():
                     break
             except urllib.error.HTTPError as e:
                 if e.code == 429:
-                    print(f"    [!] Límite de peticiones alcanzado. Esperando {4 * (attempt+1)}s...")
-                    time.sleep(4 * (attempt+1))
+                    print(f"    [!] Límite de peticiones alcanzado. Esperando {3 * (attempt+1)}s...", flush=True)
+                    time.sleep(3 * (attempt+1))
                 else:
-                    print(f"    [!] Error HTTP {e.code}: {e.reason}")
+                    print(f"    [!] Error HTTP {e.code}: {e.reason}", flush=True)
                     break
             except Exception as e:
-                print(f"    [!] Error en consulta: {e}")
+                print(f"    [!] Error en consulta: {e}", flush=True)
                 break
 
         if batch_data and len(batch_data) == len(batch):
