@@ -2494,6 +2494,23 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    const btnGenPass = document.getElementById('btn-gen-pass');
+    if (btnGenPass) {
+        btnGenPass.addEventListener('click', () => {
+            if (window.EclipseObservationCard && window.currentEclipseDetails) {
+                window.EclipseObservationCard.openObservationPass({
+                    ...window.currentEclipseDetails,
+                    name: lastLocation.name,
+                    lat: lastLocation.lat,
+                    lng: lastLocation.lng,
+                    elevation: lastLocation.elevation || 250,
+                    cloudPct: getEffectiveCloudPct(lastLocation.lat, lastLocation.lng, currentForecastMode),
+                    sunAlt: lastLocation.alt
+                });
+            }
+        });
+    }
+
     closeBeads.addEventListener('click', () => {
         if (window.LimbSimulator) window.LimbSimulator.hide();
     });

@@ -120,8 +120,17 @@
                 <button class="btn-location" id="btn-shadow-anim" title="Animar recorrido de la sombra">
                     <i class="fa-solid fa-play"></i>
                 </button>
-                <button class="btn-location" id="btn-pois" title="Puntos de observación">
+                <button class="btn-location" id="btn-pois" title="Puntos de observación y eventos">
                     <i class="fa-solid fa-binoculars"></i>
+                </button>
+                <button class="btn-location" id="btn-phase-clock" title="Reloj Día D & Alertas de Voz">
+                    <i class="fa-solid fa-bell"></i>
+                </button>
+                <button class="btn-location" id="btn-astrophoto" title="Simulador & Encuadre Fotográfico">
+                    <i class="fa-solid fa-camera"></i>
+                </button>
+                <button class="btn-location" id="btn-finder" title="Recomendador Inteligente (km)">
+                    <i class="fa-solid fa-compass"></i>
                 </button>
                 <button class="btn-location" id="btn-heatmap" title="Mapa de calor de duración">
                     <i class="fa-solid fa-stopwatch"></i>
@@ -444,6 +453,9 @@
                 <button class="simulation-btn" id="btn-horizon-3d">
                     <i class="fa-solid fa-cube"></i> Vista 3D
                 </button>
+                <button class="simulation-btn" id="btn-gen-pass" style="border-color: rgba(241, 196, 15, 0.4); color: #f1c40f;">
+                    <i class="fa-solid fa-id-card"></i> Generar Pase
+                </button>
                 <button class="compare-add-btn" id="btn-add-compare">
                     <i class="fa-solid fa-plus"></i> Comparar
                 </button>
@@ -629,6 +641,149 @@
         </div>
     </div>
 
+    <!-- MODAL 1: RELOJ DÍA D & ALERTAS SONORAS -->
+    <div class="modal-overlay hidden" id="modal-phase-clock">
+        <div class="modal-container glass-panel width-medium">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-bell"></i> Reloj Día D & Alertas de Voz en Vivo</h2>
+                <button class="modal-close" id="close-phase-clock"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="clock-countdown-banner">
+                    <div class="clock-unit"><span id="clock-days">00</span><label>Días</label></div>
+                    <div class="clock-unit"><span id="clock-hours">00</span><label>Horas</label></div>
+                    <div class="clock-unit"><span id="clock-mins">00</span><label>Minutos</label></div>
+                    <div class="clock-unit"><span id="clock-secs">00</span><label>Segundos</label></div>
+                </div>
+
+                <div class="clock-status-box" id="clock-phase-status">
+                    <span class="status-totality"><i class="fa-solid fa-moon"></i> Eclipse Total Garantizado</span>
+                </div>
+
+                <div class="clock-contacts-grid">
+                    <div class="clock-contact-card"><span class="c-code">C1</span><span class="c-name">Inicio Parcial</span><strong id="clock-c1-time">--:--:--</strong></div>
+                    <div class="clock-contact-card highlight"><span class="c-code">C2</span><span class="c-name">Inicio Totalidad</span><strong id="clock-c2-time">--:--:--</strong></div>
+                    <div class="clock-contact-card max"><span class="c-code">MAX</span><span class="c-name">Eclipse Máximo</span><strong id="clock-max-time">--:--:--</strong></div>
+                    <div class="clock-contact-card highlight"><span class="c-code">C3</span><span class="c-name">Fin Totalidad</span><strong id="clock-c3-time">--:--:--</strong></div>
+                    <div class="clock-contact-card"><span class="c-code">C4</span><span class="c-name">Fin Parcial</span><strong id="clock-c4-time">--:--:--</strong></div>
+                </div>
+
+                <div class="clock-controls-row">
+                    <button class="clock-btn" id="btn-toggle-voice"><i class="fa-solid fa-volume-high"></i> Voz Activa</button>
+                    <button class="clock-btn secondary" id="btn-test-audio"><i class="fa-solid fa-play"></i> Probar Alerta</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: CALCULADOR FOTOGRÁFICO & SIMULADOR FOV -->
+    <div class="modal-overlay hidden" id="modal-astrophoto">
+        <div class="modal-container glass-panel width-medium">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-camera"></i> Calculador & Encuadre Fotográfico Solar</h2>
+                <button class="modal-close" id="close-astrophoto"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="photo-controls-grid">
+                    <div class="photo-field">
+                        <label>Tamaño de Sensor:</label>
+                        <select id="photo-sensor-type">
+                            <option value="full_frame">Full Frame (35mm)</option>
+                            <option value="apsc_canon">APS-C (Canon 1.6x)</option>
+                            <option value="apsc_nikon">APS-C (Nikon/Sony 1.5x)</option>
+                            <option value="m43">Micro 4/3 (2.0x)</option>
+                            <option value="phone">Smartphone (1/2.55")</option>
+                        </select>
+                    </div>
+                    <div class="photo-field">
+                        <label>Distancia Focal (mm):</label>
+                        <div class="focal-input-group">
+                            <input type="number" id="photo-focal-length" value="400" min="10" max="2000" step="5">
+                            <input type="range" id="photo-focal-slider" value="400" min="10" max="1000" step="10">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="photo-canvas-container">
+                    <canvas id="photo-canvas" width="600" height="380"></canvas>
+                </div>
+
+                <div class="photo-stats-row">
+                    <div><span>Tamaño Sol en Sensor:</span> <strong id="photo-info-size">3.70 mm</strong></div>
+                    <div><span>Campo de Visión (FOV):</span> <strong id="photo-info-fov">5.15° x 3.43°</strong></div>
+                    <div id="photo-info-recommend" class="photo-recommend-tag">Encuadre ideal para capturar la corona.</div>
+                </div>
+
+                <div class="photo-table-section">
+                    <h3>📷 Guía de Exposición Recomendada (f/8 - ISO 200)</h3>
+                    <div class="photo-table-grid">
+                        <div><span>Parcialidad (Filtro ND5.0):</span> <strong>1/1000s — 1/4000s</strong></div>
+                        <div><span>Anillo de Diamante / Perlas:</span> <strong>1/2000s</strong> (Sin filtro)</div>
+                        <div><span>Prominencias Solares:</span> <strong>1/1000s</strong> (Sin filtro)</div>
+                        <div><span>Corona Externa:</span> <strong>1/15s — 1/2s</strong> (Sin filtro)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: RECOMENDADOR INTELIGENTE POR KM -->
+    <div class="modal-overlay hidden" id="modal-location-finder">
+        <div class="modal-container glass-panel width-large">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-compass"></i> Recomendador Inteligente por Radio (km)</h2>
+                <button class="modal-close" id="close-location-finder"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="finder-inputs-row">
+                    <div class="finder-field">
+                        <label>Origen (Municipio / Ciudad):</label>
+                        <input type="text" id="finder-origin-input" value="Palencia" placeholder="Ej. Palencia, Valladolid, Oviedo...">
+                    </div>
+                    <div class="finder-field">
+                        <label>Radio Máx. Desplazamiento:</label>
+                        <div class="radius-slider-group">
+                            <input type="range" id="finder-radius-slider" value="75" min="10" max="300" step="5">
+                            <span id="finder-radius-val">75 km</span>
+                        </div>
+                    </div>
+                    <div class="finder-field">
+                        <label>Prioridad:</label>
+                        <select id="finder-priority">
+                            <option value="weather">🌤️ Menor % Nubes (Previsión)</option>
+                            <option value="events">🎪 Con Evento / Zona Pública</option>
+                            <option value="distance">🛣️ Menor Distancia (km)</option>
+                        </select>
+                    </div>
+                    <button class="finder-btn-search" id="finder-btn-search"><i class="fa-solid fa-magnifying-glass"></i> Buscar 3 Mejores</button>
+                </div>
+
+                <div id="finder-results-container">
+                    <!-- Tarjetas Top 3 inyectadas dinámicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: PASE DE OBSERVACIÓN EXPORTABLE -->
+    <div class="modal-overlay hidden" id="modal-observation-card">
+        <div class="modal-container glass-panel width-medium">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-id-card"></i> Pase Oficial de Observación</h2>
+                <button class="modal-close" id="close-observation-card"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="pass-canvas-wrap">
+                    <canvas id="pass-canvas" width="800" height="1100"></canvas>
+                </div>
+                <div class="pass-actions-row">
+                    <button class="pass-action-btn primary" id="btn-download-pass"><i class="fa-solid fa-download"></i> Descargar Imagen (PNG)</button>
+                    <button class="pass-action-btn secondary" id="btn-print-pass"><i class="fa-solid fa-print"></i> Imprimir / Guardar PDF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -664,6 +819,12 @@
     <!-- Limb Simulator & 3D Horizon -->
     <script src="limb_simulator.js"></script>
     <script src="horizon_3d.js"></script>
+
+    <!-- Módulos Astronómicos Avanzados -->
+    <script src="phase_clock.js"></script>
+    <script src="astrophoto_calc.js"></script>
+    <script src="location_finder.js"></script>
+    <script src="observation_card.js"></script>
 
     <!-- Custom Logic -->
     <script src="app.js"></script>
