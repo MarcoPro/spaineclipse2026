@@ -120,10 +120,10 @@ def main():
 
         max_retries = 3
         batch_data = None
-        for attempt in range(max_retries):
+        for attempt in range(1, max_retries + 1):
             try:
                 req = urllib.request.Request(url, headers={'User-Agent': 'Eclipse2026Forecast/1.0'})
-                with urllib.request.urlopen(req, timeout=10) as response:
+                with urllib.request.urlopen(req, timeout=15) as response:
                     res_body = response.read().decode('utf-8')
                     batch_data = json.loads(res_body)
                     if isinstance(batch_data, dict):
@@ -131,14 +131,15 @@ def main():
                     break
             except urllib.error.HTTPError as e:
                 if e.code == 429:
-                    print(f"    [!] Límite de peticiones alcanzado. Esperando {3 * (attempt+1)}s...", flush=True)
-                    time.sleep(3 * (attempt+1))
+                    print(f"    [!] Límite HTTP 429 (intento {attempt}/{max_retries}). Reintentando en {3 * attempt}s...", flush=True)
+                    time.sleep(3 * attempt)
                 else:
                     print(f"    [!] Error HTTP {e.code}: {e.reason}", flush=True)
                     break
             except Exception as e:
-                print(f"    [!] Error en consulta: {e}", flush=True)
-                break
+                print(f"    [!] Error de conexión/SSL (intento {attempt}/{max_retries}): {e}", flush=True)
+                if attempt < max_retries:
+                    time.sleep(2 * attempt)
 
         if batch_data and len(batch_data) == len(batch):
             for j, p_data in enumerate(batch_data):
