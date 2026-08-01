@@ -171,9 +171,13 @@
             container.innerHTML = '<div style="text-align:center; padding: 2rem; color: #a4b0be;"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><p style="margin-top:0.5rem;">Buscando mejores destinos...</p></div>';
         }
 
-        const originInputStr = document.getElementById('finder-origin-input')?.value.trim() || 'Palencia';
-        const maxRadiusKm = parseFloat(document.getElementById('finder-radius-slider')?.value || '75');
-        const priority = document.getElementById('finder-priority')?.value || 'weather';
+        const inputEl = document.getElementById('finder-origin-input');
+        const sliderEl = document.getElementById('finder-radius-slider');
+        const priorityEl = document.getElementById('finder-priority');
+
+        const originInputStr = (inputEl && inputEl.value) ? inputEl.value.trim() : 'Palencia';
+        const maxRadiusKm = parseFloat((sliderEl && sliderEl.value) ? sliderEl.value : '75');
+        const priority = (priorityEl && priorityEl.value) ? priorityEl.value : 'weather';
 
         // Determinar coordenadas de origen (asíncrono con geocodificación)
         const origin = await resolveOriginCoordinates(originInputStr);
@@ -245,15 +249,6 @@
             top3[i] = await resolveCandidateTown(top3[i]);
         }
 
-        renderTopDestinations(origin, top3, maxRadiusKm);
-        highlightTopDestinationsOnMap(top3);
-    }
-            } else {
-                return a.distKm - b.distKm;
-            }
-        });
-
-        const top3 = candidates.slice(0, 3);
         renderTopDestinations(origin, top3, maxRadiusKm);
         highlightTopDestinationsOnMap(top3);
     }
