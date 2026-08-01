@@ -23,7 +23,9 @@ jobs:
           python-version: '3.11'
 
       - name: Ejecutar script de predicción meteorológica
-        run: python scripts/generate_weather_forecast.py
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: python -u scripts/generate_weather_forecast.py
 
       - name: Guardar cambios y subir a GitHub
         run: |
