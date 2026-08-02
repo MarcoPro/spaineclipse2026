@@ -63,8 +63,11 @@
 
                 // Si hay un municipio activo seleccionado en el mapa, ponerlo por defecto
                 if (inputOrigin) {
-                    if (window.lastLocation && window.lastLocation.name && !window.lastLocation.name.startsWith('Lat:')) {
-                        inputOrigin.value = window.lastLocation.name;
+                    const activeLoc = window.lastLocation;
+                    if (activeLoc && activeLoc.name && activeLoc.name !== 'Ubicación Seleccionada' && !activeLoc.name.startsWith('Lat:')) {
+                        inputOrigin.value = activeLoc.name;
+                    } else if (activeLoc && activeLoc.lat && activeLoc.lat !== 0) {
+                        inputOrigin.value = activeLoc.name || 'Palencia';
                     } else if (!inputOrigin.value.trim()) {
                         inputOrigin.value = 'Palencia';
                     }
@@ -413,14 +416,14 @@
                     }
                 }
 
-                // Duración astronómica de la totalidad exacta en segundos
-                let durationSec = 90;
+                // Duración astronómica de la totalidad exacta en segundos (diferencia entre C3 y C2)
+                let durationSec = 0;
                 if (window.BesselianCalculator) {
                     const ecl = window.BesselianCalculator.calculateLocalCircumstances(pt.lat, pt.lng, 250);
-                    if (ecl && ecl.total_duration) {
-                        durationSec = Math.round(ecl.total_duration);
-                    } else if (ecl && !ecl.isTotality) {
-                        durationSec = 0; // Parcialidad
+                    if (ecl && ecl.total_begin && ecl.total_end && ecl.total_begin.time && ecl.total_end.time) {
+                        const t2 = ecl.total_begin.time.date.getTime();
+                        const t3 = ecl.total_end.time.date.getTime();
+                        durationSec = Math.max(0, Math.round((t3 - t2) / 1000));
                     }
                 }
 

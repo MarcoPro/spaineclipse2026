@@ -77,7 +77,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // State for simulations
     let lastEclipseData = null;
-    let lastLocation = { lat: 0, lng: 0, alt: 0, az: 0 };
+    let lastLocation = { name: 'Palencia', lat: 42.0096, lng: -4.5288, alt: 0, az: 0 };
+    window.lastLocation = lastLocation;
     let lastScoreState = null;
 
     // --- LEAFLET MAP INITIALIZATION ---
@@ -708,6 +709,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const equ_peak = window.Astronomy.Equator('Sun', eclipse.peak.time.date, observer, true, true);
             const hor_peak = window.Astronomy.Horizon(eclipse.peak.time.date, observer, equ_peak.ra, equ_peak.dec, 'normal');
             lastLocation = { name: name || 'Ubicación Seleccionada', lat, lng, alt: hor_peak.altitude, az: hor_peak.azimuth, elevation: localElev };
+            window.lastLocation = lastLocation;
 
             drawSunDirection(lat, lng, eclipse.peak.time.date, localElev);
             renderEclipseInfo(eclipse, observer, name, context, localElev);
