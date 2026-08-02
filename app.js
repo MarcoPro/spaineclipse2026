@@ -1187,6 +1187,21 @@ document.addEventListener("DOMContentLoaded", () => {
         const timeC3 = (isLocallyTotal && eclipse.total_end) ? timeFmt.format(eclipse.total_end.time.date) : '--:--:--';
         const timeC4 = eclipse.partial_end ? timeFmt.format(eclipse.partial_end.time.date) : '--:--:--';
 
+        // Sincronizar datos oficiales exactos para las herramientas astronómicas (Reloj Día D y Pase de Observación)
+        window.currentEclipseDetails = {
+            isTotality: isLocallyTotal,
+            c1: { timeStr: timeC1, date: eclipse.partial_begin ? eclipse.partial_begin.time.date : null },
+            c2: { timeStr: timeC2, date: (isLocallyTotal && eclipse.total_begin) ? eclipse.total_begin.time.date : null },
+            max: { timeStr: timePeak, date: eclipse.peak ? eclipse.peak.time.date : null },
+            c3: { timeStr: timeC3, date: (isLocallyTotal && eclipse.total_end) ? eclipse.total_end.time.date : null },
+            c4: { timeStr: timeC4, date: eclipse.partial_end ? eclipse.partial_end.time.date : null },
+            c1Date: eclipse.partial_begin ? eclipse.partial_begin.time.date : null,
+            c2Date: (isLocallyTotal && eclipse.total_begin) ? eclipse.total_begin.time.date : null,
+            maxDate: eclipse.peak ? eclipse.peak.time.date : null,
+            c3Date: (isLocallyTotal && eclipse.total_end) ? eclipse.total_end.time.date : null,
+            c4Date: eclipse.partial_end ? eclipse.partial_end.time.date : null
+        };
+
         // Calculate durations
         let phaseDurationObj = { m: '--', s: '--' };
         if (isLocallyTotal && eclipse.total_begin && eclipse.total_end) {

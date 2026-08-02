@@ -108,12 +108,30 @@
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
         ctx.strokeRect(80, 445, w - 160, 400);
 
+        const timeFmt = new Intl.DateTimeFormat('es-ES', {
+            hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/Madrid'
+        });
+
+        function getFormattedContactTime(cObj) {
+            if (!cObj) return '--:--:-- CEST';
+            if (typeof cObj === 'string') return cObj.includes('CEST') ? cObj : `${cObj} CEST`;
+            if (cObj.timeStr && cObj.timeStr !== '--:--:--') {
+                return cObj.timeStr.includes('CEST') ? cObj.timeStr : `${cObj.timeStr} CEST`;
+            }
+            if (cObj.date) {
+                return `${timeFmt.format(cObj.date)} CEST`;
+            }
+            return '--:--:-- CEST';
+        }
+
+        const isTotal = Boolean(data && data.isTotality);
+
         const contacts = [
-            { code: 'C1', name: 'Inicio Eclipse Parcial', time: data?.c1?.timeStr || '19:30:12 CEST', note: 'Gafas solares PUESTAS' },
-            { code: 'C2', name: 'Inicio de la Totalidad', time: data?.c2?.timeStr || '20:27:45 CEST', note: '¡QUITAR GAFAS SOLARES!' },
-            { code: 'MAX', name: 'Eclipse Máximo (Corona)', time: data?.max?.timeStr || '20:28:30 CEST', note: 'Oscuridad total / Vía Láctea' },
-            { code: 'C3', name: 'Fin de la Totalidad', time: data?.c3?.timeStr || '20:29:15 CEST', note: '¡PONER GAFAS SOLARES!' },
-            { code: 'C4', name: 'Fin Eclipse Parcial', time: data?.c4?.timeStr || '21:22:00 CEST', note: 'Puesta de sol solapada' }
+            { code: 'C1', name: 'Inicio Eclipse Parcial', time: getFormattedContactTime(data?.c1), note: 'Gafas solares PUESTAS' },
+            { code: 'C2', name: 'Inicio de la Totalidad', time: isTotal ? getFormattedContactTime(data?.c2) : 'No aplica (Parcial)', note: '¡QUITAR GAFAS SOLARES!' },
+            { code: 'MAX', name: 'Eclipse Máximo (Corona)', time: getFormattedContactTime(data?.max), note: 'Oscuridad total / Vía Láctea' },
+            { code: 'C3', name: 'Fin de la Totalidad', time: isTotal ? getFormattedContactTime(data?.c3) : 'No aplica (Parcial)', note: '¡PONER GAFAS SOLARES!' },
+            { code: 'C4', name: 'Fin Eclipse Parcial', time: getFormattedContactTime(data?.c4), note: 'Puesta de sol solapada' }
         ];
 
         let yPos = 505;
