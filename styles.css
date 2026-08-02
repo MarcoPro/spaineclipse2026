@@ -2580,6 +2580,45 @@ body {
     color: #f1c40f;
 }
 
+.finder-chips-container {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.chip-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    color: #a4b0be;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+.chip-item input[type="checkbox"] {
+    accent-color: #f1c40f;
+    cursor: pointer;
+}
+
+.chip-item:hover {
+    border-color: rgba(241, 196, 15, 0.5);
+    color: #ffffff;
+}
+
+.chip-item.active {
+    background: rgba(241, 196, 15, 0.15);
+    border-color: #f1c40f;
+    color: #f1c40f;
+    font-weight: 600;
+}
+
 .finder-autocomplete-item .item-sub {
     font-size: 0.7rem;
     color: #a4b0be;

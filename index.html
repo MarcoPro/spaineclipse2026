@@ -748,15 +748,32 @@
                             <span id="finder-radius-val">75 km</span>
                         </div>
                     </div>
-                    <div class="finder-field">
-                        <label>Prioridad:</label>
-                        <select id="finder-priority">
-                            <option value="weather">🌤️ Menor % Nubes (Previsión)</option>
-                            <option value="events">🎪 Con Evento / Zona Pública</option>
-                            <option value="distance">🛣️ Menor Distancia (km)</option>
-                        </select>
+                    <div class="finder-field full-width" style="flex: 100%; margin-top: 6px;">
+                        <label><i class="fa-solid fa-sliders"></i> Criterios de Selección Múltiple (combina tus preferencias):</label>
+                        <div class="finder-chips-container">
+                            <label class="chip-item active">
+                                <input type="checkbox" id="crit-weather" checked>
+                                <span>🌤️ Menor % Nubes</span>
+                            </label>
+                            <label class="chip-item active">
+                                <input type="checkbox" id="crit-duration" checked>
+                                <span>⏱️ Mayor Duración</span>
+                            </label>
+                            <label class="chip-item active">
+                                <input type="checkbox" id="crit-events" checked>
+                                <span>🎪 Evento Organizado</span>
+                            </label>
+                            <label class="chip-item">
+                                <input type="checkbox" id="crit-sun">
+                                <span>☀️ Sol Elevado</span>
+                            </label>
+                            <label class="chip-item">
+                                <input type="checkbox" id="crit-distance">
+                                <span>🛣️ Menor Distancia</span>
+                            </label>
+                        </div>
                     </div>
-                    <button class="finder-btn-search" id="finder-btn-search"><i class="fa-solid fa-magnifying-glass"></i> Buscar 3 Mejores</button>
+                    <button class="finder-btn-search" id="finder-btn-search" style="margin-top: 8px; width: 100%; justify-content: center; height: 40px;"><i class="fa-solid fa-wand-magic-sparkles"></i> Buscar 3 Mejores Destinos</button>
                 </div>
 
                 <div id="finder-results-container">

@@ -66,6 +66,18 @@
             });
         }
 
+        // Manejar interacción visual de los chips de criterios múltiples
+        const chipLabels = document.querySelectorAll('.chip-item');
+        chipLabels.forEach(chip => {
+            const cb = chip.querySelector('input[type="checkbox"]');
+            if (cb) {
+                cb.addEventListener('change', () => {
+                    if (cb.checked) chip.classList.add('active');
+                    else chip.classList.remove('active');
+                });
+            }
+        });
+
         if (inputOrigin) {
             inputOrigin.addEventListener('input', (e) => {
                 const val = e.target.value.trim();
@@ -125,7 +137,7 @@
             }
         });
 
-        // 3. Buscar sugerencias online con Photon (sin lang=es para evitar HTTP 400 Bad Request)
+        // 3. Buscar sugerencias online con Photon
         if (suggestions.length < 4) {
             try {
                 const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`);
@@ -204,7 +216,7 @@
             return { name: window.lastLocation.name, lat: window.lastLocation.lat, lng: window.lastLocation.lng };
         }
 
-        // 4. Buscar vía API Geocoding Komoot Photon (sin lang=es para evitar 400 Bad Request)
+        // 4. Buscar vía API Geocoding Komoot Photon
         try {
             const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`);
             if (res.ok) {
@@ -291,79 +303,125 @@
     async function executeLocationSearch() {
         const container = document.getElementById('finder-results-container');
         if (container) {
-            container.innerHTML = '<div style="text-align:center; padding: 2rem; color: #a4b0be;"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><p style="margin-top:0.5rem;">Buscando mejores destinos...</p></div>';
+            container.innerHTML = '<div style="text-align:center; padding: 2rem; color: #a4b0be;"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><p style="margin-top:0.5rem;">Calculando evaluación multicriterio...</p></div>';
         }
 
         const inputEl = document.getElementById('finder-origin-input');
         const sliderEl = document.getElementById('finder-radius-slider');
-        const priorityEl = document.getElementById('finder-priority');
 
         const originInputStr = (inputEl && inputEl.value) ? inputEl.value.trim() : 'Palencia';
         const maxRadiusKm = parseFloat((sliderEl && sliderEl.value) ? sliderEl.value : '75');
-        const priority = (priorityEl && priorityEl.value) ? priorityEl.value : 'weather';
 
-        // Determinar coordenadas de origen (asíncrono con geocodificación)
+        // Leer criterios múltiples activos
+        const elW = document.getElementById('crit-weather');
+        const elD = document.getElementById('crit-duration');
+        const elE = document.getElementById('crit-events');
+        const elS = document.getElementById('crit-sun');
+        const elK = document.getElementById('crit-distance');
+
+        const useWeather = elW ? elW.checked : true;
+        const useDuration = elD ? elD.checked : true;
+        const useEvents = elE ? elE.checked : true;
+        const useSun = elS ? elS.checked : false;
+        const useDistance = elK ? elK.checked : false;
+
+        // Determinar coordenadas de origen
         const origin = await resolveOriginCoordinates(originInputStr);
 
         const candidates = [];
 
-        // 1. Evaluar puntos de events.json
+        // Evaluar candidatos combinando events.json y matriz weatherForecastData
+        const rawPoints = [];
         const eventsList = (typeof window.eclipseEvents !== 'undefined') ? window.eclipseEvents : [];
         eventsList.forEach(e => {
-            const dist = haversineKm(origin.lat, origin.lng, e.lat, e.lng);
-            if (dist <= maxRadiusKm) {
-                let cloudPct = 50;
-                if (typeof window.getWeatherForecast === 'function') {
-                    const fc = window.getWeatherForecast(e.lat, e.lng);
-                    if (fc && fc.c_total !== null) cloudPct = fc.c_total;
-                }
-                candidates.push({
-                    name: e.name,
-                    town: e.town || e.province,
-                    province: e.province,
-                    lat: e.lat,
-                    lng: e.lng,
-                    distKm: Math.round(dist),
-                    cloudPct: cloudPct,
-                    isEvent: true,
-                    type: e.category || 'Zona Pública',
-                    url: e.url
-                });
-            }
+            rawPoints.push({
+                name: e.name, town: e.town || e.province, province: e.province,
+                lat: e.lat, lng: e.lng, isEvent: true, type: e.category || 'Zona Pública', url: e.url
+            });
         });
 
-        // 2. Evaluar puntos de la matriz meteorológica
         const gridPoints = (typeof window.weatherForecastData !== 'undefined' && window.weatherForecastData.points) ? window.weatherForecastData.points : [];
         gridPoints.forEach(p => {
-            const dist = haversineKm(origin.lat, origin.lng, p.lat, p.lon);
-            if (dist <= maxRadiusKm && p.c_total !== null) {
-                candidates.push({
+            if (p.c_total !== null) {
+                rawPoints.push({
                     name: `Punto Muestreo (${p.lat.toFixed(2)}, ${p.lon.toFixed(2)})`,
-                    town: 'Buscando municipio...',
-                    province: 'España',
-                    lat: p.lat,
-                    lng: p.lon,
-                    distKm: Math.round(dist),
-                    cloudPct: p.c_total,
-                    isEvent: false,
-                    type: 'Muestreo Meteorológico',
-                    url: null
+                    town: 'Buscando municipio...', province: 'España',
+                    lat: p.lat, lng: p.lon, isEvent: false, type: 'Muestreo Meteorológico', url: null
                 });
             }
         });
 
-        // Ordenar candidatos
-        candidates.sort((a, b) => {
-            if (priority === 'weather') {
-                return a.cloudPct - b.cloudPct || a.distKm - b.distKm;
-            } else if (priority === 'events') {
-                if (a.isEvent && !b.isEvent) return -1;
-                if (!a.isEvent && b.isEvent) return 1;
-                return a.cloudPct - b.cloudPct;
-            } else {
-                return a.distKm - b.distKm;
+        rawPoints.forEach(pt => {
+            const dist = haversineKm(origin.lat, origin.lng, pt.lat, pt.lng);
+            if (dist <= maxRadiusKm) {
+                // Nubes
+                let cloudPct = 50;
+                if (typeof window.getWeatherForecast === 'function') {
+                    const fc = window.getWeatherForecast(pt.lat, pt.lng);
+                    if (fc && fc.c_total !== null) cloudPct = fc.c_total;
+                }
+
+                // Duración de totalidad
+                let durationSec = 90;
+                if (window.BesselianCalculator) {
+                    const ecl = window.BesselianCalculator.calculateLocalCircumstances(pt.lat, pt.lng, 250);
+                    if (ecl && ecl.total_duration) durationSec = Math.round(ecl.total_duration);
+                }
+
+                // Altura solar
+                let sunAlt = 10.5;
+                if (window.Astronomy) {
+                    const obs = new window.Astronomy.Observer(pt.lat, pt.lng, 250);
+                    const equ = window.Astronomy.Equator('Sun', new Date('2026-08-12T18:28:00Z'), obs, true, true);
+                    const hor = window.Astronomy.Horizon(new Date('2026-08-12T18:28:00Z'), obs, equ.ra, equ.dec, 'normal');
+                    if (hor && hor.altitude) sunAlt = hor.altitude;
+                }
+
+                // Cálculo de puntuación ponderada multicriterio (0 - 100%)
+                let totalScore = 0;
+                let totalWeight = 0;
+
+                if (useWeather) {
+                    const wScore = Math.max(0, 100 - cloudPct);
+                    totalScore += wScore * 4.0;
+                    totalWeight += 4.0;
+                }
+                if (useDuration) {
+                    const dScore = Math.min(100, (durationSec / 104) * 100);
+                    totalScore += dScore * 3.0;
+                    totalWeight += 3.0;
+                }
+                if (useEvents) {
+                    const evScore = pt.isEvent ? 100 : 0;
+                    totalScore += evScore * 3.0;
+                    totalWeight += 3.0;
+                }
+                if (useSun) {
+                    const sScore = Math.min(100, (Math.max(0, sunAlt) / 14) * 100);
+                    totalScore += sScore * 2.0;
+                    totalWeight += 2.0;
+                }
+                if (useDistance) {
+                    const distRatio = Math.max(0, 1 - (dist / maxRadiusKm));
+                    totalScore += distRatio * 100 * 2.0;
+                    totalWeight += 2.0;
+                }
+
+                const matchPct = totalWeight > 0 ? Math.round(totalScore / totalWeight) : 50;
+
+                candidates.push({
+                    ...pt,
+                    distKm: Math.round(dist),
+                    cloudPct,
+                    durationSec,
+                    sunAlt,
+                    matchPct
+                });
             }
         });
+
+        // Ordenar candidatos por porcentaje de afinidad multicriterio
+        candidates.sort((a, b) => b.matchPct - a.matchPct || a.distKm - b.distKm);
 
         const top3 = candidates.slice(0, 3);
 
@@ -382,9 +440,9 @@
 
         if (top3.length === 0) {
             container.innerHTML = `
-                <div class="finder-no-results">
-                    <i class="fa-solid fa-circle-exclamation"></i>
-                    No se encontraron puntos en un radio de ${maxRadiusKm} km desde ${origin.name}. Pruebe a aumentar el radio de búsqueda.
+                <div class="finder-no-results" style="text-align:center; padding:1.5rem; color:#a4b0be;">
+                    <i class="fa-solid fa-circle-exclamation fa-2x" style="color:#f1c40f;"></i>
+                    <p style="margin-top:0.5rem;">No se encontraron puntos en un radio de ${maxRadiusKm} km desde ${origin.name}. Pruebe a aumentar el radio de búsqueda.</p>
                 </div>
             `;
             return;
@@ -402,19 +460,23 @@
                 <div class="finder-card ${medalClass}">
                     <div class="finder-card-header">
                         <span class="finder-card-rank">${medalIcon}</span>
-                        <span class="finder-card-dist"><i class="fa-solid fa-route"></i> a ${dest.distKm} km</span>
+                        <span class="finder-card-dist" style="color: #2ecc71; font-weight:700;">🎯 ${dest.matchPct}% Coincidencia</span>
                     </div>
                     <div class="finder-card-title">${dest.name}</div>
-                    <div class="finder-card-sub"><i class="fa-solid fa-map-pin"></i> ${dest.town} (${dest.province})</div>
+                    <div class="finder-card-sub"><i class="fa-solid fa-map-pin"></i> ${dest.town} (${dest.province}) | <i class="fa-solid fa-route"></i> a ${dest.distKm} km</div>
                     
-                    <div class="finder-card-meta">
+                    <div class="finder-card-meta" style="flex-wrap: wrap; gap: 4px;">
                         <div class="finder-meta-item">
-                            <span>Previsión Nubes:</span>
-                            <strong style="color: ${cloudBadgeColor}">${dest.cloudPct}% nubes</strong>
+                            <span>Nubes:</span>
+                            <strong style="color: ${cloudBadgeColor}">${dest.cloudPct}%</strong>
                         </div>
                         <div class="finder-meta-item">
-                            <span>Tipo:</span>
-                            <strong>${dest.type}</strong>
+                            <span>Duración:</span>
+                            <strong style="color: #f1c40f;">${dest.durationSec}s</strong>
+                        </div>
+                        <div class="finder-meta-item">
+                            <span>Sol:</span>
+                            <strong style="color: #3498db;">${dest.sunAlt.toFixed(1)}°</strong>
                         </div>
                     </div>
 
