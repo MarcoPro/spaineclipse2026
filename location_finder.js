@@ -404,27 +404,35 @@
         rawPoints.forEach(pt => {
             const dist = haversineKm(origin.lat, origin.lng, pt.lat, pt.lng);
             if (dist <= maxRadiusKm) {
-                // Nubes
-                let cloudPct = 50;
+                // Nubes en tiempo real desde la matriz meteorológica o función
+                let cloudPct = pt.cloudPct !== undefined ? pt.cloudPct : 50;
                 if (typeof window.getWeatherForecast === 'function') {
                     const fc = window.getWeatherForecast(pt.lat, pt.lng);
-                    if (fc && fc.c_total !== null) cloudPct = fc.c_total;
+                    if (fc && fc.c_total !== null && fc.c_total !== undefined) {
+                        cloudPct = fc.c_total;
+                    }
                 }
 
-                // Duración de totalidad
+                // Duración astronómica de la totalidad exacta en segundos
                 let durationSec = 90;
                 if (window.BesselianCalculator) {
                     const ecl = window.BesselianCalculator.calculateLocalCircumstances(pt.lat, pt.lng, 250);
-                    if (ecl && ecl.total_duration) durationSec = Math.round(ecl.total_duration);
+                    if (ecl && ecl.total_duration) {
+                        durationSec = Math.round(ecl.total_duration);
+                    } else if (ecl && !ecl.isTotality) {
+                        durationSec = 0; // Parcialidad
+                    }
                 }
 
-                // Altura solar
+                // Altura solar en el eclipse máximo
                 let sunAlt = 10.5;
                 if (window.Astronomy) {
                     const obs = new window.Astronomy.Observer(pt.lat, pt.lng, 250);
                     const equ = window.Astronomy.Equator('Sun', new Date('2026-08-12T18:28:00Z'), obs, true, true);
                     const hor = window.Astronomy.Horizon(new Date('2026-08-12T18:28:00Z'), obs, equ.ra, equ.dec, 'normal');
-                    if (hor && hor.altitude) sunAlt = hor.altitude;
+                    if (hor && hor.altitude !== undefined) {
+                        sunAlt = Math.round(hor.altitude * 10) / 10;
+                    }
                 }
 
                 // Cálculo de puntuación ponderada multicriterio (0 - 100%)

@@ -1801,6 +1801,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return null;
         }
     }
+    window.getWeatherForecast = getWeatherForecast;
 
     function getWMOWeatherInfo(code, cloudPct, precip, cLow) {
         // Corregir códigos WMO contradictorios de lluvia/llovizna si la probabilidad de lluvia es 0% o si nubes bajas es 0%
