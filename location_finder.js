@@ -4,21 +4,47 @@
 (function () {
     let finderMarkersGroup = null;
 
-    // Municipios / Orígenes predefinidos comunes
+    // Municipios y ciudades comunes enriquecidas en España
     const KNOWN_ORIGINS = [
-        { name: "Palencia", lat: 42.0096, lng: -4.5288 },
-        { name: "Valladolid", lat: 41.6523, lng: -4.7245 },
-        { name: "Burgos", lat: 42.3440, lng: -3.6969 },
-        { name: "Oviedo", lat: 43.3619, lng: -5.8494 },
-        { name: "A Coruña", lat: 43.3623, lng: -8.4115 },
-        { name: "Santander", lat: 43.4623, lng: -3.8099 },
-        { name: "León", lat: 42.5987, lng: -5.5671 },
-        { name: "Soria", lat: 41.7640, lng: -2.4688 },
-        { name: "Segovia", lat: 40.9429, lng: -4.1088 },
-        { name: "Ávila", lat: 40.6565, lng: -4.6818 },
-        { name: "Madrid", lat: 40.4168, lng: -3.7038 },
-        { name: "Zaragoza", lat: 41.6561, lng: -0.8773 },
-        { name: "Palma de Mallorca", lat: 39.5696, lng: 2.6502 }
+        { name: "Palencia", lat: 42.0096, lng: -4.5288, province: "Palencia" },
+        { name: "Valladolid", lat: 41.6523, lng: -4.7245, province: "Valladolid" },
+        { name: "Burgos", lat: 42.3440, lng: -3.6969, province: "Burgos" },
+        { name: "Arévalo", lat: 41.0625, lng: -4.7208, province: "Ávila" },
+        { name: "Medina del Campo", lat: 41.3142, lng: -4.9145, province: "Valladolid" },
+        { name: "Aranda de Duero", lat: 41.6704, lng: -3.6892, province: "Burgos" },
+        { name: "Guardo", lat: 42.7885, lng: -4.8436, province: "Palencia" },
+        { name: "Aguilar de Campoo", lat: 42.7933, lng: -4.2608, province: "Palencia" },
+        { name: "Paredes de Nava", lat: 42.1558, lng: -4.6942, province: "Palencia" },
+        { name: "Osorno la Mayor", lat: 42.4108, lng: -4.3608, province: "Palencia" },
+        { name: "Frómista", lat: 42.2675, lng: -4.4069, province: "Palencia" },
+        { name: "Saldaña", lat: 42.5208, lng: -4.7408, province: "Palencia" },
+        { name: "Cervera de Pisuerga", lat: 42.8647, lng: -4.4986, province: "Palencia" },
+        { name: "Peñaranda de Bracamonte", lat: 40.9017, lng: -5.2008, province: "Salamanca" },
+        { name: "Salamanca", lat: 40.9688, lng: -5.6639, province: "Salamanca" },
+        { name: "Zamora", lat: 41.5063, lng: -5.7446, province: "Zamora" },
+        { name: "Toro", lat: 41.5236, lng: -5.3944, province: "Zamora" },
+        { name: "Benavente", lat: 42.0028, lng: -5.6783, province: "Zamora" },
+        { name: "León", lat: 42.5987, lng: -5.5671, province: "León" },
+        { name: "Ponferrada", lat: 42.5466, lng: -6.5908, province: "León" },
+        { name: "Astorga", lat: 42.4578, lng: -6.0561, province: "León" },
+        { name: "Soria", lat: 41.7640, lng: -2.4688, province: "Soria" },
+        { name: "El Burgo de Osma", lat: 41.5861, lng: -3.0678, province: "Soria" },
+        { name: "Segovia", lat: 40.9429, lng: -4.1088, province: "Segovia" },
+        { name: "Cuéllar", lat: 41.4014, lng: -4.3153, province: "Segovia" },
+        { name: "Ávila", lat: 40.6565, lng: -4.6818, province: "Ávila" },
+        { name: "Oviedo", lat: 43.3619, lng: -5.8494, province: "Asturias" },
+        { name: "Gijón", lat: 43.5322, lng: -5.6611, province: "Asturias" },
+        { name: "Avilés", lat: 43.5547, lng: -5.9248, province: "Asturias" },
+        { name: "Santander", lat: 43.4623, lng: -3.8099, province: "Cantabria" },
+        { name: "Torrelavega", lat: 43.3494, lng: -4.0478, province: "Cantabria" },
+        { name: "A Coruña", lat: 43.3623, lng: -8.4115, province: "A Coruña" },
+        { name: "Santiago de Compostela", lat: 42.8782, lng: -8.5448, province: "A Coruña" },
+        { name: "Lugo", lat: 43.0097, lng: -7.5568, province: "Lugo" },
+        { name: "Ourense", lat: 42.3364, lng: -7.8636, province: "Ourense" },
+        { name: "Madrid", lat: 40.4168, lng: -3.7038, province: "Madrid" },
+        { name: "Zaragoza", lat: 41.6561, lng: -0.8773, province: "Zaragoza" },
+        { name: "Teruel", lat: 40.3456, lng: -1.1072, province: "Teruel" },
+        { name: "Logroño", lat: 42.4650, lng: -2.4456, province: "La Rioja" }
     ];
 
     function initLocationFinderModal() {
@@ -252,47 +278,71 @@
         return { name: "Palencia", lat: 42.0096, lng: -4.5288 };
     }
 
+    function sanitizeTownName(rawName) {
+        if (!rawName) return null;
+        let s = rawName.trim();
+        if (/^(finca|caser[ií]o|dehesa|pol[ií]gono|parcela|carretera|autov[ií]a|monte|paraje|camino)/i.test(s)) {
+            return null;
+        }
+        return s;
+    }
+
     async function resolveCandidateTown(cand) {
         if (cand.isEvent || cand.resolved) return cand;
 
-        // Buscar coincidencia cercana con events.json
-        const eventsList = (typeof window.eclipseEvents !== 'undefined') ? window.eclipseEvents : [];
-        let nearestEvent = null;
+        // 1. Buscar coincidencia geográfica con municipios conocidos o eventos (dentro de 18 km)
+        let nearestKnown = null;
         let minD = Infinity;
+
+        KNOWN_ORIGINS.forEach(o => {
+            const d = haversineKm(cand.lat, cand.lng, o.lat, o.lng);
+            if (d < minD) {
+                minD = d;
+                nearestKnown = { town: o.name, province: o.province || 'España' };
+            }
+        });
+
+        const eventsList = (typeof window.eclipseEvents !== 'undefined') ? window.eclipseEvents : [];
         eventsList.forEach(e => {
             const d = haversineKm(cand.lat, cand.lng, e.lat, e.lng);
             if (d < minD) {
                 minD = d;
-                nearestEvent = e;
+                nearestKnown = { town: e.town || e.name, province: e.province || 'España' };
             }
         });
 
-        if (nearestEvent && minD <= 15) {
-            cand.name = `Entorno de ${nearestEvent.town}`;
-            cand.town = nearestEvent.town;
-            cand.province = nearestEvent.province;
+        if (nearestKnown && minD <= 18) {
+            cand.name = `Entorno de ${nearestKnown.town}`;
+            cand.town = nearestKnown.town;
+            cand.province = nearestKnown.province;
             cand.resolved = true;
             return cand;
         }
 
-        // Geocodificación inversa con Photon
+        // 2. Geocodificación inversa municipal oficial con Nominatim (zoom=12)
         try {
-            const res = await fetch(`https://photon.komoot.io/reverse?lat=${cand.lat}&lon=${cand.lng}`);
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${cand.lat}&lon=${cand.lon || cand.lng}&format=json&zoom=12`);
             if (res.ok) {
                 const data = await res.json();
-                if (data && data.features && data.features.length > 0) {
-                    const props = data.features[0].properties;
-                    const townName = props.city || props.town || props.village || props.locality || props.county || "Municipio";
-                    const provName = props.state || props.county || "España";
-                    cand.name = `Entorno de ${townName}`;
-                    cand.town = townName;
-                    cand.province = provName;
-                    cand.resolved = true;
-                    return cand;
+                if (data && data.address) {
+                    const addr = data.address;
+                    let townName = sanitizeTownName(addr.municipality) ||
+                                   sanitizeTownName(addr.city) ||
+                                   sanitizeTownName(addr.town) ||
+                                   sanitizeTownName(addr.village) ||
+                                   sanitizeTownName(addr.county);
+                    let provName = addr.state || addr.county || "España";
+                    if (townName) {
+                        cand.name = `Entorno de ${townName}`;
+                        cand.town = townName;
+                        cand.province = provName;
+                        cand.resolved = true;
+                        return cand;
+                    }
                 }
             }
         } catch (e) {
-            console.warn('Reverse geocode candidate error:', e);
+            console.warn('Nominatim reverse geocode candidate error:', e);
         }
 
         cand.name = `Zona Rural (${cand.lat.toFixed(2)}°, ${cand.lng.toFixed(2)}°)`;
