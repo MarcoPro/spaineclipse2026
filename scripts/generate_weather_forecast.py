@@ -95,7 +95,7 @@ def main():
     print(f"📍 Se generaron {len(grid_points)} puntos de muestreo en la franja.")
 
     # 3. Consultar Open-Meteo Forecast API
-    BATCH_SIZE = 60
+    BATCH_SIZE = 45  # Tamaño de lote optimizado para evitar URLs excesivamente largas y timeouts SSL
     results = []
     
     now_utc_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -122,8 +122,12 @@ def main():
         batch_data = None
         for attempt in range(1, max_retries + 1):
             try:
-                req = urllib.request.Request(url, headers={'User-Agent': 'Eclipse2026Forecast/1.0'})
-                with urllib.request.urlopen(req, timeout=15) as response:
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (compatible; EclipseSpain2026Bot/1.0; +https://github.com/MarcoPro/spaineclipse2026)',
+                    'Accept': 'application/json'
+                }
+                req = urllib.request.Request(url, headers=headers)
+                with urllib.request.urlopen(req, timeout=25) as response:
                     res_body = response.read().decode('utf-8')
                     batch_data = json.loads(res_body)
                     if isinstance(batch_data, dict):
@@ -131,15 +135,18 @@ def main():
                     break
             except urllib.error.HTTPError as e:
                 if e.code == 429:
-                    print(f"    [!] Límite HTTP 429 (intento {attempt}/{max_retries}). Reintentando en {3 * attempt}s...", flush=True)
-                    time.sleep(3 * attempt)
+                    print(f"    [!] Límite HTTP 429 (intento {attempt}/{max_retries}). Esperando {5 * attempt}s...", flush=True)
+                    time.sleep(5 * attempt)
                 else:
                     print(f"    [!] Error HTTP {e.code}: {e.reason}", flush=True)
                     break
             except Exception as e:
                 print(f"    [!] Error de conexión/SSL (intento {attempt}/{max_retries}): {e}", flush=True)
                 if attempt < max_retries:
-                    time.sleep(2 * attempt)
+                    time.sleep(3 * attempt)
+
+        # Pausa ligera entre lotes para evitar throttling de Handshake TLS en Cloudflare/Open-Meteo
+        time.sleep(1.2)
 
         if batch_data and len(batch_data) == len(batch):
             for j, p_data in enumerate(batch_data):
