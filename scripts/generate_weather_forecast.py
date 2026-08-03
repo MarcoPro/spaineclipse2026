@@ -19,6 +19,12 @@ import time
 import os
 from datetime import datetime, timezone
 
+try:
+    import requests
+    HAS_REQUESTS = True
+except ImportError:
+    HAS_REQUESTS = False
+
 # Rutas de archivos
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
@@ -95,11 +101,19 @@ def main():
     print(f"📍 Se generaron {len(grid_points)} puntos de muestreo en la franja.")
 
     # 3. Consultar Open-Meteo Forecast API
-    BATCH_SIZE = 45  # Tamaño de lote optimizado para evitar URLs excesivamente largas y timeouts SSL
+    BATCH_SIZE = 45  # Tamaño de lote optimizado (45 puntos por petición HTTP)
     results = []
     
     now_utc_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     print(f"📡 Consultando Open-Meteo API (Fecha objetivo: {TARGET_DATE} {TARGET_HOUR_UTC}:00 UTC)...", flush=True)
+
+    session = None
+    if HAS_REQUESTS:
+        session = requests.Session()
+        session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (compatible; EclipseSpain2026Bot/1.0; +https://github.com/MarcoPro/spaineclipse2026)',
+            'Accept': 'application/json'
+        })
 
     for i in range(0, len(grid_points), BATCH_SIZE):
         batch = grid_points[i:i+BATCH_SIZE]
@@ -118,35 +132,44 @@ def main():
             f"&timezone=UTC"
         )
 
-        max_retries = 3
+        max_retries = 5
         batch_data = None
         for attempt in range(1, max_retries + 1):
             try:
-                headers = {
-                    'User-Agent': 'Mozilla/5.0 (compatible; EclipseSpain2026Bot/1.0; +https://github.com/MarcoPro/spaineclipse2026)',
-                    'Accept': 'application/json'
-                }
-                req = urllib.request.Request(url, headers=headers)
-                with urllib.request.urlopen(req, timeout=25) as response:
-                    res_body = response.read().decode('utf-8')
-                    batch_data = json.loads(res_body)
-                    if isinstance(batch_data, dict):
-                        batch_data = [batch_data]
-                    break
-            except urllib.error.HTTPError as e:
-                if e.code == 429:
-                    print(f"    [!] Límite HTTP 429 (intento {attempt}/{max_retries}). Esperando {5 * attempt}s...", flush=True)
-                    time.sleep(5 * attempt)
+                if HAS_REQUESTS and session:
+                    resp = session.get(url, timeout=35)
+                    if resp.status_code == 200:
+                        batch_data = resp.json()
+                        if isinstance(batch_data, dict):
+                            batch_data = [batch_data]
+                        break
+                    elif resp.status_code == 429:
+                        wait_sec = 6 * attempt
+                        print(f"    [!] Límite HTTP 429 (intento {attempt}/{max_retries}). Esperando {wait_sec}s...", flush=True)
+                        time.sleep(wait_sec)
+                    else:
+                        print(f"    [!] Error HTTP {resp.status_code} (intento {attempt}/{max_retries})", flush=True)
+                        time.sleep(4 * attempt)
                 else:
-                    print(f"    [!] Error HTTP {e.code}: {e.reason}", flush=True)
-                    break
+                    headers = {
+                        'User-Agent': 'Mozilla/5.0 (compatible; EclipseSpain2026Bot/1.0; +https://github.com/MarcoPro/spaineclipse2026)',
+                        'Accept': 'application/json'
+                    }
+                    req = urllib.request.Request(url, headers=headers)
+                    with urllib.request.urlopen(req, timeout=35) as response:
+                        res_body = response.read().decode('utf-8')
+                        batch_data = json.loads(res_body)
+                        if isinstance(batch_data, dict):
+                            batch_data = [batch_data]
+                        break
             except Exception as e:
-                print(f"    [!] Error de conexión/SSL (intento {attempt}/{max_retries}): {e}", flush=True)
+                wait_sec = 4 * attempt
+                print(f"    [!] Error de conexión/SSL (intento {attempt}/{max_retries}): {e}. Esperando {wait_sec}s...", flush=True)
                 if attempt < max_retries:
-                    time.sleep(3 * attempt)
+                    time.sleep(wait_sec)
 
-        # Pausa ligera entre lotes para evitar throttling de Handshake TLS en Cloudflare/Open-Meteo
-        time.sleep(1.2)
+        # Pausa entre lotes para respetar el rate-limit de la API pública de Open-Meteo
+        time.sleep(2.5)
 
         if batch_data and len(batch_data) == len(batch):
             for j, p_data in enumerate(batch_data):
