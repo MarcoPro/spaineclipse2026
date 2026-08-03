@@ -25,6 +25,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Instalar dependencias
+        run: pip install requests
+
       - name: Ejecutar script de predicción meteorológica
         env:
           PYTHONUNBUFFERED: '1'
