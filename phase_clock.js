@@ -1,7 +1,8 @@
 /**
  * Eclipse Solar España 2026 - Módulo de Reloj de Fases en Tiempo Real & Alertas Sonoras (Día D)
- * Incluye Modo Test (Simulación Acelerada y Pruebas Individuales por Fase)
- * y Preavisos de Seguridad Adaptativos (Totality vs Parcialidad)
+ * Incluye Modo Test (Simulación Acelerada y Pruebas Individuales por Fase),
+ * Selección Inteligente de Voces HD (Google/Apple/Microsoft Naturales)
+ * y Preavisos de Seguridad Adaptativos no Solapados (Totality vs Parcialidad)
  */
 (function () {
     let countdownInterval = null;
@@ -14,18 +15,115 @@
     let simSpeed = 10; // Multiplicador por defecto 10x
     let simCurrentDate = null;
     let simLastTickTimestamp = 0;
+    let isAudioUnlocked = false;
+
+    // Gestión de Voces HD / Sintetizador de Voz
+    let availableVoices = [];
+    let selectedVoiceURI = null;
 
     // Contactos por defecto para el Día del Eclipse (12 de agosto de 2026 en UTC / España)
     const DEFAULT_CONTACTS = {
         isTotality: true,
         c1Date: new Date(Date.UTC(2026, 7, 12, 17, 30, 0)),  // 19:30 CEST
         c2Date: new Date(Date.UTC(2026, 7, 12, 18, 27, 0)),  // 20:27 CEST
-        maxDate: new Date(Date.UTC(2026, 7, 12, 18, 28, 0)), // 20:28 CEST
-        c3Date: new Date(Date.UTC(2026, 7, 12, 18, 29, 15)), // 20:29:15 CEST
+        maxDate: new Date(Date.UTC(2026, 7, 12, 18, 27, 45)),// 20:27:45 CEST
+        c3Date: new Date(Date.UTC(2026, 7, 12, 18, 28, 30)), // 20:28:30 CEST
         c4Date: new Date(Date.UTC(2026, 7, 12, 19, 22, 0))   // 21:22 CEST
     };
 
-    // Definición del diccionario de alertas de voz y beeps
+    // Cargar y filtrar voces del sistema operativo / navegador
+    function loadVoices() {
+        if (!('speechSynthesis' in window)) return;
+        availableVoices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('es'));
+
+        const voiceSelect = document.getElementById('select-voice-engine');
+        if (voiceSelect) {
+            voiceSelect.innerHTML = '';
+            if (availableVoices.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = 'Auto (Voz del sistema)';
+                voiceSelect.appendChild(opt);
+            } else {
+                const autoOpt = document.createElement('option');
+                autoOpt.value = '';
+                autoOpt.textContent = '⚡ Auto (Mejor voz HD recomendada)';
+                voiceSelect.appendChild(autoOpt);
+
+                availableVoices.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.voiceURI;
+                    const isNatural = /natural|enhanced|premium|neural|google|apple|microsoft/i.test(v.name);
+                    opt.textContent = `${v.name}${isNatural ? ' ✨ HD' : ''}`;
+                    voiceSelect.appendChild(opt);
+                });
+
+                if (selectedVoiceURI) {
+                    voiceSelect.value = selectedVoiceURI;
+                }
+            }
+        }
+    }
+
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    // Seleccionar automáticamente la voz en español de mayor fidelidad humana
+    function getBestVoice() {
+        if (!('speechSynthesis' in window)) return null;
+        const voices = window.speechSynthesis.getVoices();
+
+        if (selectedVoiceURI) {
+            const found = voices.find(v => v.voiceURI === selectedVoiceURI);
+            if (found) return found;
+        }
+
+        const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
+        if (spanishVoices.length === 0) return null;
+
+        const scored = spanishVoices.map(v => {
+            let score = 0;
+            const name = v.name.toLowerCase();
+
+            if (/natural|enhanced|premium|neural/i.test(name)) score += 100;
+            if (/google/i.test(name)) score += 50;
+            if (/microsoft/i.test(name)) score += 40;
+            if (/monica|jorge|paulina|alvaro|elvira|diego|helena/i.test(name)) score += 30;
+            if (v.lang === 'es-ES') score += 20;
+
+            return { voice: v, score };
+        });
+
+        scored.sort((a, b) => b.score - a.score);
+        return scored[0] ? scored[0].voice : spanishVoices[0];
+    }
+
+    // Desbloqueo de Audio/Voz para navegadores móviles (Android Chrome/Safari iOS)
+    function unlockMobileAudio() {
+        if (isAudioUnlocked) return;
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                const ctx = new AudioContext();
+                if (ctx.state === 'suspended') {
+                    ctx.resume();
+                }
+            }
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.resume();
+                const dummyUtterance = new SpeechSynthesisUtterance('');
+                dummyUtterance.volume = 0.01;
+                window.speechSynthesis.speak(dummyUtterance);
+                loadVoices();
+            }
+            isAudioUnlocked = true;
+        } catch (e) {
+            console.warn('Mobile audio unlock warning:', e);
+        }
+    }
+
+    // Definición del diccionario de alertas de voz y beeps (Tiempos no solapados)
     function getAlertDefinitions(isTotality) {
         return {
             'c1_pre_3m': {
@@ -46,13 +144,13 @@
                     ? "¡Inicio del eclipse parcial C1! Mantén puestas las gafas solares y los filtros en las cámaras."
                     : "¡Inicio del eclipse parcial! Es obligatorio usar gafas solares y filtros en las cámaras en todo momento."
             },
-            'c2_pre_3m': {
-                name: 'Preaviso C2 (3 min)',
+            'c2_pre_1m': {
+                name: 'Preaviso C2 (1 min)',
                 freq: 900,
                 duration: 0.4,
                 wave: 'sine',
                 text: isTotality
-                    ? "Preaviso: En 3 minutos comienza la totalidad C2. Prepárate para retirar las gafas y los filtros de las cámaras solo cuando comience la totalidad."
+                    ? "Preaviso: En 1 minuto comienza la totalidad C2. Prepárate para retirar las gafas y los filtros solo al iniciar la totalidad."
                     : null
             },
             'c2_30s': {
@@ -73,15 +171,6 @@
                     ? "¡Inicio de la totalidad C2! Ya puedes quitarte las gafas solares y retirar los filtros de las cámaras para observar la corona solar a simple vista."
                     : null
             },
-            'max_pre_3m': {
-                name: 'Preaviso Máximo (3 min)',
-                freq: 880,
-                duration: 0.4,
-                wave: 'sine',
-                text: isTotality
-                    ? "Preaviso: En 3 minutos se alcanzará el eclipse máximo."
-                    : "Preaviso: En 3 minutos se alcanzará el máximo del eclipse parcial. Recuerda: NUNCA te quites las gafas ni los filtros en zona parcial."
-            },
             'max_start': {
                 name: 'Eclipse Máximo',
                 freq: 1100,
@@ -91,18 +180,18 @@
                     ? "Eclipse máximo alcanzado. Disfruta de la corona solar a simple vista."
                     : "Eclipse máximo alcanzado. Mantén puestas las gafas solares y los filtros de cámara en todo momento."
             },
-            'c3_pre_3m': {
-                name: 'Preaviso C3 (3 min)',
-                freq: 900,
-                duration: 0.4,
+            'c3_30s': {
+                name: 'Preaviso C3 (30 seg)',
+                freq: 1000,
+                duration: 0.3,
                 wave: 'sine',
                 text: isTotality
-                    ? "Preaviso: En 3 minutos finaliza la totalidad. Prepárate para volver a ponerte las gafas solares y colocar los filtros en las cámaras."
+                    ? "Atención: 30 segundos para el fin de la totalidad. Prepárate para volver a ponerte las gafas solares y colocar los filtros."
                     : null
             },
             'c3_10s': {
                 name: 'Preaviso C3 (10 seg)',
-                freq: 1000,
+                freq: 1100,
                 duration: 0.3,
                 wave: 'sine',
                 text: isTotality
@@ -146,6 +235,7 @@
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             if (!AudioContext) return;
             const ctx = new AudioContext();
+            if (ctx.state === 'suspended') ctx.resume();
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
 
@@ -172,9 +262,19 @@
         try {
             window.speechSynthesis.cancel(); // Cancelar locuciones previas
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'es-ES';
-            utterance.rate = 1.0;
+            
+            const bestVoice = getBestVoice();
+            if (bestVoice) {
+                utterance.voice = bestVoice;
+                utterance.lang = bestVoice.lang;
+            } else {
+                utterance.lang = 'es-ES';
+            }
+
+            // Calibración de cadencia humana (0.94 es más pausado y natural)
+            utterance.rate = 0.94;
             utterance.pitch = 1.0;
+            
             window.speechSynthesis.speak(utterance);
         } catch (e) {
             console.warn('Speech synthesis error:', e);
@@ -202,6 +302,7 @@
     }
 
     function triggerTestAlert(alertKey) {
+        unlockMobileAudio();
         const details = getActiveEclipseDetails();
         const alerts = getAlertDefinitions(details.isTotality);
         const def = alerts[alertKey];
@@ -229,28 +330,48 @@
         const resetSimBtn = document.getElementById('btn-reset-sim');
         const simSpeedSelect = document.getElementById('sim-speed-select');
         const simJumpSelect = document.getElementById('sim-jump-select');
+        const voiceEngineSelect = document.getElementById('select-voice-engine');
+
+        loadVoices();
+
+        const bindClick = (el, fn) => {
+            if (!el) return;
+            const handler = (e) => {
+                if (e.type === 'touchstart') {
+                    el._touchFired = true;
+                } else if (e.type === 'click' && el._touchFired) {
+                    el._touchFired = false;
+                    return;
+                }
+                unlockMobileAudio();
+                fn(e);
+            };
+            el.addEventListener('click', handler);
+            el.addEventListener('touchstart', handler, { passive: true });
+        };
 
         if (openBtn && modal) {
-            openBtn.addEventListener('click', () => {
+            bindClick(openBtn, () => {
                 modal.classList.remove('hidden');
+                loadVoices();
                 updatePhaseClock();
             });
         }
 
         if (closeBtn && modal) {
-            closeBtn.addEventListener('click', () => {
+            bindClick(closeBtn, () => {
                 modal.classList.add('hidden');
             });
         }
 
         if (testAudioBtn) {
-            testAudioBtn.addEventListener('click', () => {
+            bindClick(testAudioBtn, () => {
                 triggerTestAlert('c2_start');
             });
         }
 
         if (toggleVoiceBtn) {
-            toggleVoiceBtn.addEventListener('click', () => {
+            bindClick(toggleVoiceBtn, () => {
                 voiceEnabled = !voiceEnabled;
                 soundEnabled = voiceEnabled;
                 toggleVoiceBtn.classList.toggle('active', voiceEnabled);
@@ -260,9 +381,16 @@
             });
         }
 
+        if (voiceEngineSelect) {
+            voiceEngineSelect.addEventListener('change', (e) => {
+                selectedVoiceURI = e.target.value;
+                triggerTestAlert('c2_start');
+            });
+        }
+
         // Controladores de Simulación
         if (toggleSimBtn) {
-            toggleSimBtn.addEventListener('click', () => {
+            bindClick(toggleSimBtn, () => {
                 if (isSimulating) {
                     stopSimulation();
                 } else {
@@ -272,7 +400,7 @@
         }
 
         if (resetSimBtn) {
-            resetSimBtn.addEventListener('click', () => {
+            bindClick(resetSimBtn, () => {
                 stopSimulation();
             });
         }
@@ -289,6 +417,7 @@
 
         if (simJumpSelect) {
             simJumpSelect.addEventListener('change', (e) => {
+                unlockMobileAudio();
                 const targetKey = e.target.value;
                 if (targetKey) {
                     jumpToSimulationTarget(targetKey);
@@ -300,7 +429,7 @@
         // Botones de Prueba Rápida Individual
         const testButtons = document.querySelectorAll('.btn-test-phase');
         testButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
+            bindClick(btn, () => {
                 const alertKey = btn.getAttribute('data-alert');
                 if (alertKey) {
                     triggerTestAlert(alertKey);
@@ -310,14 +439,15 @@
     }
 
     function startSimulation() {
+        unlockMobileAudio();
         const details = getActiveEclipseDetails();
         isSimulating = true;
         spokenAlerts = {}; // Resetear registro de alertas para probar libremente
         simLastTickTimestamp = performance.now();
 
-        // Iniciar simulación por defecto 4 minutos antes de C1
+        // Iniciar simulación por defecto 3.5 minutos antes de C1
         const c1Time = details.c1Date ? details.c1Date.getTime() : DEFAULT_CONTACTS.c1Date.getTime();
-        simCurrentDate = new Date(c1Time - 4 * 60 * 1000);
+        simCurrentDate = new Date(c1Time - 3.5 * 60 * 1000);
 
         updateSimulationUI(true);
         speakText(`Simulador del Día del Eclipse iniciado a velocidad ${simSpeed}X.`);
@@ -334,24 +464,31 @@
     }
 
     function jumpToSimulationTarget(targetKey) {
+        unlockMobileAudio();
         const details = getActiveEclipseDetails();
         spokenAlerts = {}; // Permitir volver a escuchar alertas al saltar
 
         let targetDate = null;
-        if (targetKey === 'pre_c1' && (details.c1Date || DEFAULT_CONTACTS.c1Date)) {
-            targetDate = new Date((details.c1Date || DEFAULT_CONTACTS.c1Date).getTime() - 3.5 * 60 * 1000);
-        } else if (targetKey === 'pre_c2' && (details.c2Date || DEFAULT_CONTACTS.c2Date)) {
-            targetDate = new Date((details.c2Date || DEFAULT_CONTACTS.c2Date).getTime() - 3.5 * 60 * 1000);
-        } else if (targetKey === 'c2_30s' && (details.c2Date || DEFAULT_CONTACTS.c2Date)) {
-            targetDate = new Date((details.c2Date || DEFAULT_CONTACTS.c2Date).getTime() - 40 * 1000);
-        } else if (targetKey === 'pre_max' && (details.maxDate || DEFAULT_CONTACTS.maxDate)) {
-            targetDate = new Date((details.maxDate || DEFAULT_CONTACTS.maxDate).getTime() - 3.5 * 60 * 1000);
-        } else if (targetKey === 'pre_c3' && (details.c3Date || DEFAULT_CONTACTS.c3Date)) {
-            targetDate = new Date((details.c3Date || DEFAULT_CONTACTS.c3Date).getTime() - 3.5 * 60 * 1000);
-        } else if (targetKey === 'c3_10s' && (details.c3Date || DEFAULT_CONTACTS.c3Date)) {
-            targetDate = new Date((details.c3Date || DEFAULT_CONTACTS.c3Date).getTime() - 20 * 1000);
-        } else if (targetKey === 'pre_c4' && (details.c4Date || DEFAULT_CONTACTS.c4Date)) {
-            targetDate = new Date((details.c4Date || DEFAULT_CONTACTS.c4Date).getTime() - 3.5 * 60 * 1000);
+        const c1Date = details.c1Date || DEFAULT_CONTACTS.c1Date;
+        const c2Date = details.c2Date || DEFAULT_CONTACTS.c2Date;
+        const maxDate = details.maxDate || DEFAULT_CONTACTS.maxDate;
+        const c3Date = details.c3Date || DEFAULT_CONTACTS.c3Date;
+        const c4Date = details.c4Date || DEFAULT_CONTACTS.c4Date;
+
+        if (targetKey === 'pre_c1' && c1Date) {
+            targetDate = new Date(c1Date.getTime() - 3.5 * 60 * 1000);
+        } else if (targetKey === 'pre_c2' && c2Date) {
+            targetDate = new Date(c2Date.getTime() - 75 * 1000); // -1 min 15s
+        } else if (targetKey === 'c2_30s' && c2Date) {
+            targetDate = new Date(c2Date.getTime() - 40 * 1000); // -40s
+        } else if (targetKey === 'max' && maxDate) {
+            targetDate = new Date(maxDate.getTime() - 15 * 1000); // -15s
+        } else if (targetKey === 'c3_30s' && c3Date) {
+            targetDate = new Date(c3Date.getTime() - 40 * 1000); // -40s
+        } else if (targetKey === 'c3_10s' && c3Date) {
+            targetDate = new Date(c3Date.getTime() - 20 * 1000); // -20s
+        } else if (targetKey === 'pre_c4' && c4Date) {
+            targetDate = new Date(c4Date.getTime() - 3.5 * 60 * 1000);
         }
 
         if (targetDate) {
@@ -473,37 +610,42 @@
         const c3Date = details.isTotality ? (details.c3Date || DEFAULT_CONTACTS.c3Date) : null;
         const c4Date = details.c4Date || DEFAULT_CONTACTS.c4Date;
 
-        // C1
+        // C1 (Parcial Inicio)
         checkAlert('c1_pre_3m', c1Date, 170, 190);  // ~3 min antes
         checkAlert('c1_start', c1Date, -10, 5);     // Inicio C1
 
-        // C2 (Sólo si hay totalidad)
+        // C2 (Totalidad Inicio - sólo si hay totalidad)
         if (details.isTotality && c2Date) {
-            checkAlert('c2_pre_3m', c2Date, 170, 190); // ~3 min antes
+            checkAlert('c2_pre_1m', c2Date, 55, 70);   // ~1 min antes
             checkAlert('c2_30s', c2Date, 20, 35);      // 30s antes
             checkAlert('c2_start', c2Date, -10, 5);    // Inicio C2 Totalidad
         }
 
         // MAX
-        checkAlert('max_pre_3m', maxDate, 170, 190);
         checkAlert('max_start', maxDate, -10, 5);
 
-        // C3 (Sólo si hay totalidad)
+        // C3 (Totalidad Fin - sólo si hay totalidad)
         if (details.isTotality && c3Date) {
-            checkAlert('c3_pre_3m', c3Date, 170, 190);
-            checkAlert('c3_10s', c3Date, 5, 15);       // 10s antes
+            checkAlert('c3_30s', c3Date, 25, 40);       // 30s antes del fin
+            checkAlert('c3_10s', c3Date, 5, 15);       // 10s antes del fin
             checkAlert('c3_start', c3Date, -10, 5);    // Fin C3 Totalidad
         }
 
-        // C4
+        // C4 (Parcial Fin)
         checkAlert('c4_pre_3m', c4Date, 170, 190);
         checkAlert('c4_start', c4Date, -10, 5);
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    // Inicialización resiliente para escritorio y móviles (Android / iOS)
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            initPhaseClockModal();
+            countdownInterval = setInterval(updatePhaseClock, 100);
+        });
+    } else {
         initPhaseClockModal();
-        countdownInterval = setInterval(updatePhaseClock, 100); // 10 ticks/sec
-    });
+        countdownInterval = setInterval(updatePhaseClock, 100);
+    }
 
     window.EclipsePhaseClock = {
         playBeep,

@@ -12,7 +12,7 @@ Permite a cualquier usuario buscar su localidad (o hacer clic en el mapa) y obte
 
 ![Vista general del mapa con la franja de totalidad y panel informativo](https://img.shields.io/badge/Status-En%20desarrollo-yellow?style=for-the-badge)
 
-- 🔔 **Reloj Día D & Alertas de Voz en Vivo con Modo Test**: Reloj astronómico interactivo con **Preavisos a 3 min** de cada fase (C1–C4), indicaciones de seguridad contextuales (gafas solares y filtros de cámara según zona de totalidad o parcialidad), **Simulador temporal acelerado (1X–30X)** y **botonera de pruebas rápidas por fase**.
+- 🔔 **Reloj Día D & Alertas de Voz en Vivo con Modo Test**: Reloj astronómico interactivo con **Preavisos adaptativos sin solapamiento** de cada fase (C1–C4), indicaciones de seguridad contextuales (gafas solares y filtros de cámara según zona de totalidad o parcialidad), **Motor de voz HD con selector de sintetizador**, **Simulador temporal acelerado (1X–30X)** y **botonera de pruebas rápidas por fase**.
 - 🗺️ **Múltiples Mapas Base** interactivos (Estándar, Satélite y Relieve Topográfico)
 - ⚡ **Previsión Meteorológica Real Pregenerada (Open-Meteo)**: predicción numérico-climática en vivo para el día del eclipse con desglose de **Nubes Bajas, Medias y Altas (Cirros)**, temperatura y probabilidad de lluvia.
 - 🟢 **Etiqueta Dinámica de Claridad**: interpretación automática del % de nubosidad (ej. *80% despejado - Óptimo*).

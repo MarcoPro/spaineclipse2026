@@ -9,14 +9,25 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 ### ✨ Añadido
 - **Modo Test & Simulador del Día D (`phase_clock.js`)**
   - **Simulador Temporal Acelerado**: Permite ejecutar un reloj virtual del eclipse transcurriendo a velocidad ajustable (**1X, 5X, 10X, 30X**) desde minutos antes de C1 hasta el final del eclipse para ensayar todo el flujo de avisos en directo hoy mismo.
-  - **Salto de Fase Interactivo**: Menú desplegable para posicionar la simulación al instante a 3 minutos o 30s/10s de cualquier contacto (C1, C2, MAX, C3, C4).
-  - **Botonera de Pruebas Rápidas**: Rejilla de 12 botones dedicados para escuchar bajo demanda cualquier aviso de locución por voz (`es-ES`) y tono sintético (beep) individualmente.
+  - **Salto de Fase Interactivo**: Menú desplegable para posicionar la simulación al instante a preavisos específicos (Pre C1 a 3m, Pre C2 a 1m, C2 a 30s, MAX, C3 a 30s, C3 a 10s, Pre C4 a 3m).
+  - **Botonera de Pruebas Rápidas**: Rejilla de botones dedicados para escuchar bajo demanda cualquier aviso de locución por voz (`es-ES`) y tono sintético (beep) individualmente.
   - **Subtítulos y Estado Visual**: Indicador activo en vivo de la hora simulada y banner resaltado con el subtítulo del aviso de voz en reproducción.
-- **Sistema de Preavisos de Fase y Recomendaciones Adaptativas de Seguridad**
-  - **Preavisos a 3 Minutos Antes**: Notificaciones habladas antes de cada fase clave del eclipse.
+- **Motor de Voz HD & Selección Inteligente de Sintetizadores**
+  - **Priorización de Voces Neuronales/HD**: Algoritmo de puntuación que selecciona automáticamente voces de alta fidelidad humana disponibles en el sistema (*Google español de España*, *Apple Mónica/Jorge Enhanced*, *Microsoft Jorge Natural*).
+  - **Selector de Voz en UI**: Menú desplegable `Voz de Sintetizador` con indicación **`✨ HD`** para elegir manualmente entre las voces instaladas en el dispositivo.
+  - **Cadencia Humana Calibrada**: Reducción de velocidad a `0.94` para una entonación más pausada, natural y clara.
+- **Sistema de Preavisos Adaptativo No Solapado en Totalidad**
+  - **Reorganización Cronológica en Totalidad**: Ajuste de intervalos de preaviso para evitar solapamientos durante eclipses totales cortos (< 2 min): Pre C2 (-1 min y -30s), C2 (0s), MAX (0s), Pre C3 (-30s y -10s), C3 (0s).
   - **Diferenciación Estricta entre Totalidad y Parcialidad**:
-    - *Zona de Totalidad*: Instruye preparar la retirada de gafas solares y filtros de cámara a los 30s antes de C2, autoriza su retirada exacta en C2 (totalidad), e insta encarecidamente a volver a colocárselos 10s antes de C3.
+    - *Zona de Totalidad*: Instruye preparar la retirada de gafas solares y filtros de cámara a los 30s antes de C2, autoriza su retirada exacta en C2 (totalidad), e insta encarecidamente a volver a colocárselos a 30s y 10s antes de C3.
     - *Zona de Parcialidad*: Enfatiza en todos los preavisos que **NUNCA** se deben retirar las gafas ni los filtros durante ninguna fase del eclipse parcial.
+- **Diseño e Integración Completa de Favicon & Iconos PWA**
+  - **Favicon Vectorial SVG (`favicon.svg`)**: Diseño estilizado de alta definición de la corona solar dorada envolviendo la luna oscura con resplandor radial y perla de Baily para pantallas Retina y monitores 4K.
+  - **Formatos Multi-Dispositivo**: Generación de `favicon-32x32.png`, `favicon-16x16.png`, `favicon.ico`, `apple-touch-icon.png` (iOS) e iconos PWA de 192px y 512px para Android y escritorio.
+  - **Caché Offline en Service Worker**: Integración en `sw.js` (v2.6.0) para garantizar su disponibilidad 100% sin conexión.
+
+### 🐛 Corregido
+- **Compatibilidad de Audio y Simulación en Android / iOS Móviles**: Implementada función `unlockMobileAudio()` vinculada a eventos de toque (`touchstart` y `click`) para desbloquear las restricciones de `AudioContext` y `SpeechSynthesis` en navegadores móviles.
 
 ---
 

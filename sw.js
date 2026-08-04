@@ -4,7 +4,7 @@
  * el día del eclipse (zonas rurales sin cobertura).
  */
 
-const CACHE_NAME = 'eclipse-2026-v2.5.0';
+const CACHE_NAME = 'eclipse-2026-v2.6.0';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -22,6 +22,13 @@ const ASSETS_TO_CACHE = [
     './location_finder.js',
     './observation_card.js',
     './manifest.json',
+    './favicon.svg',
+    './favicon-32x32.png',
+    './favicon-16x16.png',
+    './favicon.ico',
+    './apple-touch-icon.png',
+    './icons/icon-192.png',
+    './icons/icon-512.png',
     'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',

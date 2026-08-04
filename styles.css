@@ -2531,6 +2531,10 @@ body {
     gap: 4px;
 }
 
+.sim-field.full-width {
+    grid-column: 1 / -1;
+}
+
 .sim-field label {
     font-size: 0.72rem;
     color: #cbd5e1;

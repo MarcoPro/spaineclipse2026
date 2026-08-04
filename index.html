@@ -11,6 +11,15 @@
         content="eclipse solar, eclipse 2026, España, totalidad, astronomía, simulador, perlas de Baily, umbra, trayectoria">
     <link rel="canonical" href="https://marcopro.github.io/spaineclipse2026/">
 
+    <!-- Favicon & Touch Icons -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="shortcut icon" href="favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#090d16">
+
     <!-- Open Graph / Facebook / WhatsApp -->
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Eclipse Solar España 2026">
@@ -694,6 +703,12 @@
 
                     <div class="sim-options-row">
                         <div class="sim-field">
+                            <label><i class="fa-solid fa-microphone-lines"></i> Voz de Sintetizador:</label>
+                            <select id="select-voice-engine" class="sim-select">
+                                <option value="">Auto (Mejor Voz HD disponible)</option>
+                            </select>
+                        </div>
+                        <div class="sim-field">
                             <label><i class="fa-solid fa-gauge-high"></i> Velocidad:</label>
                             <select id="sim-speed-select" class="sim-select">
                                 <option value="1">1X (Tiempo Real)</option>
@@ -702,15 +717,15 @@
                                 <option value="30">30X Rápido</option>
                             </select>
                         </div>
-                        <div class="sim-field">
+                        <div class="sim-field full-width">
                             <label><i class="fa-solid fa-forward-step"></i> Saltar a Preaviso:</label>
                             <select id="sim-jump-select" class="sim-select">
                                 <option value="">Seleccionar Fase...</option>
                                 <option value="pre_c1">Preaviso C1 (-3 min)</option>
-                                <option value="pre_c2">Preaviso C2 (-3 min)</option>
+                                <option value="pre_c2">Preaviso C2 (-1 min)</option>
                                 <option value="c2_30s">Preaviso C2 (-30 seg)</option>
-                                <option value="pre_max">Preaviso MAX (-3 min)</option>
-                                <option value="pre_c3">Preaviso C3 (-3 min)</option>
+                                <option value="max">Eclipse Máximo</option>
+                                <option value="c3_30s">Preaviso C3 (-30 seg)</option>
                                 <option value="c3_10s">Preaviso C3 (-10 seg)</option>
                                 <option value="pre_c4">Preaviso C4 (-3 min)</option>
                             </select>
@@ -723,12 +738,11 @@
                     <div class="test-phase-buttons-grid">
                         <button class="btn-test-phase" data-alert="c1_pre_3m"><i class="fa-solid fa-clock"></i> Pre C1 (3m)</button>
                         <button class="btn-test-phase" data-alert="c1_start"><i class="fa-solid fa-play"></i> Inicio C1</button>
-                        <button class="btn-test-phase highlight" data-alert="c2_pre_3m"><i class="fa-solid fa-clock"></i> Pre C2 (3m)</button>
+                        <button class="btn-test-phase highlight" data-alert="c2_pre_1m"><i class="fa-solid fa-clock"></i> Pre C2 (1m)</button>
                         <button class="btn-test-phase highlight" data-alert="c2_30s"><i class="fa-solid fa-triangle-exclamation"></i> Pre C2 (30s)</button>
                         <button class="btn-test-phase highlight totality" data-alert="c2_start"><i class="fa-solid fa-moon"></i> ¡Inicio C2!</button>
-                        <button class="btn-test-phase max" data-alert="max_pre_3m"><i class="fa-solid fa-clock"></i> Pre MAX (3m)</button>
                         <button class="btn-test-phase max" data-alert="max_start"><i class="fa-solid fa-star"></i> MAX Eclipse</button>
-                        <button class="btn-test-phase highlight" data-alert="c3_pre_3m"><i class="fa-solid fa-clock"></i> Pre C3 (3m)</button>
+                        <button class="btn-test-phase highlight" data-alert="c3_30s"><i class="fa-solid fa-clock"></i> Pre C3 (30s)</button>
                         <button class="btn-test-phase highlight warning" data-alert="c3_10s"><i class="fa-solid fa-glasses"></i> Pre C3 (10s)</button>
                         <button class="btn-test-phase highlight" data-alert="c3_start"><i class="fa-solid fa-eye"></i> Fin C3</button>
                         <button class="btn-test-phase" data-alert="c4_pre_3m"><i class="fa-solid fa-clock"></i> Pre C4 (3m)</button>
