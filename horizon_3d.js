@@ -1,13 +1,11 @@
 /**
- * 3D Horizon Simulator - v2.0 Complete Rewrite
+ * 3D Horizon Simulator - v2.1 Optimized for Mobile & iOS Safari
  * 
  * Renders a realistic 3D terrain around the observer location with:
- *  - Smooth terrain using bilinear interpolation (no Minecraft blocks)
- *  - Proportional elevation scaling (flat = flat, mountains = mountains)
+ *  - Smooth terrain using bilinear interpolation + IDW
+ *  - Adaptive mesh resolution (lightweight for iOS / Android mobile devices)
  *  - Camera auto-oriented toward the sun on open
- *  - Realistic sun altitude rendering
- *  - Bright, natural lighting
- *  - Smooth mesh with vertex normals
+ *  - Robust error handling and spinner cleanup
  */
 
 window.Horizon3D = (() => {
@@ -33,42 +31,44 @@ window.Horizon3D = (() => {
         const oldCanvas = container.querySelector('canvas');
         if (oldCanvas) oldCanvas.remove();
 
-        const w = container.clientWidth;
-        const h = container.clientHeight;
+        const w = container.clientWidth || container.offsetWidth || 300;
+        const h = container.clientHeight || container.offsetHeight || 300;
         if (w === 0 || h === 0) return false;
 
         scene = new THREE.Scene();
 
-        // Sky gradient background - much brighter
+        // Sky gradient background
         scene.background = new THREE.Color(0x1a2a4a);
         scene.fog = new THREE.FogExp2(0x1a2a4a, 0.005);
 
         camera = new THREE.PerspectiveCamera(55, w / h, 0.1, 800);
 
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        try {
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+        } catch (e) {
+            console.warn('WebGL initialization fallback:', e);
+            renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+        }
+
         renderer.setSize(w, h);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         renderer.shadowMap.enabled = false;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 1.2;
         container.appendChild(renderer.domElement);
 
-        // --- LIGHTING - much brighter and more natural ---
-        // Strong ambient for base visibility
+        // --- LIGHTING ---
         const ambient = new THREE.AmbientLight(0xb0c4de, 0.8);
         scene.add(ambient);
 
-        // Hemisphere light for sky/ground contrast
         const hemi = new THREE.HemisphereLight(0x87CEEB, 0x556B2F, 0.7);
         scene.add(hemi);
 
-        // Main directional (will be repositioned to sun)
         const dirLight = new THREE.DirectionalLight(0xfff5e0, 1.2);
         dirLight.position.set(20, 40, 20);
         dirLight.name = 'sunLight';
         scene.add(dirLight);
 
-        // Fill light from opposite side
         const fillLight = new THREE.DirectionalLight(0x8899bb, 0.4);
         fillLight.position.set(-20, 10, -20);
         scene.add(fillLight);
@@ -98,7 +98,6 @@ window.Horizon3D = (() => {
         camera.lookAt(lookTarget);
     }
 
-    // --- Mouse orbit handlers ---
     function onMouseDown(e) {
         isDragging = true;
         prevMouse = { x: e.clientX, y: e.clientY };
@@ -136,7 +135,7 @@ window.Horizon3D = (() => {
         }
     }
     function onTouchMove(e) {
-        e.preventDefault(); // Evita el zoom/scroll nativo del navegador
+        e.preventDefault();
         if (e.touches.length === 1 && isDragging) {
             const dx = e.touches[0].clientX - prevMouse.x;
             const dy = e.touches[0].clientY - prevMouse.y;
@@ -147,7 +146,6 @@ window.Horizon3D = (() => {
         } else if (e.touches.length === 2) {
             const dist = getPinchDistance(e);
             const delta = prevPinchDist - dist;
-            // Permitimos bajar hasta 5 de radio para un zoom más profundo
             orbitRadius = Math.max(5, Math.min(120, orbitRadius + delta * 0.2));
             prevPinchDist = dist;
             updateCameraPosition();
@@ -155,21 +153,16 @@ window.Horizon3D = (() => {
     }
 
     function onWindowResize() {
-        if (!container || !renderer) return;
-        const w = container.clientWidth;
-        const h = container.clientHeight;
+        if (!container || !renderer || !camera) return;
+        const w = container.clientWidth || container.offsetWidth;
+        const h = container.clientHeight || container.offsetHeight;
         if (w === 0 || h === 0) return;
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
         renderer.setSize(w, h);
     }
 
-    /**
-     * Procedural noise for micro-topography detail.
-     * Simple deterministic fractal noise.
-     */
     function pseudoNoise(x, z) {
-        // High-frequency constants to avoid Moire wave patterns
         const n = Math.sin(x * 127.1 + z * 311.7) * 43758.5453123;
         return n - Math.floor(n);
     }
@@ -185,7 +178,6 @@ window.Horizon3D = (() => {
         const v01 = pseudoNoise(xi, zi + 1);
         const v11 = pseudoNoise(xi + 1, zi + 1);
 
-        // Smoothstep interpolation
         const ux = xf * xf * (3 - 2 * xf);
         const uz = zf * zf * (3 - 2 * zf);
 
@@ -207,10 +199,6 @@ window.Horizon3D = (() => {
         return val;
     }
 
-    /**
-     * Get elevation using Inverse Distance Weighting (IDW) for better
-     * handling of sparse topography data compared to bilinear.
-     */
     function getInterpolatedElevation(lat, lng, customData = null) {
         const data = customData || window.topographyData || (typeof topographyData !== 'undefined' ? topographyData : null);
         if (!data || data.length === 0) return 0;
@@ -218,7 +206,6 @@ window.Horizon3D = (() => {
         let BL = null, BR = null, TL = null, TR = null;
         let dBL = Infinity, dBR = Infinity, dTL = Infinity, dTR = Infinity;
         
-        // Find the 4 closest points in each of the 4 quadrants around (lat, lng)
         for (const pt of data) {
             const ptLat = pt.lat !== undefined ? pt.lat : pt[0];
             const ptLng = pt.lng !== undefined ? pt.lng : pt[1];
@@ -226,14 +213,12 @@ window.Horizon3D = (() => {
 
             const dSq = (lat - ptLat) ** 2 + (lng - ptLng) ** 2;
             
-            // Check quadrants (including exact matches on axes)
             if (ptLat <= lat && ptLng <= lng && dSq < dBL) { BL = {lat: ptLat, lng: ptLng, alt: ptAlt}; dBL = dSq; }
             if (ptLat <= lat && ptLng >= lng && dSq < dBR) { BR = {lat: ptLat, lng: ptLng, alt: ptAlt}; dBR = dSq; }
             if (ptLat >= lat && ptLng <= lng && dSq < dTL) { TL = {lat: ptLat, lng: ptLng, alt: ptAlt}; dTL = dSq; }
             if (ptLat >= lat && ptLng >= lng && dSq < dTR) { TR = {lat: ptLat, lng: ptLng, alt: ptAlt}; dTR = dSq; }
         }
 
-        // If we found a valid bounding box, perform strict Bilinear Interpolation
         if (BL && BR && TL && TR) {
             if (dBL < 1e-12) return BL.alt;
             if (dBR < 1e-12) return BR.alt;
@@ -244,29 +229,23 @@ window.Horizon3D = (() => {
             const dy = TL.lat - BL.lat;
 
             if (dx > 1e-8 && dy > 1e-8) {
-                // Inside the cell: interpolate X then Y
                 const u = (lng - BL.lng) / dx;
                 const v = (lat - BL.lat) / dy;
                 const botElev = BL.alt * (1 - u) + BR.alt * u;
                 const topElev = TL.alt * (1 - u) + TR.alt * u;
                 return botElev * (1 - v) + topElev * v;
             } else if (dx > 1e-8) {
-                // Edge case: dy is 0 (exactly on horizontal edge)
                 const u = (lng - BL.lng) / dx;
                 return BL.alt * (1 - u) + BR.alt * u;
             } else if (dy > 1e-8) {
-                // Edge case: dx is 0 (exactly on vertical edge)
                 const v = (lat - BL.lat) / dy;
                 return BL.alt * (1 - v) + TL.alt * v;
             }
         }
 
-        // Fallback: Inverse Distance Weighting if we are outside the grid bounds
         let weightSum = 0;
         let elevSum = 0;
         const smoothing = 0.00015;
-        
-        // Re-gather close neighbors for fallback
         const searchRadiusSq = 0.15 * 0.15;
         for (const pt of data) {
             const ptLat = pt.lat !== undefined ? pt.lat : pt[0];
@@ -283,40 +262,19 @@ window.Horizon3D = (() => {
         return weightSum > 0 ? elevSum / weightSum : 0;
     }
 
-    /**
-     * Simple nearest-neighbor elevation lookup.
-     */
-    function getElevation(lat, lng) {
-        const data = window.topographyData || (typeof topographyData !== 'undefined' ? topographyData : null);
-        if (!data || data.length === 0) return 0;
-        let nearest = null;
-        let minDist = Infinity;
-        for (const pt of data) {
-            const dLat = lat - pt.lat;
-            const dLng = lng - pt.lng;
-            const dist = dLat * dLat + dLng * dLng;
-            if (dist < minDist) {
-                minDist = dist;
-                nearest = pt;
-            }
-        }
-        return nearest ? nearest.alt : 0;
-    }
-
     function generateTerrain(lat, lng) {
-        // Clear previous meshes
         if (terrainMesh) { scene.remove(terrainMesh); terrainMesh.geometry.dispose(); terrainMesh.material.dispose(); }
         if (sunMesh) scene.remove(sunMesh);
         if (sunGlow) scene.remove(sunGlow);
         if (pathLine) { scene.remove(pathLine); pathLine.geometry.dispose(); pathLine.material.dispose(); }
         if (observerPin) scene.remove(observerPin);
 
-        // --- Terrain grid parameters ---
-        // Cover 12km radius (24km total) for a closer, more dramatic profile
+        // Parametrización adaptativa según potencia de dispositivo (Móvil vs Escritorio)
+        const isMobile = window.innerWidth <= 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const RADIUS_KM = 12;
         const TOTAL_KM = RADIUS_KM * 2; 
-        const gridSize = 250; 
-        const terrainSpan = 120; // Larger span for panoramic feel
+        const gridSize = isMobile ? 80 : 120; // 80x80 en móviles para evitar bloqueo de CPU y GPU en iOS
+        const terrainSpan = 120;
 
         const kmPerDegLat = 111.32;
         const kmPerDegLng = 111.32 * Math.cos(lat * Math.PI / 180);
@@ -326,12 +284,11 @@ window.Horizon3D = (() => {
         const geometry = new THREE.PlaneGeometry(terrainSpan, terrainSpan, gridSize - 1, gridSize - 1);
         const vertices = geometry.attributes.position.array;
 
-        // --- Optimize: Pre-filter topography data for this bounding box ---
         const globalData = window.topographyData || (typeof topographyData !== 'undefined' ? topographyData : null);
         let localData = globalData;
 
         if (globalData && globalData.length > 0) {
-            const margin = 0.15; // ~15km padding around the grid
+            const margin = 0.08; // ~8km padding alrededor de la rejilla local
             const minLat = lat - geoSpanLat/2 - margin;
             const maxLat = lat + geoSpanLat/2 + margin;
             const minLng = lng - geoSpanLng/2 - margin;
@@ -344,18 +301,10 @@ window.Horizon3D = (() => {
             });
         }
 
-        // Sample elevations
         const baseElevations = [];
         for (let i = 0; i < vertices.length; i += 3) {
             const lx = vertices[i];
             const lz = vertices[i + 1];
-            // North is negative Z, East is positive X
-            // PlaneGeometry Y axis (lz) maps to World -Z. 
-            // So lz > 0 is South (-Z < 0). Moving South decreases Lat.
-            // Wait, lz is local Y. World Z = -lz.
-            // If World Z increases (South), -lz increases => lz decreases.
-            // If lz decreases, geoLat should decrease. 
-            // So geoLat = lat + lz * factor
             const geoLat = lat + (lz / terrainSpan) * geoSpanLat;
             const geoLng = lng + (lx / terrainSpan) * geoSpanLng;
             baseElevations.push(getInterpolatedElevation(geoLat, geoLng, localData));
@@ -366,49 +315,40 @@ window.Horizon3D = (() => {
         const maxElev = Math.max(...baseElevations);
         const elevRange = maxElev - minElev;
 
-        // Vertical scaling - more dramatic to resemble a profile
         let altScale = 0.03;
-        if (elevRange < 100) altScale = 0.10; // Boost flat/low areas
+        if (elevRange < 100) altScale = 0.10;
         else if (elevRange < 500) altScale = 0.06;
         else if (elevRange > 2000) altScale = 0.024;
 
-        // Final elevation with subtle procedural noise
         const finalElevations = [];
         for (let i = 0; i < vertices.length; i += 3) {
             const idx = i / 3;
             const lx = vertices[i];
             const lz = vertices[i + 1];
-            
-            // Base altitude from data
             const baseAlt = baseElevations[idx];
-            
-            // Procedural noise: increases with altitude to simulate rocky peaks
             const roughness = Math.min(1, baseAlt / 1000);
             const noise = (fractalNoise(lx * 0.4, lz * 0.4) - 0.5) * (5 + roughness * 15);
             
             const finalAlt = baseAlt + noise;
             finalElevations.push(finalAlt);
-            
             vertices[i + 2] = (finalAlt - observerElev) * altScale;
         }
 
         geometry.computeVertexNormals();
 
-        // --- Vertex colors based on absolute elevation ---
         const colors = [];
-        const colorWater = new THREE.Color(0x2d5a3f);   // Low/flat green
-        const colorLow = new THREE.Color(0x3a7d44);     // Valley green
-        const colorMid = new THREE.Color(0x6b8e4e);     // Grass green
-        const colorHigh = new THREE.Color(0x8b7355);    // Brown earth
-        const colorPeak = new THREE.Color(0xc4b99a);    // Light tan summit
-        const colorSnow = new THREE.Color(0xd4d0c8);    // Gray-white high peak
+        const colorWater = new THREE.Color(0x2d5a3f);
+        const colorLow = new THREE.Color(0x3a7d44);
+        const colorMid = new THREE.Color(0x6b8e4e);
+        const colorHigh = new THREE.Color(0x8b7355);
+        const colorPeak = new THREE.Color(0xc4b99a);
+        const colorSnow = new THREE.Color(0xd4d0c8);
 
         for (let i = 0; i < vertices.length; i += 3) {
             const idx = i / 3;
             const absElev = finalElevations[idx];
             const color = new THREE.Color();
 
-            // Color based on absolute elevation
             if (absElev < 100) {
                 color.copy(colorWater);
             } else if (absElev < 400) {
@@ -425,7 +365,6 @@ window.Horizon3D = (() => {
         }
         geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 
-        // Smooth shading for organic terrain
         const material = new THREE.MeshLambertMaterial({
             vertexColors: true,
             side: THREE.DoubleSide
@@ -435,17 +374,14 @@ window.Horizon3D = (() => {
         terrainMesh.rotation.x = -Math.PI / 2;
         scene.add(terrainMesh);
 
-        // --- Observer marker ---
+        // Marker
         const pinGroup = new THREE.Group();
-
-        // Pole
         const poleGeom = new THREE.CylinderGeometry(0.08, 0.08, 2, 8);
         const poleMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
         const pole = new THREE.Mesh(poleGeom, poleMat);
         pole.position.y = 1;
         pinGroup.add(pole);
 
-        // Pin head (sphere)
         const headGeom = new THREE.SphereGeometry(0.5, 16, 16);
         const headMat = new THREE.MeshBasicMaterial({ color: 0xe74c3c });
         const head = new THREE.Mesh(headGeom, headMat);
@@ -456,16 +392,15 @@ window.Horizon3D = (() => {
         observerPin = pinGroup;
         scene.add(observerPin);
 
-        // Update look target to be at observer level
         lookTarget.set(0, 2, 0);
 
-        // --- Sun sphere (positioned by updateSunPosition) ---
+        // Sun
         const sunGeom = new THREE.SphereGeometry(2.5, 32, 32);
         const sunMat = new THREE.MeshBasicMaterial({ color: 0xffdd44 });
         sunMesh = new THREE.Mesh(sunGeom, sunMat);
         scene.add(sunMesh);
 
-        // Sun glow sprite
+        // Glow
         const glowCanvas = document.createElement('canvas');
         glowCanvas.width = 128;
         glowCanvas.height = 128;
@@ -488,16 +423,15 @@ window.Horizon3D = (() => {
         sunGlow.scale.set(18, 18, 1);
         scene.add(sunGlow);
 
-        // --- Sun path arc (oriented by azimuth) ---
+        // Arc
         const arcPoints = [];
         const arcRadius = 60;
         for (let i = 0; i <= 60; i++) {
             const t = (i / 60);
-            // Arc from east (sunrise) to west (sunset) passing through the sun position
             const angle = Math.PI * t;
             arcPoints.push(new THREE.Vector3(
                 arcRadius * Math.cos(angle),
-                arcRadius * 0.65 * Math.sin(angle), // Max height of arc
+                arcRadius * 0.65 * Math.sin(angle),
                 0
             ));
         }
@@ -510,7 +444,6 @@ window.Horizon3D = (() => {
         pathLine = new THREE.Line(pathGeom, pathMat);
         scene.add(pathLine);
 
-        // --- Subtle ground reference (thin ring at horizon) ---
         const ringGeom = new THREE.RingGeometry(terrainSpan / 2 - 0.5, terrainSpan / 2, 64);
         const ringMat = new THREE.MeshBasicMaterial({
             color: 0x334455,
@@ -527,8 +460,6 @@ window.Horizon3D = (() => {
     function updateSunPosition(alt, az) {
         if (!sunMesh) return;
 
-        // Convert altitude and azimuth to 3D coordinates
-        // North is negative Z, East is positive X
         const altRad = alt * (Math.PI / 180);
         const azRad = az * (Math.PI / 180); 
 
@@ -540,24 +471,16 @@ window.Horizon3D = (() => {
         sunMesh.position.set(x, Math.max(0, y), z);
         if (sunGlow) sunGlow.position.copy(sunMesh.position);
 
-        // Orient sun path arc roughly in sun direction
         if (pathLine) {
             pathLine.rotation.y = azRad;
         }
 
-        // Update directional light to come from sun direction
         scene.traverse(child => {
             if (child.name === 'sunLight') {
                 child.position.copy(sunMesh.position);
             }
         });
 
-        // Store sun direction for camera orientation
-        // Camera orbit uses: camX = R*sin(phi)*cos(theta), camZ = R*sin(phi)*sin(theta)
-        // So to position camera opposite the sun (looking toward it):
-        // We need camera theta such that camera is BEHIND observer looking at sun
-        // Sun is at (x, y, z), camera orbit theta = atan2(z, x) places cam at same angle
-        // Adding PI places it on the opposite side, so cam looks toward the sun
         sunTheta = Math.atan2(z, x);
     }
 
@@ -568,62 +491,70 @@ window.Horizon3D = (() => {
         }
     }
 
+    function render3D(lat, lng, alt, az) {
+        if (!isInitialized) {
+            const ok = initScene();
+            if (!ok) return false;
+        } else {
+            onWindowResize();
+        }
+
+        generateTerrain(lat, lng);
+        updateSunPosition(alt, az);
+
+        orbitAngle = {
+            theta: sunTheta + Math.PI,
+            phi: Math.PI / 2.3
+        };
+        orbitRadius = 25;
+        
+        const sunDirX = Math.cos(sunTheta);
+        const sunDirZ = Math.sin(sunTheta);
+        lookTarget.set(sunDirX * 15, 1, sunDirZ * 15);
+        
+        updateCameraPosition();
+
+        if (animFrame) cancelAnimationFrame(animFrame);
+        animate();
+        return true;
+    }
+
     function show(lat, lng, alt, az) {
         const modal = document.getElementById('horizon-3d-modal');
         const loadingEl = document.getElementById('horizon-3d-loading');
 
+        if (!modal) return;
         modal.classList.remove('hidden');
 
-        // Show loading spinner immediately
         if (loadingEl) loadingEl.classList.remove('hidden');
 
-        // Use requestAnimationFrame + setTimeout to ensure the DOM renders the loading state
-        requestAnimationFrame(() => {
-            setTimeout(() => {
-                if (!isInitialized) {
-                    const ok = initScene();
-                    if (!ok) {
-                        console.warn('Horizon3D: No se pudo inicializar (contenedor sin dimensiones)');
-                        if (loadingEl) loadingEl.classList.add('hidden');
-                        return;
-                    }
+        setTimeout(() => {
+            try {
+                const ok = render3D(lat, lng, alt, az);
+                if (!ok) {
+                    // Reintento si el modal no se había renderizado completamente en el DOM
+                    setTimeout(() => {
+                        try {
+                            render3D(lat, lng, alt, az);
+                        } catch (e2) {
+                            console.error('Reintento Horizon3D falló:', e2);
+                        } finally {
+                            if (loadingEl) loadingEl.classList.add('hidden');
+                        }
+                    }, 120);
                 } else {
-                    onWindowResize();
+                    if (loadingEl) loadingEl.classList.add('hidden');
                 }
-
-                generateTerrain(lat, lng);
-                updateSunPosition(alt, az);
-
-                // --- NEW CAMERA ORIENTATION ---
-                // To place the pin "at the back" (bottom of screen) and look toward the sun/horizon:
-                // 1. We position the camera BEHIND the pin relative to the sun.
-                // 2. We look at a target that is IN FRONT of the pin.
-                
-                orbitAngle = {
-                    theta: sunTheta + Math.PI, // Opposite the sun
-                    phi: Math.PI / 2.3 // Low angle, looking toward the horizon
-                };
-                orbitRadius = 25; // Closer to the pin to keep it in the foreground
-                
-                // Offset lookTarget forward (toward the sun) so the pin (at 0,0,0) 
-                // appears at the bottom of the frame
-                const sunDirX = Math.cos(sunTheta);
-                const sunDirZ = Math.sin(sunTheta);
-                lookTarget.set(sunDirX * 15, 1, sunDirZ * 15);
-                
-                updateCameraPosition();
-
-                // Hide loading
+            } catch (err) {
+                console.error('Error generando vista 3D:', err);
                 if (loadingEl) loadingEl.classList.add('hidden');
-
-                if (animFrame) cancelAnimationFrame(animFrame);
-                animate();
-            }, 80);
-        });
+            }
+        }, 60);
     }
 
     function hide() {
-        document.getElementById('horizon-3d-modal').classList.add('hidden');
+        const modal = document.getElementById('horizon-3d-modal');
+        if (modal) modal.classList.add('hidden');
         if (animFrame) {
             cancelAnimationFrame(animFrame);
             animFrame = null;

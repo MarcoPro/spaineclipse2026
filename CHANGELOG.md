@@ -28,6 +28,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ### 🐛 Corregido
 - **Compatibilidad de Audio y Simulación en Android / iOS Móviles**: Implementada función `unlockMobileAudio()` vinculada a eventos de toque (`touchstart` y `click`) para desbloquear las restricciones de `AudioContext` y `SpeechSynthesis` en navegadores móviles.
+- **Responsividad de Desplegables en Móvil**: Solucionado el desbordamiento de ancho en selectores de voz y velocidad mediante maquetación vertical (`1fr`), `min-width: 0` y truncado con `text-overflow: ellipsis`.
+- **Rendimiento del Simulador 3D de Horizonte en iPhone 15 / iOS Safari (`horizon_3d.js`)**: Solucionado el bloqueo con la rueda giratoria (*spinner*) en procesadores móviles y pantallas Retina al optimizar la rejilla 3D adaptativa (de 62.500 a 6.400 vértices en móviles, ejecutando los cálculos en < 20ms) y añadir protección con bloque `try/catch` para ocultar siempre el spinner tras la carga.
 
 ---
 

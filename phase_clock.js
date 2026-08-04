@@ -47,14 +47,16 @@
             } else {
                 const autoOpt = document.createElement('option');
                 autoOpt.value = '';
-                autoOpt.textContent = '⚡ Auto (Mejor voz HD recomendada)';
+                autoOpt.textContent = '⚡ Auto (Voz HD recomendada)';
                 voiceSelect.appendChild(autoOpt);
 
                 availableVoices.forEach(v => {
                     const opt = document.createElement('option');
                     opt.value = v.voiceURI;
                     const isNatural = /natural|enhanced|premium|neural|google|apple|microsoft/i.test(v.name);
-                    opt.textContent = `${v.name}${isNatural ? ' ✨ HD' : ''}`;
+                    let shortName = v.name.replace(/español|spanish/gi, 'Es').replace(/\(es.*?\)/gi, '').trim();
+                    if (shortName.length > 28) shortName = shortName.substring(0, 26) + '…';
+                    opt.textContent = `${shortName}${isNatural ? ' ✨ HD' : ''}`;
                     voiceSelect.appendChild(opt);
                 });
 
