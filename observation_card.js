@@ -210,7 +210,7 @@
         ctx.textAlign = 'center';
         ctx.fillStyle = '#e67e22';
         ctx.font = 'bold 18px Outfit, sans-serif';
-        ctx.fillText('⚠️ Aviso: Tiempos astronómicos calculados de forma orientativa. La salud visual es responsabilidad del observador. Comprueba el estado del sol con gafas ISO 12312-2.', w / 2, 1595);
+        ctx.fillText('⚠️ Aviso: Tiempos astronómicos de alta precisión; aun así, pueden diferir de la realidad. La salud visual es responsabilidad del observador. Comprueba con gafas ISO 12312-2.', w / 2, 1595);
 
         ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
         ctx.font = '18px Outfit, sans-serif';

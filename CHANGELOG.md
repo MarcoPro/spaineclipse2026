@@ -8,17 +8,20 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 
 ### ✨ Añadido
 - **Sistema Integral de Descargo de Responsabilidad y Uso Consciente (`#modal-disclaimer`)**
-  - **Modal de Primera Visita & Términos Legales**: Presentación automática de la descarga de responsabilidad en el primer acceso a la app (almacenando aceptación en `localStorage`), accesible en todo momento mediante el botón con icono de escudo en el header y el botón de *Aviso Legal* en el panel lateral.
+  - **Modal de Primera Visita & Términos Legales**: Presentación automática de la descarga de responsabilidad en el primer acceso a la app (con persistencia en `localStorage`), accesible en todo momento mediante el botón con icono de escudo en el header, el botón de *Aviso Legal* en el panel lateral y clic en el fondo oscuro del modal.
   - **Cuatro Ejes Fundamentales de Seguridad**:
     1. *Salud Visual & Responsabilidad Personal*: Enfatiza la obligación de utilizar gafas certificadas ISO 12312-2 en fase parcial y el uso bajo criterio propio.
-    2. *Tiempos Astronómicos Orientativos*: Advierte sobre posibles desajustes de segundos entre modelos numéricos de efemérides y la realidad (refracción, perfil lunar, reloj interno).
-    3. *Precisión Geográfica del Usuario*: Informa sobre el impacto crítico de seleccionar o marcar mal la localidad/coordenadas en el mapa.
+    2. *Tiempos Astronómicos de Alta Precisión y Posibles Diferencias*: Aclara que los tiempos son de alta precisión astronómica (calculados por elementos besselianos y efemérides), pero pueden diferir ligeramente de la realidad (debido a altitud local, refracción, reloj del dispositivo o limbo lunar).
+    3. *Precisión Geográfica del Usuario*: Informa sobre la sensibilidad del cálculo al marcar o seleccionar la localidad en el mapa.
     4. *Imponderables Tecnológicos*: Detalla las limitaciones de las alertas acústicas y voz sintetizada por bloqueos de audio, ahorro de batería o fallos del navegador.
   - **Avisos Contextuales en la Interfaz**:
-    - *Tarjeta de Seguridad Visual (`#safety-warning`)*: Nota a pie de tarjeta sobre el carácter orientativo de la guía de gafas.
+    - *Tarjeta de Seguridad Visual (`#safety-warning`)*: Nota sobre tiempos de alta precisión que pueden diferir de la realidad.
     - *Reloj Día D & Alertas Sonoras (`#modal-phase-clock`)*: Banner de aviso de seguridad acústica y sincronía horaria.
     - *Recomendador por Radio (`#modal-location-finder`)*: Advertencia de sensibilidad de cálculo por margen geográfico.
-    - *Pase Oficial de Observación (`observation_card.js`)*: Micro-disclaimer impreso en el pie de la credencial exportable.
+    - *Pase Oficial de Observación (`observation_card.js`)*: Micro-disclaimer impreso en el pie del pase exportable.
+
+### 🐛 Corregido
+- **Activación de Botones del Disclaimer**: Añadidos controladores globales (`window.openDisclaimerModal`), gestión de eventos táctiles (`touchstart` y `click`), detención de propagación y atributo `onclick` de respaldo para garantizar la apertura instantánea del modal de aviso legal desde la cabecera o el panel en cualquier dispositivo.
 
 ## [2.6.0] — 2026-08-04
 

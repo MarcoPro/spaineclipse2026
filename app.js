@@ -2645,33 +2645,54 @@ document.addEventListener("DOMContentLoaded", () => {
     const closeDisclaimer = document.getElementById('close-disclaimer');
     const btnAcceptDisclaimer = document.getElementById('btn-accept-disclaimer');
 
-    function openDisclaimerModal() {
+    window.openDisclaimerModal = function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
         if (modalDisclaimer) modalDisclaimer.classList.remove('hidden');
-    }
+    };
 
-    function closeDisclaimerModal() {
+    window.closeDisclaimerModal = function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
         if (modalDisclaimer) modalDisclaimer.classList.add('hidden');
-    }
+    };
 
-    function acceptDisclaimerModal() {
+    window.acceptDisclaimerModal = function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
         try {
             localStorage.setItem('eclipse_disclaimer_accepted', 'true');
-        } catch (e) {
-            console.warn('localStorage no disponible:', e);
+        } catch (err) {
+            console.warn('localStorage no disponible:', err);
         }
-        closeDisclaimerModal();
-    }
+        window.closeDisclaimerModal();
+    };
 
-    if (btnOpenDisclaimer) btnOpenDisclaimer.addEventListener('click', openDisclaimerModal);
-    if (btnPanelDisclaimer) btnPanelDisclaimer.addEventListener('click', openDisclaimerModal);
-    if (closeDisclaimer) closeDisclaimer.addEventListener('click', closeDisclaimerModal);
-    if (btnAcceptDisclaimer) btnAcceptDisclaimer.addEventListener('click', acceptDisclaimerModal);
+    const addModalBinding = (el, handler) => {
+        if (!el) return;
+        ['click', 'touchstart'].forEach(evt => {
+            el.addEventListener(evt, (e) => {
+                handler(e);
+            }, { passive: true });
+        });
+    };
+
+    addModalBinding(btnOpenDisclaimer, window.openDisclaimerModal);
+    addModalBinding(btnPanelDisclaimer, window.openDisclaimerModal);
+    addModalBinding(closeDisclaimer, window.closeDisclaimerModal);
+    addModalBinding(btnAcceptDisclaimer, window.acceptDisclaimerModal);
+
+    // Cerrar al hacer clic en el fondo oscuro del modal (overlay)
+    if (modalDisclaimer) {
+        modalDisclaimer.addEventListener('click', (e) => {
+            if (e.target === modalDisclaimer) {
+                window.closeDisclaimerModal(e);
+            }
+        });
+    }
 
     // Auto-mostrar la primera vez si no se ha aceptado previamente
     try {
         if (!localStorage.getItem('eclipse_disclaimer_accepted')) {
             setTimeout(() => {
-                openDisclaimerModal();
+                window.openDisclaimerModal();
             }, 600);
         }
     } catch (e) {
