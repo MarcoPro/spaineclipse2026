@@ -4,6 +4,22 @@ Todos los cambios notables del proyecto Eclipse Solar España 2026.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
+## [2.6.0] — 2026-08-04
+
+### ✨ Añadido
+- **Modo Test & Simulador del Día D (`phase_clock.js`)**
+  - **Simulador Temporal Acelerado**: Permite ejecutar un reloj virtual del eclipse transcurriendo a velocidad ajustable (**1X, 5X, 10X, 30X**) desde minutos antes de C1 hasta el final del eclipse para ensayar todo el flujo de avisos en directo hoy mismo.
+  - **Salto de Fase Interactivo**: Menú desplegable para posicionar la simulación al instante a 3 minutos o 30s/10s de cualquier contacto (C1, C2, MAX, C3, C4).
+  - **Botonera de Pruebas Rápidas**: Rejilla de 12 botones dedicados para escuchar bajo demanda cualquier aviso de locución por voz (`es-ES`) y tono sintético (beep) individualmente.
+  - **Subtítulos y Estado Visual**: Indicador activo en vivo de la hora simulada y banner resaltado con el subtítulo del aviso de voz en reproducción.
+- **Sistema de Preavisos de Fase y Recomendaciones Adaptativas de Seguridad**
+  - **Preavisos a 3 Minutos Antes**: Notificaciones habladas antes de cada fase clave del eclipse.
+  - **Diferenciación Estricta entre Totalidad y Parcialidad**:
+    - *Zona de Totalidad*: Instruye preparar la retirada de gafas solares y filtros de cámara a los 30s antes de C2, autoriza su retirada exacta en C2 (totalidad), e insta encarecidamente a volver a colocárselos 10s antes de C3.
+    - *Zona de Parcialidad*: Enfatiza en todos los preavisos que **NUNCA** se deben retirar las gafas ni los filtros durante ninguna fase del eclipse parcial.
+
+---
+
 ## [2.5.0] — 2026-08-02
 
 ### ✨ Añadido

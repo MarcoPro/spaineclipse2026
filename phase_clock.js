@@ -1,5 +1,7 @@
 /**
  * Eclipse Solar España 2026 - Módulo de Reloj de Fases en Tiempo Real & Alertas Sonoras (Día D)
+ * Incluye Modo Test (Simulación Acelerada y Pruebas Individuales por Fase)
+ * y Preavisos de Seguridad Adaptativos (Totality vs Parcialidad)
  */
 (function () {
     let countdownInterval = null;
@@ -7,7 +9,135 @@
     let soundEnabled = true;
     let spokenAlerts = {}; // Registro para no repetir alertas en el mismo contacto
 
-    const ECLIPSE_TARGET_UTC = new Date(Date.UTC(2026, 7, 12, 17, 30, 0)); // 12 de agosto de 2026 17:30 UTC
+    // Estado de Simulación / Modo Test
+    let isSimulating = false;
+    let simSpeed = 10; // Multiplicador por defecto 10x
+    let simCurrentDate = null;
+    let simLastTickTimestamp = 0;
+
+    // Contactos por defecto para el Día del Eclipse (12 de agosto de 2026 en UTC / España)
+    const DEFAULT_CONTACTS = {
+        isTotality: true,
+        c1Date: new Date(Date.UTC(2026, 7, 12, 17, 30, 0)),  // 19:30 CEST
+        c2Date: new Date(Date.UTC(2026, 7, 12, 18, 27, 0)),  // 20:27 CEST
+        maxDate: new Date(Date.UTC(2026, 7, 12, 18, 28, 0)), // 20:28 CEST
+        c3Date: new Date(Date.UTC(2026, 7, 12, 18, 29, 15)), // 20:29:15 CEST
+        c4Date: new Date(Date.UTC(2026, 7, 12, 19, 22, 0))   // 21:22 CEST
+    };
+
+    // Definición del diccionario de alertas de voz y beeps
+    function getAlertDefinitions(isTotality) {
+        return {
+            'c1_pre_3m': {
+                name: 'Preaviso C1 (3 min)',
+                freq: 880,
+                duration: 0.4,
+                wave: 'sine',
+                text: isTotality
+                    ? "Preaviso: En 3 minutos comienza el eclipse parcial C1. Usa gafas de eclipse homologadas y coloca los filtros en las cámaras."
+                    : "Preaviso: En 3 minutos comienza el eclipse parcial C1. Usa gafas de eclipse homologadas y mantén los filtros en cámaras y telescopios."
+            },
+            'c1_start': {
+                name: 'C1 - Inicio Parcial',
+                freq: 1000,
+                duration: 0.5,
+                wave: 'sine',
+                text: isTotality
+                    ? "¡Inicio del eclipse parcial C1! Mantén puestas las gafas solares y los filtros en las cámaras."
+                    : "¡Inicio del eclipse parcial! Es obligatorio usar gafas solares y filtros en las cámaras en todo momento."
+            },
+            'c2_pre_3m': {
+                name: 'Preaviso C2 (3 min)',
+                freq: 900,
+                duration: 0.4,
+                wave: 'sine',
+                text: isTotality
+                    ? "Preaviso: En 3 minutos comienza la totalidad C2. Prepárate para retirar las gafas y los filtros de las cámaras solo cuando comience la totalidad."
+                    : null
+            },
+            'c2_30s': {
+                name: 'Preaviso C2 (30 seg)',
+                freq: 1200,
+                duration: 0.4,
+                wave: 'sine',
+                text: isTotality
+                    ? "Atención: 30 segundos para la totalidad. Prepárate para quitarte las gafas solares y los filtros de las cámaras."
+                    : null
+            },
+            'c2_start': {
+                name: 'C2 - Inicio Totalidad',
+                freq: 1500,
+                duration: 0.6,
+                wave: 'square',
+                text: isTotality
+                    ? "¡Inicio de la totalidad C2! Ya puedes quitarte las gafas solares y retirar los filtros de las cámaras para observar la corona solar a simple vista."
+                    : null
+            },
+            'max_pre_3m': {
+                name: 'Preaviso Máximo (3 min)',
+                freq: 880,
+                duration: 0.4,
+                wave: 'sine',
+                text: isTotality
+                    ? "Preaviso: En 3 minutos se alcanzará el eclipse máximo."
+                    : "Preaviso: En 3 minutos se alcanzará el máximo del eclipse parcial. Recuerda: NUNCA te quites las gafas ni los filtros en zona parcial."
+            },
+            'max_start': {
+                name: 'Eclipse Máximo',
+                freq: 1100,
+                duration: 0.5,
+                wave: 'sine',
+                text: isTotality
+                    ? "Eclipse máximo alcanzado. Disfruta de la corona solar a simple vista."
+                    : "Eclipse máximo alcanzado. Mantén puestas las gafas solares y los filtros de cámara en todo momento."
+            },
+            'c3_pre_3m': {
+                name: 'Preaviso C3 (3 min)',
+                freq: 900,
+                duration: 0.4,
+                wave: 'sine',
+                text: isTotality
+                    ? "Preaviso: En 3 minutos finaliza la totalidad. Prepárate para volver a ponerte las gafas solares y colocar los filtros en las cámaras."
+                    : null
+            },
+            'c3_10s': {
+                name: 'Preaviso C3 (10 seg)',
+                freq: 1000,
+                duration: 0.3,
+                wave: 'sine',
+                text: isTotality
+                    ? "¡Atención! En 10 segundos finaliza la totalidad. Ponte las gafas solares y coloca inmediatamente los filtros en las cámaras."
+                    : null
+            },
+            'c3_start': {
+                name: 'C3 - Fin Totalidad',
+                freq: 1400,
+                duration: 0.6,
+                wave: 'square',
+                text: isTotality
+                    ? "¡Fin de la totalidad C3! Ponte las gafas solares inmediatamente y vuelve a colocar los filtros en las cámaras."
+                    : null
+            },
+            'c4_pre_3m': {
+                name: 'Preaviso C4 (3 min)',
+                freq: 880,
+                duration: 0.4,
+                wave: 'sine',
+                text: isTotality
+                    ? "Preaviso: En 3 minutos finaliza el eclipse parcial C4. Mantén puestas las gafas solares hasta el final."
+                    : "Preaviso: En 3 minutos finaliza el eclipse parcial C4. Mantén puestas las gafas solares."
+            },
+            'c4_start': {
+                name: 'C4 - Fin Eclipse',
+                freq: 800,
+                duration: 0.5,
+                wave: 'sine',
+                text: isTotality
+                    ? "El eclipse ha finalizado por completo C4. Ya puedes retirar las gafas solares y guardar el equipo."
+                    : "El eclipse parcial ha finalizado C4. Ya puedes retirar las gafas solares y guardar el equipo."
+            }
+        };
+    }
 
     // Web Audio API Synthesizer para beeps limpios
     function playBeep(freq = 880, duration = 0.2, type = 'sine') {
@@ -36,6 +166,8 @@
 
     // Web Speech API para locución de voz en español
     function speakText(text) {
+        if (!text) return;
+        updateAlertSubtitle(text);
         if (!voiceEnabled || !('speechSynthesis' in window)) return;
         try {
             window.speechSynthesis.cancel(); // Cancelar locuciones previas
@@ -49,6 +181,17 @@
         }
     }
 
+    function updateAlertSubtitle(text) {
+        const subtitleEl = document.getElementById('clock-alert-subtitle');
+        if (subtitleEl) {
+            subtitleEl.innerHTML = `<i class="fa-solid fa-bullhorn"></i> <strong>Aviso Activo:</strong> "${text}"`;
+            subtitleEl.classList.add('active');
+            setTimeout(() => {
+                subtitleEl.classList.remove('active');
+            }, 9000);
+        }
+    }
+
     function formatTimeDifference(ms) {
         if (ms <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, isPast: true };
         const seconds = Math.floor((ms / 1000) % 60);
@@ -58,12 +201,34 @@
         return { days, hours, minutes, seconds, isPast: false };
     }
 
+    function triggerTestAlert(alertKey) {
+        const details = getActiveEclipseDetails();
+        const alerts = getAlertDefinitions(details.isTotality);
+        const def = alerts[alertKey];
+        if (def && def.text) {
+            playBeep(def.freq, def.duration, def.wave);
+            speakText(def.text);
+        }
+    }
+
+    function getActiveEclipseDetails() {
+        if (window.currentEclipseDetails && window.currentEclipseDetails.c1Date) {
+            return window.currentEclipseDetails;
+        }
+        return DEFAULT_CONTACTS;
+    }
+
     function initPhaseClockModal() {
         const modal = document.getElementById('modal-phase-clock');
         const closeBtn = document.getElementById('close-phase-clock');
         const openBtn = document.getElementById('btn-phase-clock');
         const testAudioBtn = document.getElementById('btn-test-audio');
         const toggleVoiceBtn = document.getElementById('btn-toggle-voice');
+
+        const toggleSimBtn = document.getElementById('btn-toggle-sim');
+        const resetSimBtn = document.getElementById('btn-reset-sim');
+        const simSpeedSelect = document.getElementById('sim-speed-select');
+        const simJumpSelect = document.getElementById('sim-jump-select');
 
         if (openBtn && modal) {
             openBtn.addEventListener('click', () => {
@@ -80,8 +245,7 @@
 
         if (testAudioBtn) {
             testAudioBtn.addEventListener('click', () => {
-                playBeep(880, 0.3);
-                speakText("Prueba de audio del eclipse. Alerta sonora activada.");
+                triggerTestAlert('c2_start');
             });
         }
 
@@ -95,27 +259,167 @@
                     '<i class="fa-solid fa-volume-xmark"></i> Voz Silenciada';
             });
         }
+
+        // Controladores de Simulación
+        if (toggleSimBtn) {
+            toggleSimBtn.addEventListener('click', () => {
+                if (isSimulating) {
+                    stopSimulation();
+                } else {
+                    startSimulation();
+                }
+            });
+        }
+
+        if (resetSimBtn) {
+            resetSimBtn.addEventListener('click', () => {
+                stopSimulation();
+            });
+        }
+
+        if (simSpeedSelect) {
+            simSpeedSelect.addEventListener('change', (e) => {
+                simSpeed = parseFloat(e.target.value) || 10;
+                const statusBadge = document.getElementById('sim-status-badge');
+                if (statusBadge && isSimulating) {
+                    statusBadge.textContent = `MODO TEST ACTIVO (${simSpeed}X)`;
+                }
+            });
+        }
+
+        if (simJumpSelect) {
+            simJumpSelect.addEventListener('change', (e) => {
+                const targetKey = e.target.value;
+                if (targetKey) {
+                    jumpToSimulationTarget(targetKey);
+                    e.target.value = '';
+                }
+            });
+        }
+
+        // Botones de Prueba Rápida Individual
+        const testButtons = document.querySelectorAll('.btn-test-phase');
+        testButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const alertKey = btn.getAttribute('data-alert');
+                if (alertKey) {
+                    triggerTestAlert(alertKey);
+                }
+            });
+        });
+    }
+
+    function startSimulation() {
+        const details = getActiveEclipseDetails();
+        isSimulating = true;
+        spokenAlerts = {}; // Resetear registro de alertas para probar libremente
+        simLastTickTimestamp = performance.now();
+
+        // Iniciar simulación por defecto 4 minutos antes de C1
+        const c1Time = details.c1Date ? details.c1Date.getTime() : DEFAULT_CONTACTS.c1Date.getTime();
+        simCurrentDate = new Date(c1Time - 4 * 60 * 1000);
+
+        updateSimulationUI(true);
+        speakText(`Simulador del Día del Eclipse iniciado a velocidad ${simSpeed}X.`);
+    }
+
+    function stopSimulation() {
+        isSimulating = false;
+        simCurrentDate = null;
+        spokenAlerts = {};
+        updateSimulationUI(false);
+        const subtitleEl = document.getElementById('clock-alert-subtitle');
+        if (subtitleEl) subtitleEl.innerHTML = '';
+        updatePhaseClock();
+    }
+
+    function jumpToSimulationTarget(targetKey) {
+        const details = getActiveEclipseDetails();
+        spokenAlerts = {}; // Permitir volver a escuchar alertas al saltar
+
+        let targetDate = null;
+        if (targetKey === 'pre_c1' && (details.c1Date || DEFAULT_CONTACTS.c1Date)) {
+            targetDate = new Date((details.c1Date || DEFAULT_CONTACTS.c1Date).getTime() - 3.5 * 60 * 1000);
+        } else if (targetKey === 'pre_c2' && (details.c2Date || DEFAULT_CONTACTS.c2Date)) {
+            targetDate = new Date((details.c2Date || DEFAULT_CONTACTS.c2Date).getTime() - 3.5 * 60 * 1000);
+        } else if (targetKey === 'c2_30s' && (details.c2Date || DEFAULT_CONTACTS.c2Date)) {
+            targetDate = new Date((details.c2Date || DEFAULT_CONTACTS.c2Date).getTime() - 40 * 1000);
+        } else if (targetKey === 'pre_max' && (details.maxDate || DEFAULT_CONTACTS.maxDate)) {
+            targetDate = new Date((details.maxDate || DEFAULT_CONTACTS.maxDate).getTime() - 3.5 * 60 * 1000);
+        } else if (targetKey === 'pre_c3' && (details.c3Date || DEFAULT_CONTACTS.c3Date)) {
+            targetDate = new Date((details.c3Date || DEFAULT_CONTACTS.c3Date).getTime() - 3.5 * 60 * 1000);
+        } else if (targetKey === 'c3_10s' && (details.c3Date || DEFAULT_CONTACTS.c3Date)) {
+            targetDate = new Date((details.c3Date || DEFAULT_CONTACTS.c3Date).getTime() - 20 * 1000);
+        } else if (targetKey === 'pre_c4' && (details.c4Date || DEFAULT_CONTACTS.c4Date)) {
+            targetDate = new Date((details.c4Date || DEFAULT_CONTACTS.c4Date).getTime() - 3.5 * 60 * 1000);
+        }
+
+        if (targetDate) {
+            if (!isSimulating) {
+                isSimulating = true;
+                simLastTickTimestamp = performance.now();
+                updateSimulationUI(true);
+            }
+            simCurrentDate = targetDate;
+            updatePhaseClock();
+        }
+    }
+
+    function updateSimulationUI(active) {
+        const toggleBtn = document.getElementById('btn-toggle-sim');
+        const statusBadge = document.getElementById('sim-status-badge');
+        if (toggleBtn) {
+            toggleBtn.classList.toggle('active', active);
+            toggleBtn.innerHTML = active
+                ? '<i class="fa-solid fa-pause"></i> Pausar Simulación'
+                : '<i class="fa-solid fa-play"></i> Iniciar Simulación Día D';
+        }
+        if (statusBadge) {
+            statusBadge.classList.toggle('active', active);
+            statusBadge.textContent = active ? `MODO TEST ACTIVO (${simSpeed}X)` : 'MODO REAL';
+        }
     }
 
     function updatePhaseClock() {
-        const now = new Date();
-        const diffMs = ECLIPSE_TARGET_UTC.getTime() - now.getTime();
+        const realNow = new Date();
+        let now = realNow;
+
+        if (isSimulating) {
+            const currentPerf = performance.now();
+            const elapsedRealMs = currentPerf - simLastTickTimestamp;
+            simLastTickTimestamp = currentPerf;
+
+            if (simCurrentDate) {
+                simCurrentDate = new Date(simCurrentDate.getTime() + (elapsedRealMs * simSpeed));
+                now = simCurrentDate;
+            }
+        }
+
+        const details = getActiveEclipseDetails();
+        const eclipseTarget = details.c1Date || DEFAULT_CONTACTS.c1Date;
+        const diffMs = eclipseTarget.getTime() - now.getTime();
         const diff = formatTimeDifference(diffMs);
 
         const daysEl = document.getElementById('clock-days');
         const hoursEl = document.getElementById('clock-hours');
         const minsEl = document.getElementById('clock-mins');
         const secsEl = document.getElementById('clock-secs');
+        const simClockDisplay = document.getElementById('sim-virtual-clock');
 
         if (daysEl) daysEl.textContent = String(diff.days).padStart(2, '0');
         if (hoursEl) hoursEl.textContent = String(diff.hours).padStart(2, '0');
         if (minsEl) minsEl.textContent = String(diff.minutes).padStart(2, '0');
         if (secsEl) secsEl.textContent = String(diff.seconds).padStart(2, '0');
 
-        // Obtener contactos astronómicos del lugar activo si existen
-        if (window.currentEclipseDetails) {
-            renderContactTimes(window.currentEclipseDetails, now);
+        if (simClockDisplay && isSimulating) {
+            const simTimeStr = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            simClockDisplay.textContent = `Hora Simulada: ${simTimeStr}`;
+        } else if (simClockDisplay) {
+            simClockDisplay.textContent = '';
         }
+
+        // Renderear contactos y evaluar alertas
+        renderContactTimes(details, now);
     }
 
     function renderContactTimes(details, now) {
@@ -126,56 +430,87 @@
         const c4El = document.getElementById('clock-c4-time');
         const phaseStatus = document.getElementById('clock-phase-status');
 
-        if (!details.isTotality) {
-            if (phaseStatus) {
+        const isTotality = details.isTotality;
+
+        if (phaseStatus) {
+            if (!isTotality) {
                 phaseStatus.innerHTML = '<span class="status-partial"><i class="fa-solid fa-sun"></i> Eclipse Parcial en esta ubicación</span>';
-            }
-        } else {
-            if (phaseStatus) {
+            } else {
                 phaseStatus.innerHTML = '<span class="status-totality"><i class="fa-solid fa-moon"></i> Eclipse Total (Totalidad Garantizada)</span>';
             }
         }
 
-        if (c1El && details.c1) c1El.textContent = details.c1.timeStr || '--:--:--';
-        if (c2El && details.c2) c2El.textContent = details.c2.timeStr || 'N/A';
-        if (maxEl && details.max) maxEl.textContent = details.max.timeStr || '--:--:--';
-        if (c3El && details.c3) c3El.textContent = details.c3.timeStr || 'N/A';
-        if (c4El && details.c4) c4El.textContent = details.c4.timeStr || '--:--:--';
+        if (c1El && (details.c1 || details.c1Date)) c1El.textContent = (details.c1 && details.c1.timeStr) ? details.c1.timeStr : (details.c1Date ? details.c1Date.toLocaleTimeString('es-ES') : '--:--:--');
+        if (c2El) c2El.textContent = isTotality ? ((details.c2 && details.c2.timeStr) ? details.c2.timeStr : (details.c2Date ? details.c2Date.toLocaleTimeString('es-ES') : '--:--:--')) : 'N/A';
+        if (maxEl && (details.max || details.maxDate)) maxEl.textContent = (details.max && details.max.timeStr) ? details.max.timeStr : (details.maxDate ? details.maxDate.toLocaleTimeString('es-ES') : '--:--:--');
+        if (c3El) c3El.textContent = isTotality ? ((details.c3 && details.c3.timeStr) ? details.c3.timeStr : (details.c3Date ? details.c3Date.toLocaleTimeString('es-ES') : '--:--:--')) : 'N/A';
+        if (c4El && (details.c4 || details.c4Date)) c4El.textContent = (details.c4 && details.c4.timeStr) ? details.c4.timeStr : (details.c4Date ? details.c4Date.toLocaleTimeString('es-ES') : '--:--:--');
 
-        // Comprobar alertas si estamos en el día del eclipse (12 de agosto de 2026)
-        if (details.c2Date && details.c3Date) {
-            const secToC2 = (details.c2Date.getTime() - now.getTime()) / 1000;
-            const secToC3 = (details.c3Date.getTime() - now.getTime()) / 1000;
+        // Evaluador de Alertas Sonoras y Locución
+        checkAndExecuteAlerts(details, now);
+    }
 
-            // 30 segundos antes de C2
-            if (secToC2 > 0 && secToC2 <= 30 && !spokenAlerts['c2_30s']) {
-                spokenAlerts['c2_30s'] = true;
-                playBeep(1200, 0.4);
-                speakText("Atención: 30 segundos para la totalidad. Prepárate para quitarte las gafas solares.");
+    function checkAndExecuteAlerts(details, now) {
+        const alertsDef = getAlertDefinitions(details.isTotality);
+
+        const checkAlert = (key, targetDate, secondsMin, secondsMax) => {
+            if (!targetDate || spokenAlerts[key]) return;
+            const secToTarget = (targetDate.getTime() - now.getTime()) / 1000;
+
+            if (secToTarget <= secondsMax && secToTarget >= secondsMin) {
+                spokenAlerts[key] = true;
+                const def = alertsDef[key];
+                if (def && def.text) {
+                    playBeep(def.freq, def.duration, def.wave);
+                    speakText(def.text);
+                }
             }
-            // En C2 (Inicio de Totalidad)
-            if (secToC2 <= 0 && secToC2 >= -5 && !spokenAlerts['c2_start']) {
-                spokenAlerts['c2_start'] = true;
-                playBeep(1500, 0.6, 'square');
-                speakText("¡Inicio de la totalidad! Quítate las gafas solares ahora.");
-            }
-            // 10 segundos antes de C3
-            if (secToC3 > 0 && secToC3 <= 10 && !spokenAlerts['c3_10s']) {
-                spokenAlerts['c3_10s'] = true;
-                playBeep(1000, 0.3);
-                speakText("Atención: 10 segundos para el fin de la totalidad. Vuelve a ponerte las gafas solares.");
-            }
+        };
+
+        const c1Date = details.c1Date || DEFAULT_CONTACTS.c1Date;
+        const c2Date = details.isTotality ? (details.c2Date || DEFAULT_CONTACTS.c2Date) : null;
+        const maxDate = details.maxDate || DEFAULT_CONTACTS.maxDate;
+        const c3Date = details.isTotality ? (details.c3Date || DEFAULT_CONTACTS.c3Date) : null;
+        const c4Date = details.c4Date || DEFAULT_CONTACTS.c4Date;
+
+        // C1
+        checkAlert('c1_pre_3m', c1Date, 170, 190);  // ~3 min antes
+        checkAlert('c1_start', c1Date, -10, 5);     // Inicio C1
+
+        // C2 (Sólo si hay totalidad)
+        if (details.isTotality && c2Date) {
+            checkAlert('c2_pre_3m', c2Date, 170, 190); // ~3 min antes
+            checkAlert('c2_30s', c2Date, 20, 35);      // 30s antes
+            checkAlert('c2_start', c2Date, -10, 5);    // Inicio C2 Totalidad
         }
+
+        // MAX
+        checkAlert('max_pre_3m', maxDate, 170, 190);
+        checkAlert('max_start', maxDate, -10, 5);
+
+        // C3 (Sólo si hay totalidad)
+        if (details.isTotality && c3Date) {
+            checkAlert('c3_pre_3m', c3Date, 170, 190);
+            checkAlert('c3_10s', c3Date, 5, 15);       // 10s antes
+            checkAlert('c3_start', c3Date, -10, 5);    // Fin C3 Totalidad
+        }
+
+        // C4
+        checkAlert('c4_pre_3m', c4Date, 170, 190);
+        checkAlert('c4_start', c4Date, -10, 5);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         initPhaseClockModal();
-        countdownInterval = setInterval(updatePhaseClock, 1000);
+        countdownInterval = setInterval(updatePhaseClock, 100); // 10 ticks/sec
     });
 
     window.EclipsePhaseClock = {
         playBeep,
         speakText,
-        updatePhaseClock
+        updatePhaseClock,
+        triggerTestAlert,
+        startSimulation,
+        stopSimulation
     };
 })();

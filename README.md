@@ -12,8 +12,7 @@ Permite a cualquier usuario buscar su localidad (o hacer clic en el mapa) y obte
 
 ![Vista general del mapa con la franja de totalidad y panel informativo](https://img.shields.io/badge/Status-En%20desarrollo-yellow?style=for-the-badge)
 
-La aplicación muestra:
-
+- 🔔 **Reloj Día D & Alertas de Voz en Vivo con Modo Test**: Reloj astronómico interactivo con **Preavisos a 3 min** de cada fase (C1–C4), indicaciones de seguridad contextuales (gafas solares y filtros de cámara según zona de totalidad o parcialidad), **Simulador temporal acelerado (1X–30X)** y **botonera de pruebas rápidas por fase**.
 - 🗺️ **Múltiples Mapas Base** interactivos (Estándar, Satélite y Relieve Topográfico)
 - ⚡ **Previsión Meteorológica Real Pregenerada (Open-Meteo)**: predicción numérico-climática en vivo para el día del eclipse con desglose de **Nubes Bajas, Medias y Altas (Cirros)**, temperatura y probabilidad de lluvia.
 - 🟢 **Etiqueta Dinámica de Claridad**: interpretación automática del % de nubosidad (ej. *80% despejado - Óptimo*).
@@ -36,8 +35,9 @@ La aplicación muestra:
 ## 🏗️ Estructura del Proyecto
 
 ### Archivos del Frontend (Web App)
-- `index.html`: Punto de entrada principal. Contiene la estructura DOM, el modal de información y el contenedor del mapa.
+- `index.html`: Punto de entrada principal. Contiene la estructura DOM, el modal de información, el reloj de fases y el contenedor del mapa.
 - `app.js`: Motor principal de la aplicación. Maneja el mapa Leaflet, la geolocalización, la búsqueda, la animación de la sombra, el gráfico de horizonte, la previsión meteorológica real/histórica, el índice de observación y la interfaz.
+- `phase_clock.js`: Módulo de Reloj de Fases en Tiempo Real & Alertas Sonoras. Incluye preavisos hablados a 3 minutos, recomendaciones de seguridad (gafas/filtros), Modo Test y Simulador Acelerado del Día D.
 - `besselian_calculator.js`: Motor matemático puro. Utiliza los elementos besselianos para calcular el instante exacto, duración y oscurecimiento con precisión de sub-segundos corrigiendo la altitud terrestre.
 - `limb_simulator.js`: Simulador de Perlas de Baily con renderizado dual (fotorrealista y técnico) basado en el perfil real del limbo lunar.
 - `lunar_limb_profile.js`: Perfil de elevación del limbo lunar real para el simulador de Perlas de Baily.

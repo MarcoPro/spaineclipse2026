@@ -660,6 +660,11 @@
                     <span class="status-totality"><i class="fa-solid fa-moon"></i> Eclipse Total Garantizado</span>
                 </div>
 
+                <div class="sim-virtual-info">
+                    <span id="sim-status-badge" class="sim-badge">MODO REAL</span>
+                    <span id="sim-virtual-clock" class="sim-clock"></span>
+                </div>
+
                 <div class="clock-contacts-grid">
                     <div class="clock-contact-card"><span class="c-code">C1</span><span class="c-name">Inicio Parcial</span><strong id="clock-c1-time">--:--:--</strong></div>
                     <div class="clock-contact-card highlight"><span class="c-code">C2</span><span class="c-name">Inicio Totalidad</span><strong id="clock-c2-time">--:--:--</strong></div>
@@ -668,9 +673,67 @@
                     <div class="clock-contact-card"><span class="c-code">C4</span><span class="c-name">Fin Parcial</span><strong id="clock-c4-time">--:--:--</strong></div>
                 </div>
 
+                <div class="clock-alert-subtitle-box" id="clock-alert-subtitle"></div>
+
                 <div class="clock-controls-row">
                     <button class="clock-btn" id="btn-toggle-voice"><i class="fa-solid fa-volume-high"></i> Voz Activa</button>
-                    <button class="clock-btn secondary" id="btn-test-audio"><i class="fa-solid fa-play"></i> Probar Alerta</button>
+                    <button class="clock-btn secondary" id="btn-test-audio"><i class="fa-solid fa-play"></i> Probar C2</button>
+                </div>
+
+                <!-- SECCIÓN MODO TEST & SIMULADOR DÍA D -->
+                <div class="test-panel-container">
+                    <div class="test-panel-header">
+                        <h3><i class="fa-solid fa-flask"></i> Modo Test & Simulador del Día D</h3>
+                        <p class="test-panel-desc">Prueba los avisos sonoros y simula la secuencia completa de fases antes del día del eclipse.</p>
+                    </div>
+
+                    <div class="sim-controls-grid">
+                        <button class="clock-btn sim-btn" id="btn-toggle-sim"><i class="fa-solid fa-play"></i> Iniciar Simulación Día D</button>
+                        <button class="clock-btn secondary sim-reset-btn" id="btn-reset-sim"><i class="fa-solid fa-rotate-left"></i> Restablecer Hora Real</button>
+                    </div>
+
+                    <div class="sim-options-row">
+                        <div class="sim-field">
+                            <label><i class="fa-solid fa-gauge-high"></i> Velocidad:</label>
+                            <select id="sim-speed-select" class="sim-select">
+                                <option value="1">1X (Tiempo Real)</option>
+                                <option value="5">5X Acelerado</option>
+                                <option value="10" selected>10X Recomendado</option>
+                                <option value="30">30X Rápido</option>
+                            </select>
+                        </div>
+                        <div class="sim-field">
+                            <label><i class="fa-solid fa-forward-step"></i> Saltar a Preaviso:</label>
+                            <select id="sim-jump-select" class="sim-select">
+                                <option value="">Seleccionar Fase...</option>
+                                <option value="pre_c1">Preaviso C1 (-3 min)</option>
+                                <option value="pre_c2">Preaviso C2 (-3 min)</option>
+                                <option value="c2_30s">Preaviso C2 (-30 seg)</option>
+                                <option value="pre_max">Preaviso MAX (-3 min)</option>
+                                <option value="pre_c3">Preaviso C3 (-3 min)</option>
+                                <option value="c3_10s">Preaviso C3 (-10 seg)</option>
+                                <option value="pre_c4">Preaviso C4 (-3 min)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="test-phase-buttons-header">
+                        <h4><i class="fa-solid fa-bullhorn"></i> Pruebas Rápidas de Locución por Fase</h4>
+                    </div>
+                    <div class="test-phase-buttons-grid">
+                        <button class="btn-test-phase" data-alert="c1_pre_3m"><i class="fa-solid fa-clock"></i> Pre C1 (3m)</button>
+                        <button class="btn-test-phase" data-alert="c1_start"><i class="fa-solid fa-play"></i> Inicio C1</button>
+                        <button class="btn-test-phase highlight" data-alert="c2_pre_3m"><i class="fa-solid fa-clock"></i> Pre C2 (3m)</button>
+                        <button class="btn-test-phase highlight" data-alert="c2_30s"><i class="fa-solid fa-triangle-exclamation"></i> Pre C2 (30s)</button>
+                        <button class="btn-test-phase highlight totality" data-alert="c2_start"><i class="fa-solid fa-moon"></i> ¡Inicio C2!</button>
+                        <button class="btn-test-phase max" data-alert="max_pre_3m"><i class="fa-solid fa-clock"></i> Pre MAX (3m)</button>
+                        <button class="btn-test-phase max" data-alert="max_start"><i class="fa-solid fa-star"></i> MAX Eclipse</button>
+                        <button class="btn-test-phase highlight" data-alert="c3_pre_3m"><i class="fa-solid fa-clock"></i> Pre C3 (3m)</button>
+                        <button class="btn-test-phase highlight warning" data-alert="c3_10s"><i class="fa-solid fa-glasses"></i> Pre C3 (10s)</button>
+                        <button class="btn-test-phase highlight" data-alert="c3_start"><i class="fa-solid fa-eye"></i> Fin C3</button>
+                        <button class="btn-test-phase" data-alert="c4_pre_3m"><i class="fa-solid fa-clock"></i> Pre C4 (3m)</button>
+                        <button class="btn-test-phase" data-alert="c4_start"><i class="fa-solid fa-flag-checkered"></i> Fin C4</button>
+                    </div>
                 </div>
             </div>
         </div>
