@@ -206,11 +206,15 @@
             itemY += 50;
         });
 
-        // --- PIE DE PÁGINA ---
+        // --- PIE DE PÁGINA Y AVISO LEGAL ---
         ctx.textAlign = 'center';
+        ctx.fillStyle = '#e67e22';
+        ctx.font = 'bold 18px Outfit, sans-serif';
+        ctx.fillText('⚠️ Aviso: Tiempos astronómicos calculados de forma orientativa. La salud visual es responsabilidad del observador. Comprueba el estado del sol con gafas ISO 12312-2.', w / 2, 1595);
+
         ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.font = '20px Outfit, sans-serif';
-        ctx.fillText('Generado por Eclipse Solar España 2026 — Proyecto de Divulgación Astronómica', w / 2, 1630);
+        ctx.font = '18px Outfit, sans-serif';
+        ctx.fillText('Generado por Eclipse Solar España 2026 — Proyecto de Divulgación Astronómica', w / 2, 1635);
     }
 
     function downloadPassAsImage() {

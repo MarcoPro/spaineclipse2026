@@ -3240,3 +3240,18 @@ body {
         padding: 6px 4px !important;
     }
 }
+
+/* --- DISCLAIMER & LEGAL SAFETY STYLES --- */
+#btn-accept-disclaimer {
+    transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
+}
+
+#btn-accept-disclaimer:hover {
+    filter: brightness(1.15);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(230, 126, 34, 0.4);
+}
+
+.disclaimer-alert-box {
+    animation: fadeIn 0.3s ease;
+}

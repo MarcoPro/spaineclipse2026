@@ -4,7 +4,7 @@
  * el día del eclipse (zonas rurales sin cobertura).
  */
 
-const CACHE_NAME = 'eclipse-2026-v2.6.0';
+const CACHE_NAME = 'eclipse-2026-v2.7.0';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',

@@ -2638,5 +2638,45 @@ document.addEventListener("DOMContentLoaded", () => {
         changelogModal.classList.add('hidden');
     });
 
+    // --- MODAL DE DESCARGO DE RESPONSABILIDAD Y USO CONSCIENTE ---
+    const modalDisclaimer = document.getElementById('modal-disclaimer');
+    const btnOpenDisclaimer = document.getElementById('btn-open-disclaimer');
+    const btnPanelDisclaimer = document.getElementById('btn-panel-disclaimer');
+    const closeDisclaimer = document.getElementById('close-disclaimer');
+    const btnAcceptDisclaimer = document.getElementById('btn-accept-disclaimer');
+
+    function openDisclaimerModal() {
+        if (modalDisclaimer) modalDisclaimer.classList.remove('hidden');
+    }
+
+    function closeDisclaimerModal() {
+        if (modalDisclaimer) modalDisclaimer.classList.add('hidden');
+    }
+
+    function acceptDisclaimerModal() {
+        try {
+            localStorage.setItem('eclipse_disclaimer_accepted', 'true');
+        } catch (e) {
+            console.warn('localStorage no disponible:', e);
+        }
+        closeDisclaimerModal();
+    }
+
+    if (btnOpenDisclaimer) btnOpenDisclaimer.addEventListener('click', openDisclaimerModal);
+    if (btnPanelDisclaimer) btnPanelDisclaimer.addEventListener('click', openDisclaimerModal);
+    if (closeDisclaimer) closeDisclaimer.addEventListener('click', closeDisclaimerModal);
+    if (btnAcceptDisclaimer) btnAcceptDisclaimer.addEventListener('click', acceptDisclaimerModal);
+
+    // Auto-mostrar la primera vez si no se ha aceptado previamente
+    try {
+        if (!localStorage.getItem('eclipse_disclaimer_accepted')) {
+            setTimeout(() => {
+                openDisclaimerModal();
+            }, 600);
+        }
+    } catch (e) {
+        console.warn('localStorage no accesible:', e);
+    }
+
 });
 

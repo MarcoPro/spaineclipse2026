@@ -4,6 +4,22 @@ Todos los cambios notables del proyecto Eclipse Solar España 2026.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
+## [2.7.0] — 2026-08-04
+
+### ✨ Añadido
+- **Sistema Integral de Descargo de Responsabilidad y Uso Consciente (`#modal-disclaimer`)**
+  - **Modal de Primera Visita & Términos Legales**: Presentación automática de la descarga de responsabilidad en el primer acceso a la app (almacenando aceptación en `localStorage`), accesible en todo momento mediante el botón con icono de escudo en el header y el botón de *Aviso Legal* en el panel lateral.
+  - **Cuatro Ejes Fundamentales de Seguridad**:
+    1. *Salud Visual & Responsabilidad Personal*: Enfatiza la obligación de utilizar gafas certificadas ISO 12312-2 en fase parcial y el uso bajo criterio propio.
+    2. *Tiempos Astronómicos Orientativos*: Advierte sobre posibles desajustes de segundos entre modelos numéricos de efemérides y la realidad (refracción, perfil lunar, reloj interno).
+    3. *Precisión Geográfica del Usuario*: Informa sobre el impacto crítico de seleccionar o marcar mal la localidad/coordenadas en el mapa.
+    4. *Imponderables Tecnológicos*: Detalla las limitaciones de las alertas acústicas y voz sintetizada por bloqueos de audio, ahorro de batería o fallos del navegador.
+  - **Avisos Contextuales en la Interfaz**:
+    - *Tarjeta de Seguridad Visual (`#safety-warning`)*: Nota a pie de tarjeta sobre el carácter orientativo de la guía de gafas.
+    - *Reloj Día D & Alertas Sonoras (`#modal-phase-clock`)*: Banner de aviso de seguridad acústica y sincronía horaria.
+    - *Recomendador por Radio (`#modal-location-finder`)*: Advertencia de sensibilidad de cálculo por margen geográfico.
+    - *Pase Oficial de Observación (`observation_card.js`)*: Micro-disclaimer impreso en el pie de la credencial exportable.
+
 ## [2.6.0] — 2026-08-04
 
 ### ✨ Añadido

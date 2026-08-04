@@ -147,6 +147,9 @@
                 <button class="btn-location" id="btn-cloud-heatmap" title="Mapa de previsión de nubes">
                     <i class="fa-solid fa-cloud"></i>
                 </button>
+                <button class="btn-location" id="btn-open-disclaimer" title="Aviso Legal & Descargo de Responsabilidad">
+                    <i class="fa-solid fa-shield-halved" style="color: #e67e22;"></i>
+                </button>
                 <a href="https://github.com/marcopro/spaineclipse2026/" target="_blank" rel="noopener" class="btn-location" title="Ver código fuente en GitHub" style="display: inline-flex; align-items: center; justify-content: center; text-decoration: none;">
                     <i class="fa-brands fa-github"></i>
                 </a>
@@ -262,6 +265,10 @@
                                 Parcial<br><strong style="color: #e74c3c;">Gafas SÍ</strong></span>
                         </div>
                     </div>
+                </div>
+                <div style="background: rgba(230, 126, 34, 0.12); padding: 8px 12px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.72rem; color: #f39c12; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-triangle-exclamation" style="flex-shrink: 0; font-size: 0.9rem;"></i>
+                    <span><strong>Uso consciente:</strong> Los tiempos de paso y avisos de gafas son cálculos orientativos. Verifica siempre visualmente con gafas homologadas y de manera responsable.</span>
                 </div>
             </div>
 
@@ -465,6 +472,9 @@
                 <button class="simulation-btn" id="btn-gen-pass" style="border-color: rgba(241, 196, 15, 0.4); color: #f1c40f;">
                     <i class="fa-solid fa-id-card"></i> Generar Pase
                 </button>
+                <button class="simulation-btn" id="btn-panel-disclaimer" style="border-color: rgba(230, 126, 34, 0.4); color: #e67e22;" title="Aviso Legal y Descargo de Responsabilidad">
+                    <i class="fa-solid fa-shield-halved"></i> Aviso Legal
+                </button>
                 <button class="compare-add-btn" id="btn-add-compare">
                     <i class="fa-solid fa-plus"></i> Comparar
                 </button>
@@ -658,6 +668,13 @@
                 <button class="modal-close" id="close-phase-clock"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="modal-body">
+                <div class="disclaimer-alert-box" style="background: rgba(230, 126, 34, 0.15); border: 1px solid rgba(230, 126, 34, 0.4); border-radius: 8px; padding: 10px 14px; margin-bottom: 15px; font-size: 0.8rem; color: #f39c12; display: flex; align-items: flex-start; gap: 10px;">
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.1rem; margin-top: 2px; flex-shrink: 0;"></i>
+                    <div>
+                        <strong>Aviso de Alertas Sonoras y Voz:</strong> Las alarmas acústicas y avisos hablados son un soporte de apoyo orientativo. Pueden verse afectados por el reloj interno del dispositivo, ahorro de batería o políticas de audio del navegador. <em>No dependas exclusivamente del sonido para ponerte o quitarte las gafas.</em>
+                    </div>
+                </div>
+
                 <div class="clock-countdown-banner">
                     <div class="clock-unit"><span id="clock-days">00</span><label>Días</label></div>
                     <div class="clock-unit"><span id="clock-hours">00</span><label>Horas</label></div>
@@ -810,8 +827,14 @@
             <div class="modal-header">
                 <h2><i class="fa-solid fa-compass"></i> Recomendador Inteligente por Radio (km)</h2>
                 <button class="modal-close" id="close-location-finder"><i class="fa-solid fa-xmark"></i></button>
-            </div>
             <div class="modal-body">
+                <div style="background: rgba(52, 152, 219, 0.15); border: 1px solid rgba(52, 152, 219, 0.35); border-radius: 8px; padding: 10px 14px; margin-bottom: 15px; font-size: 0.8rem; color: #3498db; display: flex; align-items: flex-start; gap: 10px;">
+                    <i class="fa-solid fa-location-dot" style="font-size: 1.1rem; margin-top: 2px; flex-shrink: 0;"></i>
+                    <div>
+                        <strong>Aviso de Ubicación:</strong> Asegúrate de verificar o marcar exactamente tu lugar real de observación. Pequeños márgenes de error geográfico o seleccionar una ciudad cercana pueden modificar los tiempos exactos del eclipse e incluso determinar si verás o no la fase de totalidad.
+                    </div>
+                </div>
+
                 <div class="finder-inputs-row">
                     <div class="finder-field" style="position: relative;">
                         <label>Origen (Municipio / Ciudad):</label>
@@ -874,6 +897,70 @@
                 <div class="pass-actions-row">
                     <button class="pass-action-btn primary" id="btn-download-pass"><i class="fa-solid fa-download"></i> Descargar Imagen (PNG)</button>
                     <button class="pass-action-btn secondary" id="btn-print-pass"><i class="fa-solid fa-print"></i> Imprimir / Guardar PDF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: DESCARGO DE RESPONSABILIDAD Y USO CONSCIENTE -->
+    <div class="modal-overlay hidden" id="modal-disclaimer">
+        <div class="modal-container glass-panel width-medium">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(230, 126, 34, 0.3);">
+                <h2><i class="fa-solid fa-shield-halved" style="color: #e67e22;"></i> Aviso Legal y Descargo de Responsabilidad</h2>
+                <button class="modal-close" id="close-disclaimer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" style="padding: 1.25rem; font-size: 0.9rem; line-height: 1.5; color: #dcdde1;">
+                
+                <div style="background: rgba(230, 126, 34, 0.12); border: 1px solid rgba(230, 126, 34, 0.4); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.8rem; color: #e67e22; flex-shrink: 0;"></i>
+                    <div>
+                        <strong style="color: #f39c12; font-size: 0.95rem; display: block; margin-bottom: 2px;">Uso Consciente y Responsable de la Aplicación</strong>
+                        <span>Por favor, lee con atención esta información sobre la seguridad ocular y las limitaciones de los cálculos informáticos.</span>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 14px;">
+                    <div style="background: rgba(0, 0, 0, 0.25); border-radius: 8px; padding: 12px 14px; border: 1px solid rgba(255, 255, 255, 0.06);">
+                        <div style="font-weight: 700; color: #e74c3c; font-size: 0.92rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-glasses"></i> 1. Responsabilidad Personal en la Protección Ocular
+                        </div>
+                        <p style="margin: 0; font-size: 0.85rem; color: #c8d6e5;">
+                            La salud visual es responsabilidad única e intransferible del observador. NUNCA mires directamente al Sol sin gafas de eclipse certificadas (ISO 12312-2) durante las fases parciales. Únicamente se permite retirar la protección durante la totalidad estricta si estás comprobadamente dentro de la franja de totalidad.
+                        </p>
+                    </div>
+
+                    <div style="background: rgba(0, 0, 0, 0.25); border-radius: 8px; padding: 12px 14px; border: 1px solid rgba(255, 255, 255, 0.06);">
+                        <div style="font-weight: 700; color: #f1c40f; font-size: 0.92rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-clock"></i> 2. Tiempos Astronómicos Orientativos y Desajustes
+                        </div>
+                        <p style="margin: 0; font-size: 0.85rem; color: #c8d6e5;">
+                            Los tiempos de contacto (C1, C2, C3, C4) mostrados por la app provienen de modelos efeméricos numéricos y aproximaciones atmosféricas. Pueden existir pequeños desajustes de segundos respecto a la realidad. No confíes ciegamente en una cuenta atrás; usa siempre la vista protegida con gafas antes de quitar la protección.
+                        </p>
+                    </div>
+
+                    <div style="background: rgba(0, 0, 0, 0.25); border-radius: 8px; padding: 12px 14px; border: 1px solid rgba(255, 255, 255, 0.06);">
+                        <div style="font-weight: 700; color: #3498db; font-size: 0.92rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-location-dot"></i> 3. Precisión de la Localidad Marcada
+                        </div>
+                        <p style="margin: 0; font-size: 0.85rem; color: #c8d6e5;">
+                            Los datos de visibilidad y duración varían drásticamente con la posición geográfica. Marcar mal la localidad en el mapa, errores de GPS o desplazarse unos kilómetros alteran los horarios y pueden separar la zona de totalidad de la zona parcial. Es fundamental verificar las coordenadas exactas.
+                        </p>
+                    </div>
+
+                    <div style="background: rgba(0, 0, 0, 0.25); border-radius: 8px; padding: 12px 14px; border: 1px solid rgba(255, 255, 255, 0.06);">
+                        <div style="font-weight: 700; color: #9b59b6; font-size: 0.92rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-volume-high"></i> 4. Fallos Informáticos y Alertas Sonoras
+                        </div>
+                        <p style="margin: 0; font-size: 0.85rem; color: #c8d6e5;">
+                            Las alertas sonoras, sintetizador de voz (Web Speech API) y temporizadores web dependen del navegador, el estado del reloj interno y las políticas de ahorro de batería de tu teléfono. Pueden sufrir silenciamientos o retrasos. No dependas en exclusiva del audio para tu seguridad.
+                        </p>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; text-align: center;">
+                    <button class="pass-action-btn primary" id="btn-accept-disclaimer" style="background: linear-gradient(135deg, #e67e22, #d35400); width: 100%; border: none; padding: 12px; font-size: 1rem; font-weight: bold; border-radius: 8px; cursor: pointer; color: #fff;">
+                        <i class="fa-solid fa-check-circle"></i> Entendido y Acepto las Condiciones
+                    </button>
                 </div>
             </div>
         </div>

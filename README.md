@@ -12,6 +12,7 @@ Permite a cualquier usuario buscar su localidad (o hacer clic en el mapa) y obte
 
 ![Vista general del mapa con la franja de totalidad y panel informativo](https://img.shields.io/badge/Status-En%20desarrollo-yellow?style=for-the-badge)
 
+- 🛡️ **Sistema de Descargo de Responsabilidad y Uso Consciente**: Modal interactivo de primera visita (con persistencia en `localStorage`) y avisos contextuales de seguridad ocular (uso obligatorio de gafas ISO 12312-2 en fase parcial), aclaración de tiempos astronómicos orientativos, sensibilidad geográfica al marcar la localidad e imponderables técnicos/acústicos en dispositivos móviles.
 - 🔔 **Reloj Día D & Alertas de Voz en Vivo con Modo Test**: Reloj astronómico interactivo con **Preavisos adaptativos sin solapamiento** de cada fase (C1–C4), indicaciones de seguridad contextuales (gafas solares y filtros de cámara según zona de totalidad o parcialidad), **Motor de voz HD con selector de sintetizador**, **Simulador temporal acelerado (1X–30X)** y **botonera de pruebas rápidas por fase**.
 - 🗺️ **Múltiples Mapas Base** interactivos (Estándar, Satélite y Relieve Topográfico)
 - ⚡ **Previsión Meteorológica Real Pregenerada (Open-Meteo)**: predicción numérico-climática en vivo para el día del eclipse con desglose de **Nubes Bajas, Medias y Altas (Cirros)**, temperatura y probabilidad de lluvia.
@@ -42,7 +43,7 @@ Permite a cualquier usuario buscar su localidad (o hacer clic en el mapa) y obte
 - `limb_simulator.js`: Simulador de Perlas de Baily con renderizado dual (fotorrealista y técnico) basado en el perfil real del limbo lunar.
 - `lunar_limb_profile.js`: Perfil de elevación del limbo lunar real para el simulador de Perlas de Baily.
 - `horizon_3d.js`: Motor de visualización 3D del terreno con interpolación IDW y ruido fractal procedural.
-- `config.js`: Archivo de configuración centralizado (única fuente de la verdad, v2.5.0). Almacena los elementos besselianos, deltas de tiempo, y parámetros de conexión para APIs y capas topográficas.
+- `config.js`: Archivo de configuración centralizado (única fuente de la verdad, v2.7.0). Almacena los elementos besselianos, deltas de tiempo, y parámetros de conexión para APIs y capas topográficas.
 - `styles.css`: Hoja de estilos principal con diseño *glassmorphism*, dark mode y diseño responsive optimizado para móviles e iPhones.
 - `sw.js`: *Service Worker*. Cachea todos los archivos de la app para que funcione 100% offline (sin internet) el día del eclipse.
 - `manifest.json`: Archivo de manifiesto que permite instalar la web como una app nativa en el móvil (PWA).
