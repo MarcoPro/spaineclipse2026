@@ -31,7 +31,7 @@ BASE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 GEOJSON_PATH = os.path.join(BASE_DIR, "eclipse_2026.geojson")
 OUTPUT_JS_PATH = os.path.join(BASE_DIR, "weather_forecast_data.js")
 
-STEP = 0.35  # ~0.35 grados (aprox. 30-40km de separación entre puntos)
+STEP = 0.20  # ~0.20 grados (aprox. 20km de separación entre puntos, ~1600 puntos)
 TARGET_DATE = "2026-08-12"
 TARGET_HOUR_UTC = 18  # 18:00 UTC (20:00 CEST en España)
 
