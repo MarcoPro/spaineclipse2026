@@ -1,184 +1,74 @@
 [
   {
-    "id": "44238",
-    "nombre": "Utrillas",
-    "lat": 40.81347559,
-    "lon": -0.84316294,
-    "destacada": "1"
-  },
-  {
-    "id": "40203",
-    "nombre": "Torrecaballeros",
-    "lat": 40.99305543,
-    "lon": -4.02466966,
-    "destacada": "1"
+    "id": "15075",
+    "nombre": "Sada (A Coruña)",
+    "lat": 43.355,
+    "lon": -8.256
   },
   {
     "id": "27066",
-    "nombre": "Viveiro",
-    "lat": 43.66191209,
-    "lon": -7.5948252,
-    "destacada": "1"
-  },
-  {
-    "id": "47075",
-    "nombre": "Íscar",
-    "lat": 41.3641985,
-    "lon": -4.53071374,
-    "destacada": "1"
-  },
-  {
-    "id": "01063",
-    "nombre": "Zuia",
-    "lat": 42.95597763,
-    "lon": -2.81862854,
-    "destacada": "1"
-  },
-  {
-    "id": "15075",
-    "nombre": "Sada",
-    "lat": 43.35502489,
-    "lon": -8.2568568,
-    "destacada": "1"
-  },
-  {
-    "id": "42215",
-    "nombre": "Vinuesa",
-    "lat": 41.91179175,
-    "lon": -2.76272503,
-    "destacada": "1"
-  },
-  {
-    "id": "42134",
-    "nombre": "Ólvega",
-    "lat": 41.78045744,
-    "lon": -1.98266592,
-    "destacada": "1"
-  },
-  {
-    "id": "49275",
-    "nombre": "Zamora",
-    "lat": 41.49913956,
-    "lon": -5.75494831,
-    "destacada": "1"
-  },
-  {
-    "id": "19331",
-    "nombre": "Yunquera de Henares",
-    "lat": 40.75417568,
-    "lon": -3.16587549,
-    "destacada": "1"
-  },
-  {
-    "id": "31002",
-    "nombre": "Abárzuza/Abartzuza",
-    "lat": 42.72744993,
-    "lon": -2.02195793,
-    "destacada": "0"
+    "nombre": "Viveiro (Lugo)",
+    "lat": 43.661,
+    "lon": -7.594
   },
   {
     "id": "33076",
-    "nombre": "Villaviciosa",
-    "lat": 43.48140933,
-    "lon": -5.43480263,
-    "destacada": "1"
-  },
-  {
-    "id": "09903",
-    "nombre": "Villarcayo de Merindad de Castilla la Vieja",
-    "lat": 42.93848633,
-    "lon": -3.57245956,
-    "destacada": "1"
-  },
-  {
-    "id": "12138",
-    "nombre": "Vinaròs",
-    "lat": 40.47092595,
-    "lon": 0.47487433,
-    "destacada": "1"
-  },
-  {
-    "id": "43086",
-    "nombre": "Montblanc",
-    "lat": 41.37705549,
-    "lon": 1.16171565,
-    "destacada": "1"
-  },
-  {
-    "id": "22254",
-    "nombre": "Zaidín",
-    "lat": 41.60434032,
-    "lon": 0.26337049,
-    "destacada": "1"
-  },
-  {
-    "id": "07015",
-    "nombre": "Ciutadella de Menorca",
-    "lat": 40.00191941,
-    "lon": 3.83794037,
-    "destacada": "1"
-  },
-  {
-    "id": "46110",
-    "nombre": "Xirivella",
-    "lat": 39.46575132,
-    "lon": -0.4252401,
-    "destacada": "1"
-  },
-  {
-    "id": "07061",
-    "nombre": "Sóller",
-    "lat": 39.7644573,
-    "lon": 2.71413767,
-    "destacada": "1"
-  },
-  {
-    "id": "08307",
-    "nombre": "Vilanova i la Geltrú",
-    "lat": 41.22721991,
-    "lon": 1.7238399,
-    "destacada": "1"
-  },
-  {
-    "id": "46012",
-    "nombre": "Alborache",
-    "lat": 39.39152396,
-    "lon": -0.77134683,
-    "destacada": "0"
+    "nombre": "Villaviciosa (Asturias)",
+    "lat": 43.481,
+    "lon": -5.434
   },
   {
     "id": "24209",
-    "nombre": "Villafranca del Bierzo",
-    "lat": 42.60599303,
-    "lon": -6.81082207,
-    "destacada": "1"
+    "nombre": "Villafranca del Bierzo (León)",
+    "lat": 42.605,
+    "lon": -6.81
   },
   {
-    "id": "05034",
-    "nombre": "Blasconuño de Matacabras",
-    "lat": 41.12387142,
-    "lon": -4.98988245,
-    "destacada": "0"
+    "id": "09903",
+    "nombre": "Villarcayo (Burgos)",
+    "lat": 42.938,
+    "lon": -3.572
+  },
+  {
+    "id": "47231",
+    "nombre": "Zaratán (Valladolid)",
+    "lat": 41.661,
+    "lon": -4.782
+  },
+  {
+    "id": "42134",
+    "nombre": "Ólvega (Soria)",
+    "lat": 41.78,
+    "lon": -1.982
+  },
+  {
+    "id": "44238",
+    "nombre": "Utrillas (Teruel)",
+    "lat": 40.813,
+    "lon": -0.843
+  },
+  {
+    "id": "12138",
+    "nombre": "Vinaròs (Castellón)",
+    "lat": 40.47,
+    "lon": 0.474
+  },
+  {
+    "id": "43171",
+    "nombre": "Vila-seca (Tarragona)",
+    "lat": 41.11,
+    "lon": 1.145
+  },
+  {
+    "id": "07061",
+    "nombre": "Sóller (Mallorca)",
+    "lat": 39.764,
+    "lon": 2.714
   },
   {
     "id": "07032",
-    "nombre": "Maó-Mahón",
-    "lat": 39.88752218,
-    "lon": 4.26546555,
-    "destacada": "1"
-  },
-  {
-    "id": "27016",
-    "nombre": "Chantada",
-    "lat": 42.60798936,
-    "lon": -7.76987403,
-    "destacada": "1"
-  },
-  {
-    "id": "07054",
-    "nombre": "Santa Eulària des Riu",
-    "lat": 38.98383613,
-    "lon": 1.52911819,
-    "destacada": "1"
+    "nombre": "Maó (Menorca)",
+    "lat": 39.887,
+    "lon": 4.265
   }
 ]

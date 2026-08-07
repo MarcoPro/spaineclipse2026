@@ -1,0 +1,282 @@
+[
+  {
+    "id": "44238",
+    "nombre": "Utrillas",
+    "lat": 40.8135,
+    "lon": -0.8432,
+    "destacada": "1"
+  },
+  {
+    "id": "19293",
+    "nombre": "Uceda",
+    "lat": 40.8421,
+    "lon": -3.4641,
+    "destacada": "1"
+  },
+  {
+    "id": "27066",
+    "nombre": "Viveiro",
+    "lat": 43.6619,
+    "lon": -7.5948,
+    "destacada": "1"
+  },
+  {
+    "id": "09903",
+    "nombre": "Villarcayo de Merindad de Castilla la Vieja",
+    "lat": 42.9385,
+    "lon": -3.5725,
+    "destacada": "1"
+  },
+  {
+    "id": "19190",
+    "nombre": "Molina de Aragón",
+    "lat": 40.8424,
+    "lon": -1.8906,
+    "destacada": "1"
+  },
+  {
+    "id": "48080",
+    "nombre": "Valle de Trápaga-Trapagaran",
+    "lat": 43.305,
+    "lon": -3.0377,
+    "destacada": "1"
+  },
+  {
+    "id": "47075",
+    "nombre": "Íscar",
+    "lat": 41.3642,
+    "lon": -4.5307,
+    "destacada": "1"
+  },
+  {
+    "id": "15075",
+    "nombre": "Sada",
+    "lat": 43.355,
+    "lon": -8.2569,
+    "destacada": "1"
+  },
+  {
+    "id": "42215",
+    "nombre": "Vinuesa",
+    "lat": 41.9118,
+    "lon": -2.7627,
+    "destacada": "1"
+  },
+  {
+    "id": "44216",
+    "nombre": "Teruel",
+    "lat": 40.3441,
+    "lon": -1.1093,
+    "destacada": "1"
+  },
+  {
+    "id": "31227",
+    "nombre": "Tafalla",
+    "lat": 42.5283,
+    "lon": -1.6771,
+    "destacada": "1"
+  },
+  {
+    "id": "49275",
+    "nombre": "Zamora",
+    "lat": 41.4991,
+    "lon": -5.7549,
+    "destacada": "1"
+  },
+  {
+    "id": "19192",
+    "nombre": "Mondéjar",
+    "lat": 40.3225,
+    "lon": -3.1097,
+    "destacada": "1"
+  },
+  {
+    "id": "34199",
+    "nombre": "Velilla del Río Carrión",
+    "lat": 42.8278,
+    "lon": -4.8432,
+    "destacada": "1"
+  },
+  {
+    "id": "42134",
+    "nombre": "Ólvega",
+    "lat": 41.7805,
+    "lon": -1.9827,
+    "destacada": "1"
+  },
+  {
+    "id": "19331",
+    "nombre": "Yunquera de Henares",
+    "lat": 40.7542,
+    "lon": -3.1659,
+    "destacada": "1"
+  },
+  {
+    "id": "47104",
+    "nombre": "Olmedo",
+    "lat": 41.2889,
+    "lon": -4.6847,
+    "destacada": "1"
+  },
+  {
+    "id": "09321",
+    "nombre": "Roa",
+    "lat": 41.6972,
+    "lon": -3.9279,
+    "destacada": "1"
+  },
+  {
+    "id": "27058",
+    "nombre": "Saviñao, O",
+    "lat": 42.585,
+    "lon": -7.6415,
+    "destacada": "1"
+  },
+  {
+    "id": "50099",
+    "nombre": "Épila",
+    "lat": 41.6013,
+    "lon": -1.2818,
+    "destacada": "1"
+  },
+  {
+    "id": "12138",
+    "nombre": "Vinaròs",
+    "lat": 40.4709,
+    "lon": 0.4749,
+    "destacada": "1"
+  },
+  {
+    "id": "01063",
+    "nombre": "Zuia",
+    "lat": 42.956,
+    "lon": -2.8186,
+    "destacada": "1"
+  },
+  {
+    "id": "25228",
+    "nombre": "Torrefarrera",
+    "lat": 41.6731,
+    "lon": 0.6072,
+    "destacada": "1"
+  },
+  {
+    "id": "22254",
+    "nombre": "Zaidín",
+    "lat": 41.6043,
+    "lon": 0.2634,
+    "destacada": "1"
+  },
+  {
+    "id": "07062",
+    "nombre": "Son Servera",
+    "lat": 39.6204,
+    "lon": 3.3601,
+    "destacada": "1"
+  },
+  {
+    "id": "46110",
+    "nombre": "Xirivella",
+    "lat": 39.4658,
+    "lon": -0.4252,
+    "destacada": "1"
+  },
+  {
+    "id": "07061",
+    "nombre": "Sóller",
+    "lat": 39.7645,
+    "lon": 2.7141,
+    "destacada": "1"
+  },
+  {
+    "id": "46235",
+    "nombre": "Sueca",
+    "lat": 39.2024,
+    "lon": -0.3155,
+    "destacada": "1"
+  },
+  {
+    "id": "16078",
+    "nombre": "Cuenca",
+    "lat": 40.0765,
+    "lon": -2.1315,
+    "destacada": "1"
+  },
+  {
+    "id": "08307",
+    "nombre": "Vilanova i la Geltrú",
+    "lat": 41.2272,
+    "lon": 1.7238,
+    "destacada": "1"
+  },
+  {
+    "id": "43171",
+    "nombre": "Vila-seca",
+    "lat": 41.1109,
+    "lon": 1.1452,
+    "destacada": "1"
+  },
+  {
+    "id": "46012",
+    "nombre": "Alborache",
+    "lat": 39.3915,
+    "lon": -0.7713,
+    "destacada": "0"
+  },
+  {
+    "id": "39087",
+    "nombre": "Torrelavega",
+    "lat": 43.3516,
+    "lon": -4.0472,
+    "destacada": "1"
+  },
+  {
+    "id": "33034",
+    "nombre": "Valdés",
+    "lat": 43.5445,
+    "lon": -6.5351,
+    "destacada": "1"
+  },
+  {
+    "id": "24222",
+    "nombre": "Villaquilambre",
+    "lat": 42.6463,
+    "lon": -5.5588,
+    "destacada": "1"
+  },
+  {
+    "id": "33036",
+    "nombre": "Llanes",
+    "lat": 43.4224,
+    "lon": -4.7545,
+    "destacada": "1"
+  },
+  {
+    "id": "24209",
+    "nombre": "Villafranca del Bierzo",
+    "lat": 42.606,
+    "lon": -6.8108,
+    "destacada": "1"
+  },
+  {
+    "id": "15059",
+    "nombre": "Ordes",
+    "lat": 43.077,
+    "lon": -8.407,
+    "destacada": "1"
+  },
+  {
+    "id": "49166",
+    "nombre": "Puebla de Sanabria",
+    "lat": 42.055,
+    "lon": -6.6344,
+    "destacada": "1"
+  },
+  {
+    "id": "50036",
+    "nombre": "Asín",
+    "lat": 42.2837,
+    "lon": -1.0466,
+    "destacada": "0"
+  }
+]

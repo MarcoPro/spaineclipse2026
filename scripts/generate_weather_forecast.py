@@ -3,12 +3,11 @@
 Eclipse Solar Total 2026 - Generador de Previsión Meteorológica con AEMET OpenData
 
 Este script:
-1. Lee la franja de totalidad del archivo GeoJSON (eclipse_2026.geojson).
-2. Consulta el maestro de municipios de AEMET OpenData para filtrar aquellos situados en la franja.
-3. Muestra y selecciona una muestra uniforme de ~150-200 municipios/puntos distribuidos espacialmente a lo largo del corredor.
-4. Consulta la API de predicción oficial de AEMET para la fecha del eclipse (12 de agosto de 2026).
-5. Extrae el estado del cielo (mapeado a % de nubosidad), probabilidad de precipitación y temperatura.
-6. Exporta un archivo JavaScript (weather_forecast_data.js) para consumo estático offline en la web app.
+1. Muestra 40 municipios representativos distribuidos espacialmente en la franja del eclipse.
+2. Consulta la API de predicción oficial de AEMET OpenData para la fecha del eclipse (12 de agosto de 2026).
+3. Utiliza una pausa estricta (30s) y reintentos (90s) para garantizar 0 errores de rate limit (429).
+4. Precalcula una interpolación espacial IDW (Inverse Distance Weighting) para los ~3.947 municipios de la franja.
+5. Exporta el objeto JavaScript completo (weather_forecast_data.js) con cobertura total (~3.947 puntos) para la web app.
 """
 
 import json
@@ -29,7 +28,6 @@ OUTPUT_JS_PATH = os.path.join(BASE_DIR, "weather_forecast_data.js")
 TARGET_DATE = "2026-08-12"
 TARGET_HOUR_UTC = 18
 
-# Mapeo del estado del cielo AEMET a porcentaje estimado de nubosidad (c_total) y código WMO
 AEMET_SKY_MAPPING = {
     '11': {'c_total': 0, 'w_code': 0, 'desc': 'Despejado'},
     '11n': {'c_total': 0, 'w_code': 0, 'desc': 'Despejado'},
@@ -57,21 +55,13 @@ AEMET_SKY_MAPPING = {
     '64': {'c_total': 100, 'w_code': 96, 'desc': 'Cubierto con tormenta'}
 }
 
-def is_point_in_polygon(x, y, poly):
-    n = len(poly)
-    inside = False
-    p1x, p1y = poly[0]
-    for i in range(1, n + 1):
-        p2x, p2y = poly[i % n]
-        if y > min(p1y, p2y):
-            if y <= max(p1y, p2y):
-                if x <= max(p1x, p2x):
-                    if p1y != p2y:
-                        xints = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
-                    if p1x == p2x or x <= xints:
-                        inside = not inside
-        p1x, p1y = p2x, p2y
-    return inside
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371.0 # km
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
 
 def safe_decode(raw_bytes):
     try:
@@ -97,15 +87,15 @@ def fetch_aemet_json(endpoint_url, max_retries=5):
                     raw_data = resp_data.read()
                     return json.loads(safe_decode(raw_data))
             elif estado == 429:
-                print(f"    [!] AEMET Rate Limit (429). Esperando 65s para reiniciar ventana...", flush=True)
-                time.sleep(65)
+                print(f"    [!] AEMET Rate Limit (429). Esperando 90s para reiniciar ventana...", flush=True)
+                time.sleep(90)
             else:
                 print(f"    [!] Respuesta AEMET estado {estado}: {res_meta.get('descripcion')}", flush=True)
-                time.sleep(3 * attempt)
+                time.sleep(5 * attempt)
         except urllib.error.HTTPError as e:
             if e.code == 429:
-                print(f"    [!] AEMET Rate Limit (HTTP 429). Esperando 65s para reiniciar ventana...", flush=True)
-                time.sleep(65)
+                print(f"    [!] AEMET Rate Limit (HTTP 429). Esperando 90s para reiniciar ventana...", flush=True)
+                time.sleep(90)
             else:
                 print(f"    [!] HTTP Error {e.code} (intento {attempt}/{max_retries}): {e.reason}", flush=True)
                 time.sleep(5 * attempt)
@@ -114,6 +104,52 @@ def fetch_aemet_json(endpoint_url, max_retries=5):
             print(f"    [!] Error de red (intento {attempt}/{max_retries}): {e}. Esperando {wait_sec}s...", flush=True)
             time.sleep(wait_sec)
     return None
+
+def interpolate_dataset(path_munis, aemet_results):
+    """Interpola espacialmente (IDW) los resultados de la AEMET para todos los municipios de la franja."""
+    interpolated = []
+    for m in path_munis:
+        dists = [(haversine(m['lat'], m['lon'], a['lat'], a['lon']), a) for a in aemet_results]
+        dists.sort(key=lambda x: x[0])
+        nearest = dists[:4]
+        
+        if nearest[0][0] < 0.01:
+            a = nearest[0][1]
+            interpolated.append({
+                'lat': m['lat'],
+                'lon': m['lon'],
+                'name': m['nombre'],
+                'c_total': a['c_total'],
+                'c_low': a['c_low'],
+                'c_mid': a['c_mid'],
+                'c_high': a['c_high'],
+                'precip': a['precip'],
+                'w_code': a['w_code'],
+                'temp': a['temp']
+            })
+        else:
+            weights = [1.0 / (d[0]**2 + 1e-5) for d in nearest]
+            sum_w = sum(weights)
+            norm_w = [w / sum_w for w in weights]
+            
+            c_total = round(sum(norm_w[i] * nearest[i][1]['c_total'] for i in range(len(nearest))))
+            precip = round(sum(norm_w[i] * nearest[i][1]['precip'] for i in range(len(nearest))))
+            temp = round(sum(norm_w[i] * nearest[i][1]['temp'] for i in range(len(nearest))), 1)
+            w_code = nearest[0][1]['w_code']
+            
+            interpolated.append({
+                'lat': m['lat'],
+                'lon': m['lon'],
+                'name': m['nombre'],
+                'c_total': c_total,
+                'c_low': 0,
+                'c_mid': 0,
+                'c_high': c_total,
+                'precip': precip,
+                'w_code': w_code,
+                'temp': temp
+            })
+    return interpolated
 
 def main():
     print("==================================================")
@@ -126,72 +162,31 @@ def main():
         print("📌 Para ejecución local: export AEMET_API_KEY='tu_api_key'")
         return
 
-    if not os.path.exists(GEOJSON_PATH):
-        print(f"❌ Error: No se encuentra {GEOJSON_PATH}")
+    SAMPLE_MUNIS_PATH = os.path.join(SCRIPT_DIR, "aemet_sample_40_municipalities.json")
+    PATH_MUNIS_PATH = os.path.join(SCRIPT_DIR, "aemet_path_municipalities.json")
+
+    if not os.path.exists(SAMPLE_MUNIS_PATH) or not os.path.exists(PATH_MUNIS_PATH):
+        print("❌ Error: No se encuentran los archivos de municipios objetivo en scripts/")
         return
 
-    # 1. Cargar el Polígono de la Franja
-    with open(GEOJSON_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    with open(SAMPLE_MUNIS_PATH, "r", encoding="utf-8") as f:
+        sample_40 = json.load(f)
 
-    poly_coords = None
-    for feature in data.get("features", []):
-        gtype = feature["geometry"]["type"]
-        if gtype == "Polygon":
-            poly_coords = feature["geometry"]["coordinates"][0]
-            break
-        elif gtype == "MultiPolygon":
-            poly_coords = feature["geometry"]["coordinates"][0][0]
-            break
+    with open(PATH_MUNIS_PATH, "r", encoding="utf-8") as f:
+        path_munis = json.load(f)
 
-    if not poly_coords:
-        print("❌ Error: Polígono de franja inválido")
-        return
+    print(f"📍 Muestra seleccionada para AEMET: {len(sample_40)} municipios clave.")
+    print(f"📍 Cobertura total para interpolación: {len(path_munis)} municipios en la franja del eclipse.")
+    print(f"📡 Consultando predicción diaria de AEMET para el {TARGET_DATE}...", flush=True)
 
-    # 2. Cargar Municipios Objetivo representativos (~26 municipios a lo largo del corredor)
-    TARGET_MUNIS_PATH = os.path.join(SCRIPT_DIR, "aemet_target_municipalities.json")
-
-    if os.path.exists(TARGET_MUNIS_PATH):
-        with open(TARGET_MUNIS_PATH, "r", encoding="utf-8") as f:
-            target_munis = json.load(f)
-        print(f"📍 Cargada muestra precalculada de {len(target_munis)} municipios clave.", flush=True)
-    else:
-        print("📡 Obteniendo maestro de municipios desde AEMET OpenData...", flush=True)
-        munis_url = "https://opendata.aemet.es/opendata/api/maestro/municipios"
-        all_munis = fetch_aemet_json(munis_url)
-        if not all_munis:
-            print("❌ Error al obtener el maestro de municipios de AEMET")
-            return
-
-        path_munis = []
-        for m in all_munis:
-            try:
-                lat = float(m['latitud_dec'])
-                lon = float(m['longitud_dec'])
-                m_id = m['id'].replace('id', '')
-                if is_point_in_polygon(lon, lat, poly_coords):
-                    path_munis.append({'id': m_id, 'nombre': m.get('nombre'), 'lat': lat, 'lon': lon, 'destacada': m.get('destacada', '0')})
-            except (ValueError, KeyError, TypeError):
-                pass
-
-        GRID_STEP = 1.40
-        sampled_dict = {}
-        for m in path_munis:
-            cell_key = (round(m['lat'] / GRID_STEP), round(m['lon'] / GRID_STEP))
-            if cell_key not in sampled_dict or m['destacada'] == '1':
-                sampled_dict[cell_key] = m
-        target_munis = list(sampled_dict.values())
-
-    print(f"📡 Consultando predicción diaria de AEMET para el {TARGET_DATE} ({len(target_munis)} municipios)...", flush=True)
-
-    # 4. Obtener predicciones meteorológicas por municipio para el 12 de agosto
-    results = []
+    # 1. Obtener predicciones meteorológicas para la muestra de 40 municipios
+    aemet_results = []
     now_utc_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    for idx, m in enumerate(target_munis, 1):
+    for idx, m in enumerate(sample_40, 1):
         m_id = m['id']
         m_name = m['nombre']
-        print(f"  [{idx}/{len(target_munis)}] {m_name} (ID: {m_id})...", flush=True)
+        print(f"  [{idx}/{len(sample_40)}] {m_name} (ID: {m_id})...", flush=True)
 
         url_muni = f"https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/{m_id}"
         pred_data = fetch_aemet_json(url_muni)
@@ -211,7 +206,6 @@ def main():
                         break
                 
                 if target_day:
-                    # Estado del cielo
                     sky_entries = target_day.get('estadoCielo', [])
                     sky_val = '11'
                     for se in sky_entries:
@@ -224,7 +218,6 @@ def main():
                     c_total = mapping['c_total']
                     w_code = mapping['w_code']
 
-                    # Probabilidad de precipitación
                     precip_entries = target_day.get('probPrecipitacion', [])
                     precip_vals = []
                     for pe in precip_entries:
@@ -234,7 +227,6 @@ def main():
                             pass
                     precip = max(precip_vals) if precip_vals else 0
 
-                    # Temperatura
                     temp_obj = target_day.get('temperatura', {})
                     t_max = temp_obj.get('maxima')
                     t_min = temp_obj.get('minima')
@@ -247,7 +239,7 @@ def main():
             except Exception as e:
                 print(f"    [!] Error al procesar JSON para {m_name}: {e}")
 
-        results.append({
+        aemet_results.append({
             "lat": m["lat"],
             "lon": m["lon"],
             "name": m_name,
@@ -260,18 +252,21 @@ def main():
             "temp": temp
         })
 
-        # Pausa de 13.0s entre municipios para mantenerse estrictamente por debajo del límite de AEMET (10 req/min = 5 municipios/min)
-        time.sleep(13.0)
+        # Pausa estricta de 30.0s entre municipios para garantizar 0 errores 429
+        time.sleep(30.0)
 
-    # 5. Exportar objeto JavaScript
+    print("⚡ Precalculando interpolación espacial IDW para los 3.947 municipios...", flush=True)
+    all_interpolated = interpolate_dataset(path_munis, aemet_results)
+
     output_obj = {
         "generated_at": now_utc_str,
         "target_date": TARGET_DATE,
         "target_hour_utc": TARGET_HOUR_UTC,
         "provider": "AEMET OpenData (Agencia Estatal de Meteorología)",
         "model": "AEMET HARMONIE-AROME / HIRLAM",
-        "point_count": len(results),
-        "points": results
+        "sample_point_count": len(aemet_results),
+        "point_count": len(all_interpolated),
+        "points": all_interpolated
     }
 
     js_content = f"""// Generado automáticamente por scripts/generate_weather_forecast.py
@@ -284,7 +279,7 @@ window.weatherForecastData = {json.dumps(output_obj, ensure_ascii=False, separat
         f.write(js_content)
 
     print(f"✅ Previsión AEMET pregenerada y guardada en {OUTPUT_JS_PATH}")
-    print(f"📊 {len(results)} municipios procesados e incluidos en el dataset.")
+    print(f"📊 {len(all_interpolated)} municipios incluidos en el dataset final (muestra AEMET: {len(aemet_results)} puntos).")
 
 if __name__ == "__main__":
     main()
