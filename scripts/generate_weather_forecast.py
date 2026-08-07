@@ -97,15 +97,15 @@ def fetch_aemet_json(endpoint_url, max_retries=5):
                     raw_data = resp_data.read()
                     return json.loads(safe_decode(raw_data))
             elif estado == 429:
-                print(f"    [!] AEMET Rate Limit (429). Esperando 60s para reiniciar ventana...", flush=True)
-                time.sleep(60)
+                print(f"    [!] AEMET Rate Limit (429). Esperando 65s para reiniciar ventana...", flush=True)
+                time.sleep(65)
             else:
                 print(f"    [!] Respuesta AEMET estado {estado}: {res_meta.get('descripcion')}", flush=True)
                 time.sleep(3 * attempt)
         except urllib.error.HTTPError as e:
             if e.code == 429:
-                print(f"    [!] AEMET Rate Limit (HTTP 429). Esperando 60s para reiniciar ventana...", flush=True)
-                time.sleep(60)
+                print(f"    [!] AEMET Rate Limit (HTTP 429). Esperando 65s para reiniciar ventana...", flush=True)
+                time.sleep(65)
             else:
                 print(f"    [!] HTTP Error {e.code} (intento {attempt}/{max_retries}): {e.reason}", flush=True)
                 time.sleep(5 * attempt)
@@ -148,10 +148,23 @@ def main():
         print("❌ Error: Polígono de franja inválido")
         return
 
-    # 2. Consultar Maestro de Municipios AEMET
-    print("📡 Obteniendo maestro de municipios desde AEMET OpenData...", flush=True)
-    munis_url = "https://opendata.aemet.es/opendata/api/maestro/municipios"
-    all_munis = fetch_aemet_json(munis_url)
+    # 2. Consultar Maestro de Municipios AEMET (usar caché local si existe)
+    CACHE_PATH = os.path.join(SCRIPT_DIR, "aemet_municipios_cache.json")
+    all_munis = None
+
+    if os.path.exists(CACHE_PATH):
+        try:
+            with open(CACHE_PATH, "r", encoding="utf-8") as f:
+                all_munis = json.load(f)
+            print("📍 Cargado maestro de municipios desde caché local (8122 municipios).", flush=True)
+        except Exception as e:
+            print(f"⚠️ Error al leer caché local ({e}), consultando API...", flush=True)
+
+    if not all_munis:
+        print("📡 Obteniendo maestro de municipios desde AEMET OpenData...", flush=True)
+        munis_url = "https://opendata.aemet.es/opendata/api/maestro/municipios"
+        all_munis = fetch_aemet_json(munis_url)
+
     if not all_munis:
         print("❌ Error al obtener el maestro de municipios de AEMET")
         return
@@ -267,8 +280,8 @@ def main():
             "temp": temp
         })
 
-        # Pausa respetuosa de 6.5s para no superar 10 peticiones/min en AEMET
-        time.sleep(6.5)
+        # Pausa de 7.0s para mantenerse holgadamente por debajo de las 20 peticiones/min de AEMET
+        time.sleep(7.0)
 
     # 5. Exportar objeto JavaScript
     output_obj = {
