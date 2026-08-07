@@ -173,7 +173,7 @@
         ctx.fillStyle = '#ffffff'; ctx.font = '24px Outfit, sans-serif';
         ctx.fillText(`· Cobertura Nubosa Prevista: `, 110, 995);
         ctx.fillStyle = '#2ecc71'; ctx.font = 'bold 24px Outfit, sans-serif';
-        ctx.fillText(`${cloudVal} (Previsión Diaria Open-Meteo)`, 420, 995);
+        ctx.fillText(`${cloudVal} (Previsión Oficial AEMET)`, 420, 995);
 
         ctx.fillStyle = '#ffffff'; ctx.font = '24px Outfit, sans-serif';
         ctx.fillText(`· Altura del Sol al Eclipsarse: `, 110, 1050);

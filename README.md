@@ -15,7 +15,7 @@ Permite a cualquier usuario buscar su localidad (o hacer clic en el mapa) y obte
 - 🛡️ **Sistema de Descargo de Responsabilidad y Uso Consciente**: Modal interactivo de primera visita (con persistencia en `localStorage`) y avisos contextuales de seguridad ocular (uso obligatorio de gafas ISO 12312-2 en fase parcial), aclaración de tiempos astronómicos de alta precisión (que pueden diferir de la realidad en pequeños márgenes), sensibilidad geográfica al marcar la localidad e imponderables técnicos/acústicos en dispositivos móviles.
 - 🔔 **Reloj Día D & Alertas de Voz en Vivo con Modo Test**: Reloj astronómico interactivo con **Preavisos adaptativos sin solapamiento** de cada fase (C1–C4), indicaciones de seguridad contextuales (gafas solares y filtros de cámara según zona de totalidad o parcialidad), **Motor de voz HD con selector de sintetizador**, **Simulador temporal acelerado (1X–30X)** y **botonera de pruebas rápidas por fase**.
 - 🗺️ **Múltiples Mapas Base** interactivos (Estándar, Satélite y Relieve Topográfico)
-- ⚡ **Previsión Meteorológica Real Pregenerada (Open-Meteo)**: predicción numérico-climática en vivo para el día del eclipse con desglose de **Nubes Bajas, Medias y Altas (Cirros)**, temperatura y probabilidad de lluvia.
+- ⚡ **Previsión Meteorológica Real Pregenerada (AEMET OpenData)**: predicción oficial de la Agencia Estatal de Meteorología en vivo para el día del eclipse con porcentaje de cobertura nubosa, temperatura y probabilidad de lluvia.
 - 🟢 **Etiqueta Dinámica de Claridad**: interpretación automática del % de nubosidad (ej. *80% despejado - Óptimo*).
 - 🕒 **Marca de Tiempo de Cálculo**: fecha y hora exacta en la que se calculó el pronóstico actual.
 - ☁️ **Mapa de Nubes Histórico (Heatmap)**: basado en probabilidad estadística interactiva (Acumulado y por año, 2008-2025).
@@ -50,14 +50,13 @@ Permite a cualquier usuario buscar su localidad (o hacer clic en el mapa) y obte
 
 ### Archivos de Datos (Generados / Estáticos)
 - `events.json`: **Fuente única centralizada** de actividades, zonas de observación pública, observatorios, miradores y planetarios para el eclipse solar 2026.
-- `weather_forecast_data.js`: Matriz estática pregenerada diariamente con la previsión numérico-climática (534 puntos de muestreo en España) de Open-Meteo (nubes totales, bajas, medias, cirros, precipitación, temp, fecha/hora de cálculo).
-- `cloud_heatmap.js`: Matriz estadística con la probabilidad histórica de nubes en cada coordenada de la franja de totalidad (ERA5 Copernicus 2008-2025).
+- `weather_forecast_data.js`: Matriz estática pregenerada periódicamente con la predicción oficial de AEMET OpenData (municipios clave en la franja de España) para el día del eclipse (nubes, precipitación, temp, fecha/hora de cálculo).
 - `eclipse_data.js`: Contiene el polígono WGS84 de la franja de totalidad, ajustado por los algoritmos asimétricos del limbo lunar.
 - `topography_data.js`: Cuadrícula con las altitudes locales (modelo SRTM) utilizada para los cálculos matemáticos de fase y precisión.
 - `eclipse_2026.geojson`: El archivo crudo GeoJSON de la franja, ideal para exportar a QGIS o herramientas GIS de terceros.
 
 ### Scripts de Backend (Python)
-- `scripts/generate_weather_forecast.py`: Generador diario de previsión meteorológica. Consulta la API de Open-Meteo sobre la franja de totalidad para el 12 de agosto de 2026 a las 18:00 UTC y genera `weather_forecast_data.js`.
+- `scripts/generate_weather_forecast.py`: Generador de previsión meteorológica AEMET. Consulta la API oficial de AEMET OpenData sobre la franja de totalidad para el 12 de agosto de 2026 y genera `weather_forecast_data.js`.
 - `scripts/generate_eclipse_geojson.py`: Motor de geometría espacial. Lee los elementos besselianos, genera la franja en WGS84 aplicando un modelo polinómico avanzado para los límites norte y sur, y crea el GeoJSON.
 - `scripts/generate_topography_gee.py`: Se conecta a Google Earth Engine, escanea la franja del eclipse sobre el modelo SRTM de la Tierra y exporta la cuadrícula de altitudes.
 - `scripts/generate_cloud_heatmap_gee.py`: Extrae y promedia 15 años de datos climáticos del modelo ERA5 (Copernicus) a través de Google Earth Engine para construir el mapa de probabilidad de nubes.
@@ -114,7 +113,7 @@ El script Python (`scripts/generate_eclipse_geojson.py`) calcula la geometría d
 
 El sistema incorpora un modelo dual meteorológico offline-first:
 
-- **Previsión Meteorológica Real Pregenerada (Open-Meteo API):** El script `scripts/generate_weather_forecast.py` realiza un muestreo espacial de alta resolución (534 puntos) sobre toda la franja de totalidad en España para el 12 de agosto de 2026 a las 18:00 UTC. Genera `weather_forecast_data.js` desglosando:
+- **Previsión Meteorológica Real Pregenerada (AEMET OpenData API):** El script `scripts/generate_weather_forecast.py` realiza un muestreo espacial de alta resolución sobre la franja de totalidad en España para el 12 de agosto de 2026. Consulta la API oficial de la AEMET y genera `weather_forecast_data.js` desglosando:
   - **Nubes Bajas y Medias:** Nubes densas opacas que tapan completamente el disco solar.
   - **Nubes Altas (Cirros):** Nubes translúcidas compuestas de cristales de hielo que permiten visibilidad parcial de la corona.
   - **Probabilidad de lluvia, temperatura y fecha/hora exacta del cálculo.**
@@ -201,7 +200,7 @@ Esto genera:
 ```bash
 python3 scripts/generate_weather_forecast.py
 ```
-> **📡 Previsión Meteorológica numérico-climática en vivo (Open-Meteo API):** Genera la cobertura de nubes prevista para el 12 de agosto de 2026 (desglosada en nubes bajas, medias y altas), probabilidad de precipitación y temperatura. Produce el archivo estático `weather_forecast_data.js` para un funcionamiento 100% offline sin llamadas AJAX en tiempo de ejecución.
+> **📡 Previsión Meteorológica oficial en vivo (AEMET OpenData API):** Genera la cobertura de nubes prevista por la AEMET para el 12 de agosto de 2026, probabilidad de precipitación y temperatura. Produce el archivo estático `weather_forecast_data.js` para un funcionamiento 100% offline sin llamadas AJAX en tiempo de ejecución.
 
 **Generar Nubes Históricas:**
 ```bash

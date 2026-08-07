@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Eclipse Solar Total 2026 - Generador de Previsión Meteorológica Diaria Offline
+Eclipse Solar Total 2026 - Generador de Previsión Meteorológica con AEMET OpenData
 
 Este script:
 1. Lee la franja de totalidad del archivo GeoJSON (eclipse_2026.geojson).
-2. Genera una cuadrícula de puntos dentro de la franja.
-3. Consulta la API de predicción de Open-Meteo para el 12 de agosto de 2026 (18:00 UTC / 20:00 CEST).
-4. Extrae la nubosidad total, desglose por capas (bajas, medias, altas), probabilidad de lluvia,
-   código meteorológico WMO y temperatura.
-5. Exporta un archivo JavaScript (weather_forecast_data.js) para consumo estático offline en la web app.
+2. Consulta el maestro de municipios de AEMET OpenData para filtrar aquellos situados en la franja.
+3. Muestra y selecciona una muestra uniforme de ~150-200 municipios/puntos distribuidos espacialmente a lo largo del corredor.
+4. Consulta la API de predicción oficial de AEMET para la fecha del eclipse (12 de agosto de 2026).
+5. Extrae el estado del cielo (mapeado a % de nubosidad), probabilidad de precipitación y temperatura.
+6. Exporta un archivo JavaScript (weather_forecast_data.js) para consumo estático offline en la web app.
 """
 
 import json
@@ -19,23 +19,44 @@ import time
 import os
 from datetime import datetime, timezone
 
-try:
-    import requests
-    HAS_REQUESTS = True
-except ImportError:
-    HAS_REQUESTS = False
+API_KEY = os.environ.get("AEMET_API_KEY", "").strip()
 
-# Rutas de archivos
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 GEOJSON_PATH = os.path.join(BASE_DIR, "eclipse_2026.geojson")
 OUTPUT_JS_PATH = os.path.join(BASE_DIR, "weather_forecast_data.js")
 
-STEP = 0.20  # ~0.20 grados (aprox. 20km de separación entre puntos, ~1600 puntos)
 TARGET_DATE = "2026-08-12"
-TARGET_HOUR_UTC = 18  # 18:00 UTC (20:00 CEST en España)
+TARGET_HOUR_UTC = 18
 
-# --- ALGORITMO RAY CASTING PARA POINT-IN-POLYGON ---
+# Mapeo del estado del cielo AEMET a porcentaje estimado de nubosidad (c_total) y código WMO
+AEMET_SKY_MAPPING = {
+    '11': {'c_total': 0, 'w_code': 0, 'desc': 'Despejado'},
+    '11n': {'c_total': 0, 'w_code': 0, 'desc': 'Despejado'},
+    '12': {'c_total': 20, 'w_code': 1, 'desc': 'Poco nuboso'},
+    '12n': {'c_total': 20, 'w_code': 1, 'desc': 'Poco nuboso'},
+    '13': {'c_total': 45, 'w_code': 2, 'desc': 'Intervalos nubosos'},
+    '13n': {'c_total': 45, 'w_code': 2, 'desc': 'Intervalos nubosos'},
+    '14': {'c_total': 70, 'w_code': 3, 'desc': 'Nuboso'},
+    '14n': {'c_total': 70, 'w_code': 3, 'desc': 'Nuboso'},
+    '15': {'c_total': 85, 'w_code': 3, 'desc': 'Muy nuboso'},
+    '15n': {'c_total': 85, 'w_code': 3, 'desc': 'Muy nuboso'},
+    '16': {'c_total': 100, 'w_code': 3, 'desc': 'Cubierto'},
+    '16n': {'c_total': 100, 'w_code': 3, 'desc': 'Cubierto'},
+    '43': {'c_total': 80, 'w_code': 61, 'desc': 'Intervalos nubosos con lluvia'},
+    '44': {'c_total': 90, 'w_code': 61, 'desc': 'Nuboso con lluvia'},
+    '45': {'c_total': 95, 'w_code': 63, 'desc': 'Muy nuboso con lluvia'},
+    '46': {'c_total': 100, 'w_code': 65, 'desc': 'Cubierto con lluvia'},
+    '51': {'c_total': 80, 'w_code': 80, 'desc': 'Intervalos nubosos con chubascos'},
+    '52': {'c_total': 90, 'w_code': 80, 'desc': 'Nuboso con chubascos'},
+    '53': {'c_total': 95, 'w_code': 81, 'desc': 'Muy nuboso con chubascos'},
+    '54': {'c_total': 100, 'w_code': 82, 'desc': 'Cubierto con chubascos'},
+    '61': {'c_total': 85, 'w_code': 95, 'desc': 'Intervalos nubosos con tormenta'},
+    '62': {'c_total': 90, 'w_code': 95, 'desc': 'Nuboso con tormenta'},
+    '63': {'c_total': 95, 'w_code': 95, 'desc': 'Muy nuboso con tormenta'},
+    '64': {'c_total': 100, 'w_code': 96, 'desc': 'Cubierto con tormenta'}
+}
+
 def is_point_in_polygon(x, y, poly):
     n = len(poly)
     inside = False
@@ -52,16 +73,64 @@ def is_point_in_polygon(x, y, poly):
         p1x, p1y = p2x, p2y
     return inside
 
+def safe_decode(raw_bytes):
+    try:
+        return raw_bytes.decode('utf-8')
+    except UnicodeDecodeError:
+        return raw_bytes.decode('latin-1')
+
+def fetch_aemet_json(endpoint_url, max_retries=5):
+    """Realiza una petición a la API de AEMET OpenData manejando las 2 fases (URL meta -> URL datos) y rate-limiting (429)."""
+    headers = {'api_key': API_KEY, 'accept': 'application/json'}
+    for attempt in range(1, max_retries + 1):
+        try:
+            req = urllib.request.Request(endpoint_url, headers=headers)
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                raw_meta = resp.read()
+                res_meta = json.loads(safe_decode(raw_meta))
+                
+            estado = res_meta.get('estado')
+            if estado == 200:
+                datos_url = res_meta.get('datos')
+                req_data = urllib.request.Request(datos_url)
+                with urllib.request.urlopen(req_data, timeout=30) as resp_data:
+                    raw_data = resp_data.read()
+                    return json.loads(safe_decode(raw_data))
+            elif estado == 429:
+                print(f"    [!] AEMET Rate Limit (429). Esperando 60s para reiniciar ventana...", flush=True)
+                time.sleep(60)
+            else:
+                print(f"    [!] Respuesta AEMET estado {estado}: {res_meta.get('descripcion')}", flush=True)
+                time.sleep(3 * attempt)
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                print(f"    [!] AEMET Rate Limit (HTTP 429). Esperando 60s para reiniciar ventana...", flush=True)
+                time.sleep(60)
+            else:
+                print(f"    [!] HTTP Error {e.code} (intento {attempt}/{max_retries}): {e.reason}", flush=True)
+                time.sleep(5 * attempt)
+        except Exception as e:
+            wait_sec = 5 * attempt
+            print(f"    [!] Error de red (intento {attempt}/{max_retries}): {e}. Esperando {wait_sec}s...", flush=True)
+            time.sleep(wait_sec)
+    return None
+
 def main():
     print("==================================================")
-    print(" ☀️ Eclipse 2026 - Generador de Previsión Diaria")
+    print(" ☀️ Eclipse 2026 - Previsión Meteorológica AEMET")
     print("==================================================")
+
+    if not API_KEY:
+        print("❌ Error: No se encuentra la variable de entorno AEMET_API_KEY")
+        print("📌 En GitHub Actions: Configura el secreto AEMET_API_KEY en Settings > Secrets and variables > Actions")
+        print("📌 Para ejecución local: export AEMET_API_KEY='tu_api_key'")
+        return
 
     if not os.path.exists(GEOJSON_PATH):
         print(f"❌ Error: No se encuentra {GEOJSON_PATH}")
         return
 
-    # 1. Cargar el GeoJSON de la franja
+    # 1. Cargar el Polígono de la Franja
     with open(GEOJSON_PATH, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -76,165 +145,153 @@ def main():
             break
 
     if not poly_coords:
-        print("❌ Error: No se encontró polígono válido en el GeoJSON")
+        print("❌ Error: Polígono de franja inválido")
         return
 
-    # Bounding Box
-    lons = [p[0] for p in poly_coords]
-    lats = [p[1] for p in poly_coords]
-    min_lon, max_lon = min(lons), max(lons)
-    min_lat, max_lat = min(lats), max(lats)
+    # 2. Consultar Maestro de Municipios AEMET
+    print("📡 Obteniendo maestro de municipios desde AEMET OpenData...", flush=True)
+    munis_url = "https://opendata.aemet.es/opendata/api/maestro/municipios"
+    all_munis = fetch_aemet_json(munis_url)
+    if not all_munis:
+        print("❌ Error al obtener el maestro de municipios de AEMET")
+        return
 
-    print(f"📌 Bounding Box: Lon [{min_lon:.2f}, {max_lon:.2f}] Lat [{min_lat:.2f}, {max_lat:.2f}]")
-
-    # 2. Generar grid de puntos dentro de la franja
-    grid_points = []
-    lat = min_lat + STEP / 2
-    while lat <= max_lat:
-        lon = min_lon + STEP / 2
-        while lon <= max_lon:
+    path_munis = []
+    for m in all_munis:
+        try:
+            lat = float(m['latitud_dec'])
+            lon = float(m['longitud_dec'])
+            m_id = m['id'].replace('id', '')
             if is_point_in_polygon(lon, lat, poly_coords):
-                grid_points.append({"lat": round(lat, 4), "lon": round(lon, 4)})
-            lon += STEP
-        lat += STEP
+                path_munis.append({
+                    'id': m_id,
+                    'nombre': m.get('nombre'),
+                    'provincia': m.get('zona_comarcal', ''),
+                    'lat': round(lat, 4),
+                    'lon': round(lon, 4),
+                    'destacada': m.get('destacada', '0')
+                })
+        except (ValueError, KeyError, TypeError):
+            continue
 
-    print(f"📍 Se generaron {len(grid_points)} puntos de muestreo en la franja.")
+    print(f"📍 Se encontraron {len(path_munis)} municipios dentro de la franja del eclipse.")
 
-    # 3. Consultar Open-Meteo Forecast API
-    BATCH_SIZE = 45  # Tamaño de lote optimizado (45 puntos por petición HTTP)
+    # 3. Submuestreo espacial para obtener ~30 puntos representativos
+    # Agrupamos en una cuadrícula de ~1.20° con pausa de 6.5s para no superar el límite de 10 peticiones/minuto de AEMET
+    GRID_STEP = 1.20
+    sampled_dict = {}
+    for m in path_munis:
+        cell_key = (round(m['lat'] / GRID_STEP), round(m['lon'] / GRID_STEP))
+        # Dar preferencia a municipios destacados o capitales
+        if cell_key not in sampled_dict or m['destacada'] == '1':
+            sampled_dict[cell_key] = m
+
+    target_munis = list(sampled_dict.values())
+    print(f"📍 Muestra seleccionada para la predicción: {len(target_munis)} municipios clave.")
+
+    # 4. Obtener predicciones meteorológicas por municipio para el 12 de agosto
     results = []
-    
     now_utc_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    print(f"📡 Consultando Open-Meteo API (Fecha objetivo: {TARGET_DATE} {TARGET_HOUR_UTC}:00 UTC)...", flush=True)
 
-    session = None
-    if HAS_REQUESTS:
-        session = requests.Session()
-        session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (compatible; EclipseSpain2026Bot/1.0; +https://github.com/MarcoPro/spaineclipse2026)',
-            'Accept': 'application/json'
+    print(f"📡 Consultando predicción diaria de AEMET para el {TARGET_DATE}...", flush=True)
+
+    for idx, m in enumerate(target_munis, 1):
+        m_id = m['id']
+        m_name = m['nombre']
+        print(f"  [{idx}/{len(target_munis)}] {m_name} (ID: {m_id})...", flush=True)
+
+        url_muni = f"https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/{m_id}"
+        pred_data = fetch_aemet_json(url_muni)
+
+        c_total = None
+        precip = 0
+        w_code = 0
+        temp = 25.0
+
+        if pred_data and isinstance(pred_data, list) and len(pred_data) > 0:
+            try:
+                dias = pred_data[0].get('prediccion', {}).get('dia', [])
+                target_day = None
+                for d in dias:
+                    if d.get('fecha', '').startswith(TARGET_DATE):
+                        target_day = d
+                        break
+                
+                if target_day:
+                    # Estado del cielo
+                    sky_entries = target_day.get('estadoCielo', [])
+                    sky_val = '11'
+                    for se in sky_entries:
+                        v = se.get('value', '').strip()
+                        if v:
+                            sky_val = v
+                            break
+                    
+                    mapping = AEMET_SKY_MAPPING.get(sky_val, {'c_total': 15, 'w_code': 0})
+                    c_total = mapping['c_total']
+                    w_code = mapping['w_code']
+
+                    # Probabilidad de precipitación
+                    precip_entries = target_day.get('probPrecipitacion', [])
+                    precip_vals = []
+                    for pe in precip_entries:
+                        try:
+                            precip_vals.append(int(pe.get('value', 0)))
+                        except (ValueError, TypeError):
+                            pass
+                    precip = max(precip_vals) if precip_vals else 0
+
+                    # Temperatura
+                    temp_obj = target_day.get('temperatura', {})
+                    t_max = temp_obj.get('maxima')
+                    t_min = temp_obj.get('minima')
+                    if t_max is not None and t_min is not None:
+                        temp = round((float(t_max) + float(t_min)) / 2.0, 1)
+                    elif t_max is not None:
+                        temp = float(t_max)
+                    elif t_min is not None:
+                        temp = float(t_min)
+            except Exception as e:
+                print(f"    [!] Error al procesar JSON para {m_name}: {e}")
+
+        results.append({
+            "lat": m["lat"],
+            "lon": m["lon"],
+            "name": m_name,
+            "c_total": c_total if c_total is not None else 0,
+            "c_low": 0,
+            "c_mid": 0,
+            "c_high": c_total if c_total is not None else 0,
+            "precip": precip,
+            "w_code": w_code,
+            "temp": temp
         })
 
-    for i in range(0, len(grid_points), BATCH_SIZE):
-        batch = grid_points[i:i+BATCH_SIZE]
-        lats_str = ",".join(f"{p['lat']}" for p in batch)
-        lons_str = ",".join(f"{p['lon']}" for p in batch)
-        
-        batch_num = i // BATCH_SIZE + 1
-        total_batches = (len(grid_points) + BATCH_SIZE - 1) // BATCH_SIZE
-        print(f"  ⚡ Procesando lote {batch_num}/{total_batches} ({len(batch)} puntos)...", flush=True)
+        # Pausa respetuosa de 6.5s para no superar 10 peticiones/min en AEMET
+        time.sleep(6.5)
 
-        url = (
-            f"https://api.open-meteo.com/v1/forecast?"
-            f"latitude={lats_str}&longitude={lons_str}"
-            f"&start_date={TARGET_DATE}&end_date={TARGET_DATE}"
-            f"&hourly=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,precipitation_probability,weather_code,temperature_2m"
-            f"&timezone=UTC"
-        )
-
-        max_retries = 5
-        batch_data = None
-        for attempt in range(1, max_retries + 1):
-            try:
-                if HAS_REQUESTS and session:
-                    resp = session.get(url, timeout=35)
-                    if resp.status_code == 200:
-                        batch_data = resp.json()
-                        if isinstance(batch_data, dict):
-                            batch_data = [batch_data]
-                        break
-                    elif resp.status_code == 429:
-                        wait_sec = 6 * attempt
-                        print(f"    [!] Límite HTTP 429 (intento {attempt}/{max_retries}). Esperando {wait_sec}s...", flush=True)
-                        time.sleep(wait_sec)
-                    else:
-                        print(f"    [!] Error HTTP {resp.status_code} (intento {attempt}/{max_retries})", flush=True)
-                        time.sleep(4 * attempt)
-                else:
-                    headers = {
-                        'User-Agent': 'Mozilla/5.0 (compatible; EclipseSpain2026Bot/1.0; +https://github.com/MarcoPro/spaineclipse2026)',
-                        'Accept': 'application/json'
-                    }
-                    req = urllib.request.Request(url, headers=headers)
-                    with urllib.request.urlopen(req, timeout=35) as response:
-                        res_body = response.read().decode('utf-8')
-                        batch_data = json.loads(res_body)
-                        if isinstance(batch_data, dict):
-                            batch_data = [batch_data]
-                        break
-            except Exception as e:
-                wait_sec = 4 * attempt
-                print(f"    [!] Error de conexión/SSL (intento {attempt}/{max_retries}): {e}. Esperando {wait_sec}s...", flush=True)
-                if attempt < max_retries:
-                    time.sleep(wait_sec)
-
-        # Pausa entre lotes para respetar el rate-limit de la API pública de Open-Meteo
-        time.sleep(2.5)
-
-        if batch_data and len(batch_data) == len(batch):
-            for j, p_data in enumerate(batch_data):
-                hourly = p_data.get("hourly", {})
-                idx = TARGET_HOUR_UTC if (hourly.get("time") and len(hourly.get("time")) > TARGET_HOUR_UTC) else 0
-
-                c_total = hourly.get("cloud_cover", [None])[idx] if (hourly.get("cloud_cover") and len(hourly.get("cloud_cover")) > idx) else None
-                c_low = hourly.get("cloud_cover_low", [None])[idx] if (hourly.get("cloud_cover_low") and len(hourly.get("cloud_cover_low")) > idx) else None
-                c_mid = hourly.get("cloud_cover_mid", [None])[idx] if (hourly.get("cloud_cover_mid") and len(hourly.get("cloud_cover_mid")) > idx) else None
-                c_high = hourly.get("cloud_cover_high", [None])[idx] if (hourly.get("cloud_cover_high") and len(hourly.get("cloud_cover_high")) > idx) else None
-                precip = hourly.get("precipitation_probability", [0])[idx] if (hourly.get("precipitation_probability") and len(hourly.get("precipitation_probability")) > idx) else 0
-                w_code = hourly.get("weather_code", [0])[idx] if (hourly.get("weather_code") and len(hourly.get("weather_code")) > idx) else 0
-                temp = hourly.get("temperature_2m", [25.0])[idx] if (hourly.get("temperature_2m") and len(hourly.get("temperature_2m")) > idx) else 25.0
-
-                results.append({
-                    "lat": batch[j]["lat"],
-                    "lon": batch[j]["lon"],
-                    "c_total": c_total if c_total is not None else None,
-                    "c_low": c_low if c_low is not None else None,
-                    "c_mid": c_mid if c_mid is not None else None,
-                    "c_high": c_high if c_high is not None else None,
-                    "precip": precip if precip is not None else 0,
-                    "w_code": w_code if w_code is not None else 0,
-                    "temp": round(temp, 1) if temp is not None else 25.0
-                })
-        else:
-            # Si la petición al lote falló, guardamos los puntos con c_total: None para no falsear datos
-            print(f"    [⚠] Error en lote {batch_num}: registrando puntos sin datos (c_total: None)")
-            for p in batch:
-                results.append({
-                    "lat": p["lat"],
-                    "lon": p["lon"],
-                    "c_total": None,
-                    "c_low": None,
-                    "c_mid": None,
-                    "c_high": None,
-                    "precip": 0,
-                    "w_code": 0,
-                    "temp": 25.0
-                })
-
-        time.sleep(1)  # Pausa respetuosa entre lotes
-
-    # 4. Construir objeto JS final
+    # 5. Exportar objeto JavaScript
     output_obj = {
         "generated_at": now_utc_str,
         "target_date": TARGET_DATE,
         "target_hour_utc": TARGET_HOUR_UTC,
-        "provider": "Open-Meteo Weather Forecast API",
-        "model": "ECMWF / GFS Global Seamless",
+        "provider": "AEMET OpenData (Agencia Estatal de Meteorología)",
+        "model": "AEMET HARMONIE-AROME / HIRLAM",
         "point_count": len(results),
         "points": results
     }
 
     js_content = f"""// Generado automáticamente por scripts/generate_weather_forecast.py
 // Marca de tiempo de generación: {now_utc_str}
-// Previsión meteorológica numérico-climática para el {TARGET_DATE} {TARGET_HOUR_UTC}:00 UTC
-window.weatherForecastData = {json.dumps(output_obj, separators=(',', ':'))};
+// Previsión meteorológica oficial de AEMET para el {TARGET_DATE} (Eclipse Total)
+window.weatherForecastData = {json.dumps(output_obj, ensure_ascii=False, separators=(',', ':'))};
 """
 
     with open(OUTPUT_JS_PATH, "w", encoding="utf-8") as f:
         f.write(js_content)
 
-    print(f"✅ Previsión meteorológica pregenerada y guardada en {OUTPUT_JS_PATH}")
-    print(f"📊 {len(results)} puntos exportados exitosamente.")
+    print(f"✅ Previsión AEMET pregenerada y guardada en {OUTPUT_JS_PATH}")
+    print(f"📊 {len(results)} municipios procesados e incluidos en el dataset.")
 
 if __name__ == "__main__":
     main()

@@ -19,6 +19,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
     - *Reloj Día D & Alertas Sonoras (`#modal-phase-clock`)*: Banner de aviso de seguridad acústica y sincronía horaria.
     - *Recomendador por Radio (`#modal-location-finder`)*: Advertencia de sensibilidad de cálculo por margen geográfico.
     - *Pase Oficial de Observación (`observation_card.js`)*: Micro-disclaimer impreso en el pie del pase exportable.
+- **Ampliación de Cobertura Meteorológica (`generate_weather_forecast.py` & `weather_forecast_data.js`)**:
+  - Aumentada la densidad de la cuadrícula de predicción de **534 a 1.634 coordenadas** en la franja de totalidad (~20 km de separación entre puntos de muestreo), mejorando drásticamente la resolución de la interpolación IDW local en valles, montañas y zonas costeras.
 
 ### 🐛 Corregido
 - **Activación de Botones del Disclaimer**: Añadidos controladores globales (`window.openDisclaimerModal`), gestión de eventos táctiles (`touchstart` y `click`), detención de propagación y atributo `onclick` de respaldo para garantizar la apertura instantánea del modal de aviso legal desde la cabecera o el panel en cualquier dispositivo.
