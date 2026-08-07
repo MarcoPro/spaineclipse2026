@@ -28,11 +28,10 @@ jobs:
       - name: Instalar dependencias
         run: pip install requests
 
-      - name: Ejecutar script de predicción meteorológica
+      - name: Ejecutar script de predicción meteorológica por modelos numéricos (20:00 UTC)
         env:
           PYTHONUNBUFFERED: '1'
-          AEMET_API_KEY: ${{ secrets.AEMET_API_KEY }}
-        run: python -u scripts/generate_weather_forecast.py
+        run: python -u scripts/generate_weather_forecast_models.py
 
       - name: Guardar cambios y subir a GitHub
         run: |
