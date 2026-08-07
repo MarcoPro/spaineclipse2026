@@ -148,65 +148,45 @@ def main():
         print("❌ Error: Polígono de franja inválido")
         return
 
-    # 2. Consultar Maestro de Municipios AEMET (usar caché local si existe)
-    CACHE_PATH = os.path.join(SCRIPT_DIR, "aemet_municipios_cache.json")
-    all_munis = None
+    # 2. Cargar Municipios Objetivo representativos (~26 municipios a lo largo del corredor)
+    TARGET_MUNIS_PATH = os.path.join(SCRIPT_DIR, "aemet_target_municipalities.json")
 
-    if os.path.exists(CACHE_PATH):
-        try:
-            with open(CACHE_PATH, "r", encoding="utf-8") as f:
-                all_munis = json.load(f)
-            print("📍 Cargado maestro de municipios desde caché local (8122 municipios).", flush=True)
-        except Exception as e:
-            print(f"⚠️ Error al leer caché local ({e}), consultando API...", flush=True)
-
-    if not all_munis:
+    if os.path.exists(TARGET_MUNIS_PATH):
+        with open(TARGET_MUNIS_PATH, "r", encoding="utf-8") as f:
+            target_munis = json.load(f)
+        print(f"📍 Cargada muestra precalculada de {len(target_munis)} municipios clave.", flush=True)
+    else:
         print("📡 Obteniendo maestro de municipios desde AEMET OpenData...", flush=True)
         munis_url = "https://opendata.aemet.es/opendata/api/maestro/municipios"
         all_munis = fetch_aemet_json(munis_url)
+        if not all_munis:
+            print("❌ Error al obtener el maestro de municipios de AEMET")
+            return
 
-    if not all_munis:
-        print("❌ Error al obtener el maestro de municipios de AEMET")
-        return
+        path_munis = []
+        for m in all_munis:
+            try:
+                lat = float(m['latitud_dec'])
+                lon = float(m['longitud_dec'])
+                m_id = m['id'].replace('id', '')
+                if is_point_in_polygon(lon, lat, poly_coords):
+                    path_munis.append({'id': m_id, 'nombre': m.get('nombre'), 'lat': lat, 'lon': lon, 'destacada': m.get('destacada', '0')})
+            except (ValueError, KeyError, TypeError):
+                pass
 
-    path_munis = []
-    for m in all_munis:
-        try:
-            lat = float(m['latitud_dec'])
-            lon = float(m['longitud_dec'])
-            m_id = m['id'].replace('id', '')
-            if is_point_in_polygon(lon, lat, poly_coords):
-                path_munis.append({
-                    'id': m_id,
-                    'nombre': m.get('nombre'),
-                    'provincia': m.get('zona_comarcal', ''),
-                    'lat': round(lat, 4),
-                    'lon': round(lon, 4),
-                    'destacada': m.get('destacada', '0')
-                })
-        except (ValueError, KeyError, TypeError):
-            continue
+        GRID_STEP = 1.40
+        sampled_dict = {}
+        for m in path_munis:
+            cell_key = (round(m['lat'] / GRID_STEP), round(m['lon'] / GRID_STEP))
+            if cell_key not in sampled_dict or m['destacada'] == '1':
+                sampled_dict[cell_key] = m
+        target_munis = list(sampled_dict.values())
 
-    print(f"📍 Se encontraron {len(path_munis)} municipios dentro de la franja del eclipse.")
-
-    # 3. Submuestreo espacial para obtener ~30 puntos representativos
-    # Agrupamos en una cuadrícula de ~1.20° con pausa de 6.5s para no superar el límite de 10 peticiones/minuto de AEMET
-    GRID_STEP = 1.20
-    sampled_dict = {}
-    for m in path_munis:
-        cell_key = (round(m['lat'] / GRID_STEP), round(m['lon'] / GRID_STEP))
-        # Dar preferencia a municipios destacados o capitales
-        if cell_key not in sampled_dict or m['destacada'] == '1':
-            sampled_dict[cell_key] = m
-
-    target_munis = list(sampled_dict.values())
-    print(f"📍 Muestra seleccionada para la predicción: {len(target_munis)} municipios clave.")
+    print(f"📡 Consultando predicción diaria de AEMET para el {TARGET_DATE} ({len(target_munis)} municipios)...", flush=True)
 
     # 4. Obtener predicciones meteorológicas por municipio para el 12 de agosto
     results = []
     now_utc_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    print(f"📡 Consultando predicción diaria de AEMET para el {TARGET_DATE}...", flush=True)
 
     for idx, m in enumerate(target_munis, 1):
         m_id = m['id']
@@ -280,8 +260,8 @@ def main():
             "temp": temp
         })
 
-        # Pausa de 7.0s para mantenerse holgadamente por debajo de las 20 peticiones/min de AEMET
-        time.sleep(7.0)
+        # Pausa de 13.0s entre municipios para mantenerse estrictamente por debajo del límite de AEMET (10 req/min = 5 municipios/min)
+        time.sleep(13.0)
 
     # 5. Exportar objeto JavaScript
     output_obj = {
