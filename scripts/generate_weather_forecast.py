@@ -186,7 +186,7 @@ def main():
     for idx, m in enumerate(sample_40, 1):
         m_id = m['id']
         m_name = m['nombre']
-        print(f"  [{idx}/{len(sample_40)}] {m_name} (ID: {m_id})...", flush=True)
+        print(f"📍 [{idx:02d}/{len(sample_40)}] Consultando AEMET: {m_name} (ID: {m_id})...", flush=True)
 
         url_muni = f"https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/{m_id}"
         pred_data = fetch_aemet_json(url_muni)
@@ -237,23 +237,27 @@ def main():
                     elif t_min is not None:
                         temp = float(t_min)
             except Exception as e:
-                print(f"    [!] Error al procesar JSON para {m_name}: {e}")
+                print(f"   [!] Error al procesar JSON para {m_name}: {e}", flush=True)
+
+        final_c_total = c_total if c_total is not None else 0
+        print(f"   ✅ Datos OK ({final_c_total}% nubes, {temp}ºC, {precip}% prob. lluvia)", flush=True)
 
         aemet_results.append({
             "lat": m["lat"],
             "lon": m["lon"],
             "name": m_name,
-            "c_total": c_total if c_total is not None else 0,
+            "c_total": final_c_total,
             "c_low": 0,
             "c_mid": 0,
-            "c_high": c_total if c_total is not None else 0,
+            "c_high": final_c_total,
             "precip": precip,
             "w_code": w_code,
             "temp": temp
         })
 
-        # Pausa estricta de 30.0s entre municipios para garantizar 0 errores 429
-        time.sleep(30.0)
+        if idx < len(sample_40):
+            print(f"   ⏳ Pausa de seguridad AEMET (30s) antes del siguiente municipio...\n", flush=True)
+            time.sleep(30.0)
 
     print("⚡ Precalculando interpolación espacial IDW para los 3.947 municipios...", flush=True)
     all_interpolated = interpolate_dataset(path_munis, aemet_results)
