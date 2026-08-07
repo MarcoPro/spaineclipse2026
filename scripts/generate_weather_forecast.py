@@ -180,7 +180,7 @@ def main():
         print("📌 Para ejecución local: export AEMET_API_KEY='tu_api_key'")
         return
 
-    SAMPLE_MUNIS_PATH = os.path.join(SCRIPT_DIR, "aemet_sample_40_municipalities.json")
+    SAMPLE_MUNIS_PATH = os.path.join(SCRIPT_DIR, "aemet_sample_100_municipalities.json")
     PATH_MUNIS_PATH = os.path.join(SCRIPT_DIR, "aemet_path_municipalities.json")
 
     if not os.path.exists(SAMPLE_MUNIS_PATH) or not os.path.exists(PATH_MUNIS_PATH):
@@ -188,12 +188,12 @@ def main():
         return
 
     with open(SAMPLE_MUNIS_PATH, "r", encoding="utf-8") as f:
-        sample_40 = json.load(f)
+        sample_100 = json.load(f)
 
     with open(PATH_MUNIS_PATH, "r", encoding="utf-8") as f:
         path_munis = json.load(f)
 
-    print(f"📍 Muestra seleccionada para AEMET: {len(sample_40)} municipios clave.")
+    print(f"📍 Muestra seleccionada para AEMET: {len(sample_100)} municipios clave.")
     print(f"📍 Cobertura total para interpolación: {len(path_munis)} municipios en la franja del eclipse.")
     print(f"📡 Consultando predicción diaria de AEMET para el {TARGET_DATE}...\n", flush=True)
 
@@ -202,10 +202,10 @@ def main():
     aemet_count = 0
     fallback_count = 0
 
-    for idx, m in enumerate(sample_40, 1):
+    for idx, m in enumerate(sample_100, 1):
         m_id = m['id']
         m_name = m['nombre']
-        print(f"📍 [{idx:02d}/{len(sample_40)}] Consultando AEMET: {m_name} (ID: {m_id})...", flush=True)
+        print(f"📍 [{idx:02d}/{len(sample_100)}] Consultando AEMET: {m_name} (ID: {m_id})...", flush=True)
 
         url_muni = f"https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/{m_id}"
         pred_data = fetch_aemet_json(url_muni)
@@ -284,7 +284,7 @@ def main():
             "temp": temp
         })
 
-        if idx < len(sample_40):
+        if idx < len(sample_100):
             print(f"   ⏳ Pausa de seguridad (15s) antes del siguiente municipio...\n", flush=True)
             time.sleep(15.0)
 
@@ -313,9 +313,9 @@ window.weatherForecastData = {json.dumps(output_obj, ensure_ascii=False, separat
 
     print(f"\n✅ Previsión meteorológica guardada con éxito en {OUTPUT_JS_PATH}")
     print(f"📊 {len(all_interpolated)} municipios incluidos en el dataset final.")
-    print(f"   • Predicciones AEMET exitosas: {aemet_count}/{len(sample_40)}")
+    print(f"   • Predicciones AEMET exitosas: {aemet_count}/{len(sample_100)}")
     if fallback_count > 0:
-        print(f"   • Fallbacks Open-Meteo utilizados: {fallback_count}/{len(sample_40)}")
+        print(f"   • Fallbacks Open-Meteo utilizados: {fallback_count}/{len(sample_100)}")
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,702 @@
+[
+  {
+    "id": "44155",
+    "nombre": "Montalbán",
+    "lat": 40.8322,
+    "lon": -0.7984,
+    "destacada": "1"
+  },
+  {
+    "id": "40194",
+    "nombre": "Segovia",
+    "lat": 40.9499,
+    "lon": -4.1252,
+    "destacada": "1"
+  },
+  {
+    "id": "27066",
+    "nombre": "Viveiro",
+    "lat": 43.6619,
+    "lon": -7.5948,
+    "destacada": "1"
+  },
+  {
+    "id": "09434",
+    "nombre": "Villagonzalo Pedernales",
+    "lat": 42.3004,
+    "lon": -3.738,
+    "destacada": "1"
+  },
+  {
+    "id": "50067",
+    "nombre": "Calatayud",
+    "lat": 41.3543,
+    "lon": -1.6447,
+    "destacada": "1"
+  },
+  {
+    "id": "48080",
+    "nombre": "Valle de Trápaga-Trapagaran",
+    "lat": 43.305,
+    "lon": -3.0377,
+    "destacada": "1"
+  },
+  {
+    "id": "47231",
+    "nombre": "Zaratán",
+    "lat": 41.6615,
+    "lon": -4.7829,
+    "destacada": "1"
+  },
+  {
+    "id": "15075",
+    "nombre": "Sada",
+    "lat": 43.355,
+    "lon": -8.2569,
+    "destacada": "1"
+  },
+  {
+    "id": "42215",
+    "nombre": "Vinuesa",
+    "lat": 41.9118,
+    "lon": -2.7627,
+    "destacada": "1"
+  },
+  {
+    "id": "44216",
+    "nombre": "Teruel",
+    "lat": 40.3441,
+    "lon": -1.1093,
+    "destacada": "1"
+  },
+  {
+    "id": "26168",
+    "nombre": "Villamediana de Iregua",
+    "lat": 42.4265,
+    "lon": -2.4199,
+    "destacada": "1"
+  },
+  {
+    "id": "49250",
+    "nombre": "Villalpando",
+    "lat": 41.8649,
+    "lon": -5.4147,
+    "destacada": "1"
+  },
+  {
+    "id": "16078",
+    "nombre": "Cuenca",
+    "lat": 40.0765,
+    "lon": -2.1315,
+    "destacada": "1"
+  },
+  {
+    "id": "34901",
+    "nombre": "Osorno la Mayor",
+    "lat": 42.4098,
+    "lon": -4.3613,
+    "destacada": "1"
+  },
+  {
+    "id": "19002",
+    "nombre": "Ablanque",
+    "lat": 40.8982,
+    "lon": -2.2294,
+    "destacada": "0"
+  },
+  {
+    "id": "42004",
+    "nombre": "Ágreda",
+    "lat": 41.8552,
+    "lon": -1.9197,
+    "destacada": "1"
+  },
+  {
+    "id": "01051",
+    "nombre": "Salvatierra/Agurain",
+    "lat": 42.85,
+    "lon": -2.3887,
+    "destacada": "1"
+  },
+  {
+    "id": "19053",
+    "nombre": "Brihuega",
+    "lat": 40.7571,
+    "lon": -2.8703,
+    "destacada": "1"
+  },
+  {
+    "id": "40203",
+    "nombre": "Torrecaballeros",
+    "lat": 40.9931,
+    "lon": -4.0247,
+    "destacada": "1"
+  },
+  {
+    "id": "34199",
+    "nombre": "Velilla del Río Carrión",
+    "lat": 42.8278,
+    "lon": -4.8432,
+    "destacada": "1"
+  },
+  {
+    "id": "31007",
+    "nombre": "Adiós",
+    "lat": 42.6865,
+    "lon": -1.7363,
+    "destacada": "0"
+  },
+  {
+    "id": "19190",
+    "nombre": "Molina de Aragón",
+    "lat": 40.8424,
+    "lon": -1.8906,
+    "destacada": "1"
+  },
+  {
+    "id": "09321",
+    "nombre": "Roa",
+    "lat": 41.6972,
+    "lon": -3.9279,
+    "destacada": "1"
+  },
+  {
+    "id": "42113",
+    "nombre": "Medinaceli",
+    "lat": 41.1717,
+    "lon": -2.4348,
+    "destacada": "1"
+  },
+  {
+    "id": "15059",
+    "nombre": "Ordes",
+    "lat": 43.077,
+    "lon": -8.407,
+    "destacada": "1"
+  },
+  {
+    "id": "09903",
+    "nombre": "Villarcayo de Merindad de Castilla la Vieja",
+    "lat": 42.9385,
+    "lon": -3.5725,
+    "destacada": "1"
+  },
+  {
+    "id": "47075",
+    "nombre": "Íscar",
+    "lat": 41.3642,
+    "lon": -4.5307,
+    "destacada": "1"
+  },
+  {
+    "id": "44238",
+    "nombre": "Utrillas",
+    "lat": 40.8135,
+    "lon": -0.8432,
+    "destacada": "1"
+  },
+  {
+    "id": "44246",
+    "nombre": "Valderrobres",
+    "lat": 40.8759,
+    "lon": 0.1557,
+    "destacada": "1"
+  },
+  {
+    "id": "09177",
+    "nombre": "Ibeas de Juarros",
+    "lat": 42.3303,
+    "lon": -3.5366,
+    "destacada": "1"
+  },
+  {
+    "id": "39059",
+    "nombre": "Reinosa",
+    "lat": 43.0021,
+    "lon": -4.1386,
+    "destacada": "1"
+  },
+  {
+    "id": "42134",
+    "nombre": "Ólvega",
+    "lat": 41.7805,
+    "lon": -1.9827,
+    "destacada": "1"
+  },
+  {
+    "id": "43171",
+    "nombre": "Vila-seca",
+    "lat": 41.1109,
+    "lon": 1.1452,
+    "destacada": "1"
+  },
+  {
+    "id": "22112",
+    "nombre": "Fraga",
+    "lat": 41.5222,
+    "lon": 0.349,
+    "destacada": "1"
+  },
+  {
+    "id": "19331",
+    "nombre": "Yunquera de Henares",
+    "lat": 40.7542,
+    "lon": -3.1659,
+    "destacada": "1"
+  },
+  {
+    "id": "26138",
+    "nombre": "Santo Domingo de la Calzada",
+    "lat": 42.4406,
+    "lon": -2.9534,
+    "destacada": "1"
+  },
+  {
+    "id": "44122",
+    "nombre": "Híjar",
+    "lat": 41.1758,
+    "lon": -0.4509,
+    "destacada": "1"
+  },
+  {
+    "id": "47165",
+    "nombre": "Tordesillas",
+    "lat": 41.502,
+    "lon": -5.0013,
+    "destacada": "1"
+  },
+  {
+    "id": "50099",
+    "nombre": "Épila",
+    "lat": 41.6013,
+    "lon": -1.2818,
+    "destacada": "1"
+  },
+  {
+    "id": "07032",
+    "nombre": "Maó-Mahón",
+    "lat": 39.8875,
+    "lon": 4.2655,
+    "destacada": "1"
+  },
+  {
+    "id": "28134",
+    "nombre": "San Sebastián de los Reyes",
+    "lat": 40.5471,
+    "lon": -3.6267,
+    "destacada": "1"
+  },
+  {
+    "id": "25228",
+    "nombre": "Torrefarrera",
+    "lat": 41.6731,
+    "lon": 0.6072,
+    "destacada": "1"
+  },
+  {
+    "id": "46110",
+    "nombre": "Xirivella",
+    "lat": 39.4658,
+    "lon": -0.4252,
+    "destacada": "1"
+  },
+  {
+    "id": "07061",
+    "nombre": "Sóller",
+    "lat": 39.7645,
+    "lon": 2.7141,
+    "destacada": "1"
+  },
+  {
+    "id": "34225",
+    "nombre": "Villamuriel de Cerrato",
+    "lat": 41.948,
+    "lon": -4.5154,
+    "destacada": "1"
+  },
+  {
+    "id": "46235",
+    "nombre": "Sueca",
+    "lat": 39.2024,
+    "lon": -0.3155,
+    "destacada": "1"
+  },
+  {
+    "id": "22254",
+    "nombre": "Zaidín",
+    "lat": 41.6043,
+    "lon": 0.2634,
+    "destacada": "1"
+  },
+  {
+    "id": "16112",
+    "nombre": "Huete",
+    "lat": 40.1453,
+    "lon": -2.6917,
+    "destacada": "1"
+  },
+  {
+    "id": "44009",
+    "nombre": "Albarracín",
+    "lat": 40.4067,
+    "lon": -1.4445,
+    "destacada": "1"
+  },
+  {
+    "id": "40170",
+    "nombre": "Riaza",
+    "lat": 41.2797,
+    "lon": -3.4773,
+    "destacada": "1"
+  },
+  {
+    "id": "50298",
+    "nombre": "Zuera",
+    "lat": 41.8691,
+    "lon": -0.7867,
+    "destacada": "1"
+  },
+  {
+    "id": "08307",
+    "nombre": "Vilanova i la Geltrú",
+    "lat": 41.2272,
+    "lon": 1.7238,
+    "destacada": "1"
+  },
+  {
+    "id": "12135",
+    "nombre": "Vila-real",
+    "lat": 39.9381,
+    "lon": -0.1008,
+    "destacada": "1"
+  },
+  {
+    "id": "12138",
+    "nombre": "Vinaròs",
+    "lat": 40.4709,
+    "lon": 0.4749,
+    "destacada": "1"
+  },
+  {
+    "id": "50074",
+    "nombre": "Caspe",
+    "lat": 41.2364,
+    "lon": -0.0375,
+    "destacada": "1"
+  },
+  {
+    "id": "19257",
+    "nombre": "Sigüenza",
+    "lat": 41.0684,
+    "lon": -2.6414,
+    "destacada": "1"
+  },
+  {
+    "id": "42164",
+    "nombre": "San Leonardo de Yagüe",
+    "lat": 41.8293,
+    "lon": -3.0667,
+    "destacada": "1"
+  },
+  {
+    "id": "49206",
+    "nombre": "Santibáñez de Vidriales",
+    "lat": 42.0781,
+    "lon": -6.0134,
+    "destacada": "1"
+  },
+  {
+    "id": "07062",
+    "nombre": "Son Servera",
+    "lat": 39.6204,
+    "lon": 3.3601,
+    "destacada": "1"
+  },
+  {
+    "id": "31227",
+    "nombre": "Tafalla",
+    "lat": 42.5283,
+    "lon": -1.6771,
+    "destacada": "1"
+  },
+  {
+    "id": "01063",
+    "nombre": "Zuia",
+    "lat": 42.956,
+    "lon": -2.8186,
+    "destacada": "1"
+  },
+  {
+    "id": "12126",
+    "nombre": "Vall d'Uixó, la",
+    "lat": 39.8242,
+    "lon": -0.2281,
+    "destacada": "1"
+  },
+  {
+    "id": "27051",
+    "nombre": "Ribadeo",
+    "lat": 43.5357,
+    "lon": -7.0411,
+    "destacada": "1"
+  },
+  {
+    "id": "09011",
+    "nombre": "Alfoz de Bricia",
+    "lat": 42.9075,
+    "lon": -3.8478,
+    "destacada": "0"
+  },
+  {
+    "id": "39012",
+    "nombre": "Cabezón de la Sal",
+    "lat": 43.3076,
+    "lon": -4.237,
+    "destacada": "1"
+  },
+  {
+    "id": "24189",
+    "nombre": "Valverde de la Virgen",
+    "lat": 42.5692,
+    "lon": -5.6829,
+    "destacada": "1"
+  },
+  {
+    "id": "16014",
+    "nombre": "Aliaguilla",
+    "lat": 39.7412,
+    "lon": -1.3253,
+    "destacada": "0"
+  },
+  {
+    "id": "33034",
+    "nombre": "Valdés",
+    "lat": 43.5445,
+    "lon": -6.5351,
+    "destacada": "1"
+  },
+  {
+    "id": "24222",
+    "nombre": "Villaquilambre",
+    "lat": 42.6463,
+    "lon": -5.5588,
+    "destacada": "1"
+  },
+  {
+    "id": "48084",
+    "nombre": "Sestao",
+    "lat": 43.3111,
+    "lon": -3.0066,
+    "destacada": "1"
+  },
+  {
+    "id": "19192",
+    "nombre": "Mondéjar",
+    "lat": 40.3225,
+    "lon": -3.1097,
+    "destacada": "1"
+  },
+  {
+    "id": "33036",
+    "nombre": "Llanes",
+    "lat": 43.4224,
+    "lon": -4.7545,
+    "destacada": "1"
+  },
+  {
+    "id": "49009",
+    "nombre": "Andavías",
+    "lat": 41.5972,
+    "lon": -5.8562,
+    "destacada": "0"
+  },
+  {
+    "id": "07005",
+    "nombre": "Andratx",
+    "lat": 39.577,
+    "lon": 2.4217,
+    "destacada": "0"
+  },
+  {
+    "id": "39087",
+    "nombre": "Torrelavega",
+    "lat": 43.3516,
+    "lon": -4.0472,
+    "destacada": "1"
+  },
+  {
+    "id": "25119",
+    "nombre": "Juneda",
+    "lat": 41.5494,
+    "lon": 0.8257,
+    "destacada": "1"
+  },
+  {
+    "id": "50033",
+    "nombre": "Ardisa",
+    "lat": 42.2013,
+    "lon": -0.7594,
+    "destacada": "0"
+  },
+  {
+    "id": "24169",
+    "nombre": "Toreno",
+    "lat": 42.6976,
+    "lon": -6.5106,
+    "destacada": "1"
+  },
+  {
+    "id": "16024",
+    "nombre": "Arguisuelas",
+    "lat": 39.832,
+    "lon": -1.8206,
+    "destacada": "0"
+  },
+  {
+    "id": "49166",
+    "nombre": "Puebla de Sanabria",
+    "lat": 42.055,
+    "lon": -6.6344,
+    "destacada": "1"
+  },
+  {
+    "id": "50095",
+    "nombre": "Ejea de los Caballeros",
+    "lat": 42.1291,
+    "lon": -1.1378,
+    "destacada": "1"
+  },
+  {
+    "id": "34206",
+    "nombre": "Villada",
+    "lat": 42.2489,
+    "lon": -4.9678,
+    "destacada": "1"
+  },
+  {
+    "id": "33044",
+    "nombre": "Oviedo",
+    "lat": 43.3623,
+    "lon": -5.8437,
+    "destacada": "1"
+  },
+  {
+    "id": "27057",
+    "nombre": "Sarria",
+    "lat": 42.7774,
+    "lon": -7.4142,
+    "destacada": "1"
+  },
+  {
+    "id": "32072",
+    "nombre": "Rúa, A",
+    "lat": 42.3982,
+    "lon": -7.0958,
+    "destacada": "1"
+  },
+  {
+    "id": "24202",
+    "nombre": "Villablino",
+    "lat": 42.9398,
+    "lon": -6.317,
+    "destacada": "1"
+  },
+  {
+    "id": "24209",
+    "nombre": "Villafranca del Bierzo",
+    "lat": 42.606,
+    "lon": -6.8108,
+    "destacada": "1"
+  },
+  {
+    "id": "12089",
+    "nombre": "Peníscola/Peñíscola",
+    "lat": 40.3673,
+    "lon": 0.3907,
+    "destacada": "1"
+  },
+  {
+    "id": "33076",
+    "nombre": "Villaviciosa",
+    "lat": 43.4814,
+    "lon": -5.4348,
+    "destacada": "1"
+  },
+  {
+    "id": "27058",
+    "nombre": "Saviñao, O",
+    "lat": 42.585,
+    "lon": -7.6415,
+    "destacada": "1"
+  },
+  {
+    "id": "49275",
+    "nombre": "Zamora",
+    "lat": 41.4991,
+    "lon": -5.7549,
+    "destacada": "1"
+  },
+  {
+    "id": "15041",
+    "nombre": "Laracha, A",
+    "lat": 43.2539,
+    "lon": -8.5856,
+    "destacada": "1"
+  },
+  {
+    "id": "15901",
+    "nombre": "Cariño",
+    "lat": 43.7427,
+    "lon": -7.8689,
+    "destacada": "0"
+  },
+  {
+    "id": "07015",
+    "nombre": "Ciutadella de Menorca",
+    "lat": 40.0019,
+    "lon": 3.8379,
+    "destacada": "1"
+  },
+  {
+    "id": "46105",
+    "nombre": "Cullera",
+    "lat": 39.1651,
+    "lon": -0.2546,
+    "destacada": "0"
+  },
+  {
+    "id": "07054",
+    "nombre": "Santa Eulària des Riu",
+    "lat": 38.9838,
+    "lon": 1.5291,
+    "destacada": "1"
+  },
+  {
+    "id": "07024",
+    "nombre": "Formentera",
+    "lat": 38.7053,
+    "lon": 1.4281,
+    "destacada": "0"
+  },
+  {
+    "id": "07042",
+    "nombre": "Pollença",
+    "lat": 39.8775,
+    "lon": 3.0158,
+    "destacada": "1"
+  },
+  {
+    "id": "07048",
+    "nombre": "Sant Josep de sa Talaia",
+    "lat": 38.9219,
+    "lon": 1.2929,
+    "destacada": "1"
+  },
+  {
+    "id": "07052",
+    "nombre": "Sant Lluís",
+    "lat": 39.849,
+    "lon": 4.2586,
+    "destacada": "0"
+  }
+]

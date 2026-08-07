@@ -2,8 +2,8 @@ name: Actualizar Predicción del Tiempo
 
 on:
   schedule:
-    # Se ejecuta automáticamente cada 12 horas (a las 00:00 y 12:00 UTC)
-    - cron: '0 */12 * * *'
+    # Se ejecuta automáticamente cada 6 horas (a las 00:00, 06:00, 12:00 y 18:00 UTC)
+    - cron: '0 */6 * * *'
   workflow_dispatch: # Permite ejecutar el flujo manualmente desde la pestaña Actions en GitHub
 
 # Otorgar permisos de escritura para realizar commits y push a la rama principal
