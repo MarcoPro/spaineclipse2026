@@ -98,15 +98,18 @@ window.BesselianCalculator = (function() {
             
             let min_m = Infinity;
             
-            // Barrido matemático (Brute-force scan).
-            // Dado que evaluamos simple aritmética, 0.1 segundos de resolución = 216,000 iteraciones
-            // Tarda menos de 5ms en JavaScript. Perfectamente viable para cálculos de UI rápidos.
-            const dt = 0.1 / 3600.0; // Pasos de 0.1 segundos
+            // 1. Barrido grueso a pasos de 5 segundos (4,320 iteraciones en lugar de 216,000)
+            const dt_coarse = 5.0 / 3600.0;
             
             let is_partial = false;
             let is_total = false;
             
-            for (let t = -3.0; t <= 3.0; t += dt) {
+            let c1_coarse_idx = null, c2_coarse_idx = null, c3_coarse_idx = null, c4_coarse_idx = null;
+
+            let t_arr = [];
+            let i = 0;
+            for (let t = -3.0; t <= 3.0; t += dt_coarse) {
+                t_arr.push(t);
                 const { m, l1_zeta, l2_zeta } = getShadowState(t, obs);
                 
                 if (m < min_m) {
@@ -117,30 +120,69 @@ window.BesselianCalculator = (function() {
                 // Contactos parciales (C1, C4)
                 if (m < l1_zeta) {
                     if (!is_partial) {
-                        C1 = t;
+                        c1_coarse_idx = i;
                         is_partial = true;
                     }
-                    C4 = t; // actualizamos continuamente hasta que deje de ser parcial
+                    c4_coarse_idx = i;
                 }
                 
                 // Contactos totales (C2, C3)
                 if (m < Math.abs(l2_zeta)) {
                     if (!is_total) {
-                        C2 = t;
+                        c2_coarse_idx = i;
                         is_total = true;
                     }
-                    C3 = t;
+                    c3_coarse_idx = i;
                 }
+                i++;
+            }
+
+            // Función auxiliar de búsqueda binaria para refinar los instantes de contacto con precisión sub-segundo (<0.01s)
+            function refineContactTime(tStart, tEnd, checkFn) {
+                let low = tStart;
+                let high = tEnd;
+                for (let step = 0; step < 12; step++) {
+                    const mid = (low + high) / 2;
+                    if (checkFn(getShadowState(mid, obs))) {
+                        high = mid;
+                    } else {
+                        low = mid;
+                    }
+                }
+                return (low + high) / 2;
+            }
+
+            if (c1_coarse_idx !== null) {
+                const t0 = c1_coarse_idx > 0 ? t_arr[c1_coarse_idx - 1] : t_arr[c1_coarse_idx];
+                const t1 = t_arr[c1_coarse_idx];
+                C1 = refineContactTime(t0, t1, (state) => state.m < state.l1_zeta);
+            }
+
+            if (c4_coarse_idx !== null) {
+                const t0 = t_arr[c4_coarse_idx];
+                const t1 = c4_coarse_idx < t_arr.length - 1 ? t_arr[c4_coarse_idx + 1] : t_arr[c4_coarse_idx];
+                C4 = refineContactTime(t0, t1, (state) => state.m >= state.l1_zeta);
+            }
+
+            if (c2_coarse_idx !== null) {
+                const t0 = c2_coarse_idx > 0 ? t_arr[c2_coarse_idx - 1] : t_arr[c2_coarse_idx];
+                const t1 = t_arr[c2_coarse_idx];
+                C2 = refineContactTime(t0, t1, (state) => state.m < Math.abs(state.l2_zeta));
+            }
+
+            if (c3_coarse_idx !== null) {
+                const t0 = t_arr[c3_coarse_idx];
+                const t1 = c3_coarse_idx < t_arr.length - 1 ? t_arr[c3_coarse_idx + 1] : t_arr[c3_coarse_idx];
+                C3 = refineContactTime(t0, t1, (state) => state.m >= Math.abs(state.l2_zeta));
             }
             
-            // Calculo de magnitud / obscuration en el pico
+            // Cálculo de magnitud / obscuration en el pico refinado
             let obscuration = 0;
             if (peak_t !== null) {
                 const { m, l1_zeta, l2_zeta } = getShadowState(peak_t, obs);
                 if (m < Math.abs(l2_zeta) && l2_zeta < 0) {
                     obscuration = 1.0;
                 } else if (m < l1_zeta) {
-                    // Magnitud de eclipse (fracción del diámetro cubierto)
                     obscuration = (l1_zeta - m) / (l1_zeta + l2_zeta);
                     if (obscuration > 1.0) obscuration = 1.0;
                     if (obscuration < 0.0) obscuration = 0.0;
@@ -148,11 +190,11 @@ window.BesselianCalculator = (function() {
             }
             
             return {
-                partial_begin: C1 ? { time: { date: tToDate(C1) } } : null,
-                total_begin: C2 ? { time: { date: tToDate(C2) } } : null,
-                peak: peak_t ? { time: { date: tToDate(peak_t) } } : null,
-                total_end: C3 ? { time: { date: tToDate(C3) } } : null,
-                partial_end: C4 ? { time: { date: tToDate(C4) } } : null,
+                partial_begin: C1 !== null ? { time: { date: tToDate(C1) } } : null,
+                total_begin: C2 !== null ? { time: { date: tToDate(C2) } } : null,
+                peak: peak_t !== null ? { time: { date: tToDate(peak_t) } } : null,
+                total_end: C3 !== null ? { time: { date: tToDate(C3) } } : null,
+                partial_end: C4 !== null ? { time: { date: tToDate(C4) } } : null,
                 obscuration: obscuration
             };
         }

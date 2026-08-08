@@ -44,26 +44,51 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- MOBILE MENU ---
     const btnMobileMenu = document.getElementById("btn-mobile-menu");
+    const btnCloseMobileMenu = document.getElementById("btn-close-mobile-menu");
     const headerControls = document.getElementById("header-controls");
+
+    const closeMobileMenu = () => {
+        if (headerControls) headerControls.classList.remove('show');
+        if (btnMobileMenu) {
+            const icon = btnMobileMenu.querySelector('i');
+            if (icon) icon.className = 'fa-solid fa-bars';
+        }
+    };
 
     if (btnMobileMenu && headerControls) {
         btnMobileMenu.addEventListener('click', (e) => {
-            e.stopPropagation(); // prevent map click
-            headerControls.classList.toggle('show');
-            const icon = btnMobileMenu.querySelector('i');
+            e.stopPropagation();
             if (headerControls.classList.contains('show')) {
-                icon.className = 'fa-solid fa-xmark';
+                closeMobileMenu();
             } else {
-                icon.className = 'fa-solid fa-bars';
+                headerControls.classList.add('show');
+                const icon = btnMobileMenu.querySelector('i');
+                if (icon) icon.className = 'fa-solid fa-xmark';
             }
         });
 
-        // Close menu if clicked outside
-        document.addEventListener('click', (e) => {
-            if (!headerControls.contains(e.target) && !btnMobileMenu.contains(e.target)) {
-                headerControls.classList.remove('show');
-                btnMobileMenu.querySelector('i').className = 'fa-solid fa-bars';
+        if (btnCloseMobileMenu) {
+            btnCloseMobileMenu.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeMobileMenu();
+            });
+        }
+
+        // Close menu if clicking on backdrop overlay
+        headerControls.addEventListener('click', (e) => {
+            if (e.target === headerControls) {
+                closeMobileMenu();
             }
+        });
+
+        // Close menu automatically when any menu option button is selected
+        const menuButtons = headerControls.querySelectorAll('.btn-location');
+        menuButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (window.innerWidth <= 991) {
+                    closeMobileMenu();
+                }
+            });
         });
     }
 
@@ -2516,10 +2541,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.Horizon3D) window.Horizon3D.init();
 
     btnBeads.addEventListener('click', () => {
+        if (typeof window.closeAllModals === 'function') window.closeAllModals();
         if (window.LimbSimulator) window.LimbSimulator.show();
     });
 
     btnHorizon3D.addEventListener('click', () => {
+        if (typeof window.closeAllModals === 'function') window.closeAllModals();
         if (window.Horizon3D) {
             window.Horizon3D.show(lastLocation.lat, lastLocation.lng, lastLocation.alt, lastLocation.az);
         }
@@ -2638,6 +2665,46 @@ document.addEventListener("DOMContentLoaded", () => {
         changelogModal.classList.add('hidden');
     });
 
+    // --- GESTIÓN CENTRALIZADA DE VENTANAS MODALES ---
+    window.closeAllModals = function() {
+        const modals = document.querySelectorAll('.modal-overlay, .simulation-modal');
+        modals.forEach(m => m.classList.add('hidden'));
+
+        if (window.LimbSimulator && typeof window.LimbSimulator.hide === 'function') {
+            window.LimbSimulator.hide();
+        }
+        if (window.Horizon3D && typeof window.Horizon3D.hide === 'function') {
+            window.Horizon3D.hide();
+        }
+
+        // Auto-cerrar menú móvil desplegable
+        const headerControls = document.getElementById('header-controls');
+        const btnMobileMenu = document.getElementById('btn-mobile-menu');
+        if (headerControls && headerControls.classList.contains('show')) {
+            headerControls.classList.remove('show');
+            if (btnMobileMenu) {
+                const icon = btnMobileMenu.querySelector('i');
+                if (icon) icon.className = 'fa-solid fa-bars';
+            }
+        }
+    };
+
+    // Cerrar al pulsar la tecla Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            window.closeAllModals();
+        }
+    });
+
+    // Cerrar al hacer clic en el fondo oscuro (backdrop) de cualquier modal
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.classList.add('hidden');
+            }
+        });
+    });
+
     // --- MODAL DE DESCARGO DE RESPONSABILIDAD Y USO CONSCIENTE ---
     const modalDisclaimer = document.getElementById('modal-disclaimer');
     const btnOpenDisclaimer = document.getElementById('btn-open-disclaimer');
@@ -2647,6 +2714,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.openDisclaimerModal = function(e) {
         if (e && e.stopPropagation) e.stopPropagation();
+        window.closeAllModals();
         if (modalDisclaimer) modalDisclaimer.classList.remove('hidden');
     };
 
@@ -2665,28 +2733,10 @@ document.addEventListener("DOMContentLoaded", () => {
         window.closeDisclaimerModal();
     };
 
-    const addModalBinding = (el, handler) => {
-        if (!el) return;
-        ['click', 'touchstart'].forEach(evt => {
-            el.addEventListener(evt, (e) => {
-                handler(e);
-            }, { passive: true });
-        });
-    };
-
-    addModalBinding(btnOpenDisclaimer, window.openDisclaimerModal);
-    addModalBinding(btnPanelDisclaimer, window.openDisclaimerModal);
-    addModalBinding(closeDisclaimer, window.closeDisclaimerModal);
-    addModalBinding(btnAcceptDisclaimer, window.acceptDisclaimerModal);
-
-    // Cerrar al hacer clic en el fondo oscuro del modal (overlay)
-    if (modalDisclaimer) {
-        modalDisclaimer.addEventListener('click', (e) => {
-            if (e.target === modalDisclaimer) {
-                window.closeDisclaimerModal(e);
-            }
-        });
-    }
+    if (btnOpenDisclaimer) btnOpenDisclaimer.addEventListener('click', window.openDisclaimerModal);
+    if (btnPanelDisclaimer) btnPanelDisclaimer.addEventListener('click', window.openDisclaimerModal);
+    if (closeDisclaimer) closeDisclaimer.addEventListener('click', window.closeDisclaimerModal);
+    if (btnAcceptDisclaimer) btnAcceptDisclaimer.addEventListener('click', window.acceptDisclaimerModal);
 
     // Auto-mostrar la primera vez si no se ha aceptado previamente
     try {

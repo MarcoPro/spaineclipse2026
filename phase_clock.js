@@ -354,6 +354,7 @@
 
         if (openBtn && modal) {
             bindClick(openBtn, () => {
+                if (typeof window.closeAllModals === 'function') window.closeAllModals();
                 modal.classList.remove('hidden');
                 loadVoices();
                 updatePhaseClock();

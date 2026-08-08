@@ -123,36 +123,110 @@
             </div>
 
             <div class="header-controls" id="header-controls">
-                <button class="btn-location" id="btn-geolocation" title="Usar mi ubicación actual">
-                    <i class="fa-solid fa-location-crosshairs"></i>
-                </button>
-                <button class="btn-location" id="btn-shadow-anim" title="Animar recorrido de la sombra">
-                    <i class="fa-solid fa-play"></i>
-                </button>
-                <button class="btn-location" id="btn-pois" title="Puntos de observación y eventos">
-                    <i class="fa-solid fa-binoculars"></i>
-                </button>
-                <button class="btn-location" id="btn-phase-clock" title="Reloj Día D & Alertas de Voz">
-                    <i class="fa-solid fa-bell"></i>
-                </button>
-                <button class="btn-location" id="btn-astrophoto" title="Simulador & Encuadre Fotográfico">
-                    <i class="fa-solid fa-camera"></i>
-                </button>
-                <button class="btn-location" id="btn-finder" title="Recomendador Inteligente (km)">
-                    <i class="fa-solid fa-compass"></i>
-                </button>
-                <button class="btn-location" id="btn-heatmap" title="Mapa de calor de duración">
-                    <i class="fa-solid fa-stopwatch"></i>
-                </button>
-                <button class="btn-location" id="btn-cloud-heatmap" title="Mapa de previsión de nubes">
-                    <i class="fa-solid fa-cloud"></i>
-                </button>
-                <button class="btn-location" id="btn-open-disclaimer" title="Aviso Legal & Descargo de Responsabilidad" onclick="window.openDisclaimerModal &amp;&amp; window.openDisclaimerModal()">
-                    <i class="fa-solid fa-shield-halved" style="color: #e67e22;"></i>
-                </button>
-                <a href="https://github.com/marcopro/spaineclipse2026/" target="_blank" rel="noopener" class="btn-location" title="Ver código fuente en GitHub" style="display: inline-flex; align-items: center; justify-content: center; text-decoration: none;">
-                    <i class="fa-brands fa-github"></i>
-                </a>
+                <div class="header-menu-modal">
+                    <div class="header-menu-header">
+                        <span><i class="fa-solid fa-sliders"></i> Herramientas y Opciones</span>
+                        <button class="menu-close-btn" id="btn-close-mobile-menu" title="Cerrar menú">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <div class="menu-groups-container">
+                        <div class="menu-group">
+                            <div class="menu-group-title"><i class="fa-solid fa-location-dot"></i> Ubicación y Entorno</div>
+                            <div class="menu-group-items">
+                                <button class="btn-location" id="btn-geolocation" title="Usar mi ubicación actual">
+                                    <i class="fa-solid fa-location-crosshairs"></i>
+                                    <div class="btn-label">
+                                        <strong>Mi Ubicación</strong>
+                                        <small>GPS actual</small>
+                                    </div>
+                                </button>
+                                <button class="btn-location" id="btn-shadow-anim" title="Animar recorrido de la sombra">
+                                    <i class="fa-solid fa-play"></i>
+                                    <div class="btn-label">
+                                        <strong>Animación Sombra</strong>
+                                        <small>Recorrido umbra</small>
+                                    </div>
+                                </button>
+                                <button class="btn-location" id="btn-pois" title="Puntos de observación y eventos">
+                                    <i class="fa-solid fa-binoculars"></i>
+                                    <div class="btn-label">
+                                        <strong>Eventos & POIs</strong>
+                                        <small>Puntos clave</small>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="menu-group">
+                            <div class="menu-group-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Herramientas Astronómicas</div>
+                            <div class="menu-group-items">
+                                <button class="btn-location" id="btn-phase-clock" title="Reloj Día D & Alertas de Voz">
+                                    <i class="fa-solid fa-bell"></i>
+                                    <div class="btn-label">
+                                        <strong>Reloj Día D</strong>
+                                        <small>Voz en directo</small>
+                                    </div>
+                                </button>
+                                <button class="btn-location" id="btn-astrophoto" title="Simulador & Encuadre Fotográfico">
+                                    <i class="fa-solid fa-camera"></i>
+                                    <div class="btn-label">
+                                        <strong>Simulador Fotos</strong>
+                                        <small>Encuadre cámara</small>
+                                    </div>
+                                </button>
+                                <button class="btn-location" id="btn-finder" title="Recomendador Inteligente (km)">
+                                    <i class="fa-solid fa-compass"></i>
+                                    <div class="btn-label">
+                                        <strong>Recomendador</strong>
+                                        <small>Por radio (km)</small>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="menu-group">
+                            <div class="menu-group-title"><i class="fa-solid fa-cloud-sun"></i> Mapas y Tiempo</div>
+                            <div class="menu-group-items">
+                                <button class="btn-location" id="btn-heatmap" title="Mapa de calor de duración">
+                                    <i class="fa-solid fa-stopwatch"></i>
+                                    <div class="btn-label">
+                                        <strong>Mapa Duración</strong>
+                                        <small>Segundos totalidad</small>
+                                    </div>
+                                </button>
+                                <button class="btn-location" id="btn-cloud-heatmap" title="Mapa de previsión de nubes">
+                                    <i class="fa-solid fa-cloud"></i>
+                                    <div class="btn-label">
+                                        <strong>Mapa Nubes</strong>
+                                        <small>Previsión meteorológica</small>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="menu-group">
+                            <div class="menu-group-title"><i class="fa-solid fa-circle-info"></i> Información</div>
+                            <div class="menu-group-items">
+                                <button class="btn-location" id="btn-open-disclaimer" title="Aviso Legal & Descargo de Responsabilidad">
+                                    <i class="fa-solid fa-shield-halved" style="color: #e67e22;"></i>
+                                    <div class="btn-label">
+                                        <strong>Aviso Legal</strong>
+                                        <small>Salud y descargo</small>
+                                    </div>
+                                </button>
+                                <a href="https://github.com/marcopro/spaineclipse2026/" target="_blank" rel="noopener" class="btn-location" title="Ver código fuente en GitHub" style="text-decoration: none;">
+                                    <i class="fa-brands fa-github"></i>
+                                    <div class="btn-label">
+                                        <strong>GitHub</strong>
+                                        <small>Código fuente</small>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <button class="mobile-menu-btn" id="btn-mobile-menu">
@@ -472,7 +546,7 @@
                 <button class="simulation-btn" id="btn-gen-pass" style="border-color: rgba(241, 196, 15, 0.4); color: #f1c40f;">
                     <i class="fa-solid fa-id-card"></i> Generar Pase
                 </button>
-                <button class="simulation-btn" id="btn-panel-disclaimer" style="border-color: rgba(230, 126, 34, 0.4); color: #e67e22;" title="Aviso Legal y Descargo de Responsabilidad" onclick="window.openDisclaimerModal &amp;&amp; window.openDisclaimerModal()">
+                <button class="simulation-btn" id="btn-panel-disclaimer" style="border-color: rgba(230, 126, 34, 0.4); color: #e67e22;" title="Aviso Legal y Descargo de Responsabilidad">
                     <i class="fa-solid fa-shield-halved"></i> Aviso Legal
                 </button>
                 <button class="compare-add-btn" id="btn-add-compare">
