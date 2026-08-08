@@ -59,6 +59,7 @@
 
         if (openBtn && modal) {
             openBtn.addEventListener('click', () => {
+                if (typeof window.closeAllModals === 'function') window.closeAllModals();
                 modal.classList.remove('hidden');
 
                 // Si hay un municipio activo seleccionado en el mapa, ponerlo por defecto
@@ -293,7 +294,14 @@
     async function resolveCandidateTown(cand) {
         if (cand.isEvent || cand.resolved) return cand;
 
-        // 1. Buscar coincidencia geográfica con municipios conocidos o eventos (dentro de 18 km)
+        // Si ya tiene un nombre válido proveniente de la matriz
+        if (cand.town && cand.town !== 'Buscando municipio...') {
+            cand.name = cand.town.startsWith('Entorno de') ? cand.town : `Entorno de ${cand.town}`;
+            cand.resolved = true;
+            return cand;
+        }
+
+        // Buscar coincidencia geográfica con municipios conocidos o eventos (dentro de 18 km)
         let nearestKnown = null;
         let minD = Infinity;
 
@@ -322,177 +330,204 @@
             return cand;
         }
 
-        // 2. Geocodificación inversa municipal oficial con Nominatim (zoom=12)
-        try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${cand.lat}&lon=${cand.lon || cand.lng}&format=json&zoom=12`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data && data.address) {
-                    const addr = data.address;
-                    let townName = sanitizeTownName(addr.municipality) ||
-                                   sanitizeTownName(addr.city) ||
-                                   sanitizeTownName(addr.town) ||
-                                   sanitizeTownName(addr.village) ||
-                                   sanitizeTownName(addr.county);
-                    let provName = addr.state || addr.county || "España";
-                    if (townName) {
-                        cand.name = `Entorno de ${townName}`;
-                        cand.town = townName;
-                        cand.province = provName;
-                        cand.resolved = true;
-                        return cand;
-                    }
-                }
-            }
-        } catch (e) {
-            console.warn('Nominatim reverse geocode candidate error:', e);
-        }
-
         cand.name = `Zona Rural (${cand.lat.toFixed(2)}°, ${cand.lng.toFixed(2)}°)`;
         cand.town = 'Franja de Totalidad';
+        cand.resolved = true;
         return cand;
     }
 
     async function executeLocationSearch() {
         const container = document.getElementById('finder-results-container');
         if (container) {
-            container.innerHTML = '<div style="text-align:center; padding: 2rem; color: #a4b0be;"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><p style="margin-top:0.5rem;">Calculando evaluación multicriterio...</p></div>';
+            container.innerHTML = `
+                <div class="finder-loading-container">
+                    <i class="fa-solid fa-spinner fa-spin fa-2x" style="color:#3498db;"></i>
+                    <p style="margin-top:0.5rem; font-weight:600;">Evaluando municipios dentro del radio de búsqueda...</p>
+                    <div class="finder-progress-bar-wrap">
+                        <div class="finder-progress-bar-fill" id="finder-progress-fill" style="width: 0%;"></div>
+                    </div>
+                    <span class="finder-progress-text" id="finder-progress-text">Iniciando evaluación astronómica y meteorológica...</span>
+                </div>
+            `;
         }
 
-        const inputEl = document.getElementById('finder-origin-input');
-        const sliderEl = document.getElementById('finder-radius-slider');
+        try {
+            const inputEl = document.getElementById('finder-origin-input');
+            const sliderEl = document.getElementById('finder-radius-slider');
 
-        const originInputStr = (inputEl && inputEl.value) ? inputEl.value.trim() : 'Palencia';
-        const maxRadiusKm = parseFloat((sliderEl && sliderEl.value) ? sliderEl.value : '75');
+            const originInputStr = (inputEl && inputEl.value) ? inputEl.value.trim() : 'Palencia';
+            const maxRadiusKm = parseFloat((sliderEl && sliderEl.value) ? sliderEl.value : '75');
 
-        // Leer criterios múltiples activos
-        const elW = document.getElementById('crit-weather');
-        const elD = document.getElementById('crit-duration');
-        const elE = document.getElementById('crit-events');
-        const elS = document.getElementById('crit-sun');
-        const elK = document.getElementById('crit-distance');
+            // Leer criterios múltiples activos
+            const elW = document.getElementById('crit-weather');
+            const elD = document.getElementById('crit-duration');
+            const elE = document.getElementById('crit-events');
+            const elS = document.getElementById('crit-sun');
+            const elK = document.getElementById('crit-distance');
 
-        const useWeather = elW ? elW.checked : true;
-        const useDuration = elD ? elD.checked : true;
-        const useEvents = elE ? elE.checked : true;
-        const useSun = elS ? elS.checked : false;
-        const useDistance = elK ? elK.checked : false;
+            const useWeather = elW ? elW.checked : true;
+            const useDuration = elD ? elD.checked : true;
+            const useEvents = elE ? elE.checked : true;
+            const useSun = elS ? elS.checked : false;
+            const useDistance = elK ? elK.checked : false;
 
-        // Determinar coordenadas de origen
-        const origin = await resolveOriginCoordinates(originInputStr);
+            // Determinar coordenadas de origen
+            const origin = await resolveOriginCoordinates(originInputStr);
 
-        const candidates = [];
-
-        // Evaluar candidatos combinando events.json y matriz weatherForecastData
-        const rawPoints = [];
-        const eventsList = (typeof window.eclipseEvents !== 'undefined') ? window.eclipseEvents : [];
-        eventsList.forEach(e => {
-            rawPoints.push({
-                name: e.name, town: e.town || e.province, province: e.province,
-                lat: e.lat, lng: e.lng, isEvent: true, type: e.category || 'Zona Pública', url: e.url
-            });
-        });
-
-        const gridPoints = (typeof window.weatherForecastData !== 'undefined' && window.weatherForecastData.points) ? window.weatherForecastData.points : [];
-        gridPoints.forEach(p => {
-            if (p.c_total !== null) {
+            // Preparar candidatos
+            const rawPoints = [];
+            const eventsList = (typeof window.eclipseEvents !== 'undefined') ? window.eclipseEvents : [];
+            eventsList.forEach(e => {
                 rawPoints.push({
-                    name: `Punto Muestreo (${p.lat.toFixed(2)}, ${p.lon.toFixed(2)})`,
-                    town: 'Buscando municipio...', province: 'España',
-                    lat: p.lat, lng: p.lon, isEvent: false, type: 'Muestreo Meteorológico', url: null
+                    name: e.name, town: e.town || e.province, province: e.province,
+                    lat: e.lat, lng: e.lng, isEvent: true, type: e.category || 'Zona Pública', url: e.url
                 });
+            });
+
+            const gridPoints = (typeof window.weatherForecastData !== 'undefined' && window.weatherForecastData.points) ? window.weatherForecastData.points : [];
+            gridPoints.forEach(p => {
+                if (p.c_total !== null) {
+                    rawPoints.push({
+                        name: p.name ? `Entorno de ${p.name}` : `Punto Muestreo (${p.lat.toFixed(2)}, ${p.lon.toFixed(2)})`,
+                        town: p.name || 'Franja de Totalidad', province: p.province || 'España',
+                        lat: p.lat, lng: p.lon, isEvent: false, type: 'Muestreo Meteorológico', url: null,
+                        cloudPct: p.c_total
+                    });
+                }
+            });
+
+            // Filtrar puntos en radio
+            const matchingPoints = [];
+            rawPoints.forEach(pt => {
+                const dist = haversineKm(origin.lat, origin.lng, pt.lat, pt.lng);
+                if (dist <= maxRadiusKm) {
+                    matchingPoints.push({ pt, dist });
+                }
+            });
+
+            if (matchingPoints.length === 0) {
+                renderTopDestinations(origin, [], maxRadiusKm);
+                return;
             }
-        });
 
-        rawPoints.forEach(pt => {
-            const dist = haversineKm(origin.lat, origin.lng, pt.lat, pt.lng);
-            if (dist <= maxRadiusKm) {
-                // Nubes en tiempo real desde la matriz meteorológica o función
-                let cloudPct = pt.cloudPct !== undefined ? pt.cloudPct : 50;
-                if (typeof window.getWeatherForecast === 'function') {
-                    const fc = window.getWeatherForecast(pt.lat, pt.lng);
-                    if (fc && fc.c_total !== null && fc.c_total !== undefined) {
-                        cloudPct = fc.c_total;
+            const candidates = [];
+            const progressFill = document.getElementById('finder-progress-fill');
+            const progressText = document.getElementById('finder-progress-text');
+
+            const BATCH_SIZE = 15;
+            const totalMatching = matchingPoints.length;
+
+            for (let i = 0; i < totalMatching; i += BATCH_SIZE) {
+                const batch = matchingPoints.slice(i, i + BATCH_SIZE);
+
+                for (const item of batch) {
+                    const pt = item.pt;
+                    const dist = item.dist;
+
+                    let cloudPct = pt.cloudPct !== undefined ? pt.cloudPct : 50;
+                    if (typeof window.getWeatherForecast === 'function') {
+                        const fc = window.getWeatherForecast(pt.lat, pt.lng);
+                        if (fc && fc.c_total !== null && fc.c_total !== undefined) {
+                            cloudPct = fc.c_total;
+                        }
                     }
-                }
 
-                // Duración astronómica de la totalidad exacta en segundos (diferencia entre C3 y C2)
-                let durationSec = 0;
-                if (window.BesselianCalculator) {
-                    const ecl = window.BesselianCalculator.calculateLocalCircumstances(pt.lat, pt.lng, 250);
-                    if (ecl && ecl.total_begin && ecl.total_end && ecl.total_begin.time && ecl.total_end.time) {
-                        const t2 = ecl.total_begin.time.date.getTime();
-                        const t3 = ecl.total_end.time.date.getTime();
-                        durationSec = Math.max(0, Math.round((t3 - t2) / 1000));
+                    let durationSec = 0;
+                    if (window.BesselianCalculator) {
+                        const ecl = window.BesselianCalculator.calculateLocalCircumstances(pt.lat, pt.lng, 250);
+                        if (ecl && ecl.total_begin && ecl.total_end && ecl.total_begin.time && ecl.total_end.time) {
+                            const t2 = ecl.total_begin.time.date.getTime();
+                            const t3 = ecl.total_end.time.date.getTime();
+                            durationSec = Math.max(0, Math.round((t3 - t2) / 1000));
+                        }
                     }
-                }
 
-                // Altura solar en el eclipse máximo
-                let sunAlt = 10.5;
-                if (window.Astronomy) {
-                    const obs = new window.Astronomy.Observer(pt.lat, pt.lng, 250);
-                    const equ = window.Astronomy.Equator('Sun', new Date('2026-08-12T18:28:00Z'), obs, true, true);
-                    const hor = window.Astronomy.Horizon(new Date('2026-08-12T18:28:00Z'), obs, equ.ra, equ.dec, 'normal');
-                    if (hor && hor.altitude !== undefined) {
-                        sunAlt = Math.round(hor.altitude * 10) / 10;
+                    let sunAlt = 10.5;
+                    if (window.Astronomy) {
+                        const obs = new window.Astronomy.Observer(pt.lat, pt.lng, 250);
+                        const equ = window.Astronomy.Equator('Sun', new Date('2026-08-12T18:28:00Z'), obs, true, true);
+                        const hor = window.Astronomy.Horizon(new Date('2026-08-12T18:28:00Z'), obs, equ.ra, equ.dec, 'normal');
+                        if (hor && hor.altitude !== undefined) {
+                            sunAlt = Math.round(hor.altitude * 10) / 10;
+                        }
                     }
+
+                    let totalScore = 0;
+                    let totalWeight = 0;
+
+                    if (useWeather) {
+                        const wScore = Math.max(0, 100 - cloudPct);
+                        totalScore += wScore * 4.0;
+                        totalWeight += 4.0;
+                    }
+                    if (useDuration) {
+                        const dScore = Math.min(100, (durationSec / 104) * 100);
+                        totalScore += dScore * 3.0;
+                        totalWeight += 3.0;
+                    }
+                    if (useEvents) {
+                        const evScore = pt.isEvent ? 100 : 0;
+                        totalScore += evScore * 3.0;
+                        totalWeight += 3.0;
+                    }
+                    if (useSun) {
+                        const sScore = Math.min(100, (Math.max(0, sunAlt) / 14) * 100);
+                        totalScore += sScore * 2.0;
+                        totalWeight += 2.0;
+                    }
+                    if (useDistance) {
+                        const distRatio = Math.max(0, 1 - (dist / maxRadiusKm));
+                        totalScore += distRatio * 100 * 2.0;
+                        totalWeight += 2.0;
+                    }
+
+                    const matchPct = totalWeight > 0 ? Math.round(totalScore / totalWeight) : 50;
+
+                    candidates.push({
+                        ...pt,
+                        distKm: Math.round(dist),
+                        cloudPct,
+                        durationSec,
+                        sunAlt,
+                        matchPct
+                    });
                 }
 
-                // Cálculo de puntuación ponderada multicriterio (0 - 100%)
-                let totalScore = 0;
-                let totalWeight = 0;
+                // Actualizar progreso en la UI
+                const currentCount = Math.min(i + BATCH_SIZE, totalMatching);
+                const pct = Math.round((currentCount / totalMatching) * 100);
 
-                if (useWeather) {
-                    const wScore = Math.max(0, 100 - cloudPct);
-                    totalScore += wScore * 4.0;
-                    totalWeight += 4.0;
-                }
-                if (useDuration) {
-                    const dScore = Math.min(100, (durationSec / 104) * 100);
-                    totalScore += dScore * 3.0;
-                    totalWeight += 3.0;
-                }
-                if (useEvents) {
-                    const evScore = pt.isEvent ? 100 : 0;
-                    totalScore += evScore * 3.0;
-                    totalWeight += 3.0;
-                }
-                if (useSun) {
-                    const sScore = Math.min(100, (Math.max(0, sunAlt) / 14) * 100);
-                    totalScore += sScore * 2.0;
-                    totalWeight += 2.0;
-                }
-                if (useDistance) {
-                    const distRatio = Math.max(0, 1 - (dist / maxRadiusKm));
-                    totalScore += distRatio * 100 * 2.0;
-                    totalWeight += 2.0;
-                }
+                if (progressFill) progressFill.style.width = `${pct}%`;
+                if (progressText) progressText.textContent = `Evaluando ${currentCount} de ${totalMatching} municipios en radio (${pct}%)...`;
 
-                const matchPct = totalWeight > 0 ? Math.round(totalScore / totalWeight) : 50;
-
-                candidates.push({
-                    ...pt,
-                    distKm: Math.round(dist),
-                    cloudPct,
-                    durationSec,
-                    sunAlt,
-                    matchPct
-                });
+                // Ceder control al renderizador del navegador
+                await new Promise(r => setTimeout(r, 0));
             }
-        });
 
-        // Ordenar candidatos por porcentaje de afinidad multicriterio
-        candidates.sort((a, b) => b.matchPct - a.matchPct || a.distKm - b.distKm);
+            // Ordenar candidatos por afinidad multicriterio
+            candidates.sort((a, b) => b.matchPct - a.matchPct || a.distKm - b.distKm);
 
-        const top3 = candidates.slice(0, 3);
+            const top3 = candidates.slice(0, 3);
 
-        // Resolver nombres de municipio para el Top 3
-        for (let i = 0; i < top3.length; i++) {
-            top3[i] = await resolveCandidateTown(top3[i]);
+            // Resolver nombres para el Top 3
+            for (let j = 0; j < top3.length; j++) {
+                top3[j] = await resolveCandidateTown(top3[j]);
+            }
+
+            renderTopDestinations(origin, top3, maxRadiusKm);
+            highlightTopDestinationsOnMap(top3);
+
+        } catch (err) {
+            console.error('Error en Recomendador Inteligente:', err);
+            if (container) {
+                container.innerHTML = `
+                    <div style="text-align:center; padding: 1.5rem; color: #e74c3c;">
+                        <i class="fa-solid fa-triangle-exclamation fa-2x"></i>
+                        <p style="margin-top:0.5rem;">Ocurrió un error al calcular la recomendación. Por favor, reintente la búsqueda.</p>
+                    </div>
+                `;
+            }
         }
-
-        renderTopDestinations(origin, top3, maxRadiusKm);
-        highlightTopDestinationsOnMap(top3);
     }
 
     function renderTopDestinations(origin, top3, maxRadiusKm) {

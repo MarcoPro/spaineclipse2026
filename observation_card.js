@@ -28,6 +28,7 @@
     function openObservationPass(locationData) {
         const modal = document.getElementById('modal-observation-card');
         if (!modal) return;
+        if (typeof window.closeAllModals === 'function') window.closeAllModals();
         modal.classList.remove('hidden');
 
         renderPassCanvas(locationData);

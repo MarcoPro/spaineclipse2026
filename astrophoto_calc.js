@@ -21,6 +21,7 @@
 
         if (openBtn && modal) {
             openBtn.addEventListener('click', () => {
+                if (typeof window.closeAllModals === 'function') window.closeAllModals();
                 modal.classList.remove('hidden');
                 drawFramingSimulation();
             });
