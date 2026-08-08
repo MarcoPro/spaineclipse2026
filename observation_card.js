@@ -34,6 +34,98 @@
         renderPassCanvas(locationData);
     }
 
+    /**
+     * Auxiliar para dibujar rectángulos con bordes redondeados
+     */
+    function drawRoundedRect(ctx, x, y, width, height, radius, fillStyle, strokeStyle, lineWidth) {
+        if (lineWidth === undefined) lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+
+        if (fillStyle) {
+            ctx.fillStyle = fillStyle;
+            ctx.fill();
+        }
+        if (strokeStyle) {
+            ctx.strokeStyle = strokeStyle;
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+        }
+    }
+
+    /**
+     * Auxiliar para ajustar y dividir texto multilínea en Canvas 2D
+     */
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight, align) {
+        if (align === undefined) align = 'center';
+        const words = text.split(' ');
+        let lines = [];
+        let currentLine = words[0];
+
+        for (let i = 1; i < words.length; i++) {
+            const word = words[i];
+            const width = ctx.measureText(currentLine + ' ' + word).width;
+            if (width <= maxWidth) {
+                currentLine += ' ' + word;
+            } else {
+                lines.push(currentLine);
+                currentLine = word;
+            }
+        }
+        lines.push(currentLine);
+
+        ctx.textAlign = align;
+        let currentY = y;
+        lines.forEach(function (line) {
+            ctx.fillText(line, x, currentY);
+            currentY += lineHeight;
+        });
+        return lines.length;
+    }
+
+    /**
+     * Formatear o extraer la duración de la totalidad
+     */
+    function getTotalityDurationFormatted(data) {
+        const isTotal = Boolean(data && data.isTotality);
+        if (!isTotal) return { isTotal: false, text: '0m 0s (Parcial)' };
+
+        if (data && data.totalityDurationFormatted && !data.totalityDurationFormatted.includes('Sin totalidad')) {
+            return { isTotal: true, text: data.totalityDurationFormatted };
+        }
+
+        if (data && data.totalityDurationStr && !data.totalityDurationStr.includes('Sin totalidad')) {
+            return { isTotal: true, text: data.totalityDurationStr };
+        }
+
+        // Cálculo directo a partir de objetos de fecha C2 y C3
+        let d2 = (data && data.c2Date) ? data.c2Date : (data && data.c2 ? data.c2.date : null);
+        let d3 = (data && data.c3Date) ? data.c3Date : (data && data.c3 ? data.c3.date : null);
+
+        if (d2 && d3) {
+            const t2 = new Date(d2).getTime();
+            const t3 = new Date(d3).getTime();
+            if (!isNaN(t2) && !isNaN(t3) && t3 > t2) {
+                const diffSec = Math.round((t3 - t2) / 1000);
+                const m = Math.floor(diffSec / 60);
+                const s = diffSec % 60;
+                const formatted = m > 0 ? `${m}m ${s}s` : `${s}s`;
+                return { isTotal: true, text: formatted };
+            }
+        }
+
+        return { isTotal: true, text: '0m 0s' };
+    }
+
     function renderPassCanvas(data) {
         const canvas = document.getElementById('pass-canvas');
         if (!canvas) return;
@@ -79,26 +171,54 @@
         ctx.moveTo(80, 195); ctx.lineTo(w - 80, 195);
         ctx.stroke();
 
-        // --- DATOS DE UBICACIÓN ---
+        // --- DATOS DE UBICACIÓN Y DURACIÓN ---
         const locName = (data && data.name) ? data.name : 'España (Franja de Totalidad)';
         const lat = (data && data.lat) ? data.lat.toFixed(4) : '42.0000';
         const lng = (data && data.lng) ? data.lng.toFixed(4) : '-4.5000';
         const ele = (data && data.elevation) ? `${Math.round(data.elevation)}m` : '250m';
+        const isTotal = Boolean(data && data.isTotality);
+        const totalityInfo = getTotalityDurationFormatted(data);
 
         ctx.textAlign = 'left';
         ctx.fillStyle = '#3498db';
         ctx.font = 'bold 24px Outfit, sans-serif';
-        ctx.fillText('📍 UBICACIÓN SELECCIONADA', 80, 250);
+        ctx.fillText('📍 UBICACIÓN SELECCIONADA', 80, 245);
 
+        // Nombre de la localidad con auto-escalado dinámico según longitud
+        let nameFontSize = 42;
+        ctx.font = `bold ${nameFontSize}px Outfit, sans-serif`;
+        while (ctx.measureText(locName).width > 650 && nameFontSize > 22) {
+            nameFontSize -= 2;
+            ctx.font = `bold ${nameFontSize}px Outfit, sans-serif`;
+        }
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 42px Outfit, sans-serif';
-        ctx.fillText(locName, 80, 305);
+        ctx.fillText(locName, 80, 298);
 
         ctx.fillStyle = '#a4b0be';
-        ctx.font = '24px Outfit, sans-serif';
-        ctx.fillText(`Coordenadas: Lat ${lat}° N, Lon ${lng}° W  |  Altitud: ${ele}`, 80, 350);
+        ctx.font = '22px Outfit, sans-serif';
+        ctx.fillText(`Coordenadas: Lat ${lat}° N, Lon ${lng}° W  |  Altitud: ${ele}`, 80, 345);
+
+        // Tarjeta / Badge Destacado de Duración de la Totalidad
+        const badgeX = 760;
+        const badgeY = 225;
+        const badgeW = 360;
+        const badgeH = 130;
+        const badgeBg = isTotal ? 'rgba(241, 196, 15, 0.08)' : 'rgba(255, 255, 255, 0.04)';
+        const badgeBorder = isTotal ? 'rgba(241, 196, 15, 0.5)' : 'rgba(255, 255, 255, 0.15)';
+
+        drawRoundedRect(ctx, badgeX, badgeY, badgeW, badgeH, 14, badgeBg, badgeBorder, 2);
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = isTotal ? '#f1c40f' : '#a4b0be';
+        ctx.font = 'bold 18px Outfit, sans-serif';
+        ctx.fillText('⏱️ DURACIÓN TOTALIDAD', badgeX + (badgeW / 2), badgeY + 38);
+
+        ctx.fillStyle = isTotal ? '#2ecc71' : '#e74c3c';
+        ctx.font = isTotal ? 'bold 44px Outfit, sans-serif' : 'bold 26px Outfit, sans-serif';
+        ctx.fillText(totalityInfo.text, badgeX + (badgeW / 2), badgeY + 92);
 
         // --- TABLA DE CONTACTOS ASTRONÓMICOS ---
+        ctx.textAlign = 'left';
         ctx.fillStyle = '#f1c40f';
         ctx.font = 'bold 26px Outfit, sans-serif';
         ctx.fillText('⏱️ HORARIOS OFICIALES DE CONTACTO (HORA LOCAL CEST / UTC+2)', 80, 420);
@@ -125,18 +245,16 @@
             return '--:--:-- CEST';
         }
 
-        const isTotal = Boolean(data && data.isTotality);
-
         const contacts = [
-            { code: 'C1', name: 'Inicio Eclipse Parcial', time: getFormattedContactTime(data?.c1), note: 'Gafas solares PUESTAS' },
-            { code: 'C2', name: 'Inicio de la Totalidad', time: isTotal ? getFormattedContactTime(data?.c2) : 'No aplica (Parcial)', note: '¡QUITAR GAFAS SOLARES!' },
-            { code: 'MAX', name: 'Eclipse Máximo (Corona)', time: getFormattedContactTime(data?.max), note: 'Oscuridad total / Vía Láctea' },
-            { code: 'C3', name: 'Fin de la Totalidad', time: isTotal ? getFormattedContactTime(data?.c3) : 'No aplica (Parcial)', note: '¡PONER GAFAS SOLARES!' },
-            { code: 'C4', name: 'Fin Eclipse Parcial', time: getFormattedContactTime(data?.c4), note: 'Puesta de sol solapada' }
+            { code: 'C1', name: 'Inicio Eclipse Parcial', time: getFormattedContactTime(data && data.c1), note: 'Gafas solares PUESTAS' },
+            { code: 'C2', name: 'Inicio de la Totalidad', time: isTotal ? getFormattedContactTime(data && data.c2) : 'No aplica (Parcial)', note: '¡QUITAR GAFAS SOLARES!' },
+            { code: 'MAX', name: 'Eclipse Máximo (Corona)', time: getFormattedContactTime(data && data.max), note: 'Oscuridad total / Vía Láctea' },
+            { code: 'C3', name: 'Fin de la Totalidad', time: isTotal ? getFormattedContactTime(data && data.c3) : 'No aplica (Parcial)', note: '¡PONER GAFAS SOLARES!' },
+            { code: 'C4', name: 'Fin Eclipse Parcial', time: getFormattedContactTime(data && data.c4), note: 'Puesta de sol solapada' }
         ];
 
         let yPos = 505;
-        contacts.forEach((c) => {
+        contacts.forEach(function (c) {
             const isTotalityRow = (c.code === 'C2' || c.code === 'MAX' || c.code === 'C3');
 
             ctx.fillStyle = isTotalityRow ? '#f1c40f' : '#ffffff';
@@ -168,8 +286,8 @@
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
         ctx.strokeRect(80, 940, w - 160, 200);
 
-        const cloudVal = data?.cloudPct !== undefined && data?.cloudPct !== null ? `${data.cloudPct}% nubes` : '20% nubes';
-        const sunAlt = data?.sunAlt ? `${data.sunAlt.toFixed(1)}°` : '10.5° sobre horizonte';
+        const cloudVal = (data && data.cloudPct !== undefined && data.cloudPct !== null) ? `${data.cloudPct}% nubes` : '20% nubes';
+        const sunAlt = (data && data.sunAlt) ? `${data.sunAlt.toFixed(1)}°` : '10.5° sobre horizonte';
 
         ctx.fillStyle = '#ffffff'; ctx.font = '24px Outfit, sans-serif';
         ctx.fillText(`· Cobertura Nubosa Prevista: `, 110, 995);
@@ -202,19 +320,27 @@
         let itemY = 1255;
         ctx.fillStyle = '#a4b0be';
         ctx.font = '22px Outfit, sans-serif';
-        items.forEach(item => {
+        items.forEach(function (item) {
             ctx.fillText(`[✓] ${item}`, 110, itemY);
             itemY += 50;
         });
 
         // --- PIE DE PÁGINA Y AVISO LEGAL ---
-        ctx.textAlign = 'center';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(80, 1530); ctx.lineTo(w - 80, 1530);
+        ctx.stroke();
+
+        const warningText = '⚠️ Aviso: Tiempos astronómicos de alta precisión; aun así, pueden diferir de la realidad. La salud visual es responsabilidad del observador. Comprueba con gafas ISO 12312-2.';
+
         ctx.fillStyle = '#e67e22';
         ctx.font = 'bold 18px Outfit, sans-serif';
-        ctx.fillText('⚠️ Aviso: Tiempos astronómicos de alta precisión; aun así, pueden diferir de la realidad. La salud visual es responsabilidad del observador. Comprueba con gafas ISO 12312-2.', w / 2, 1595);
+        wrapText(ctx, warningText, w / 2, 1568, w - 160, 26, 'center');
 
         ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.font = '18px Outfit, sans-serif';
+        ctx.font = '17px Outfit, sans-serif';
+        ctx.textAlign = 'center';
         ctx.fillText('Generado por Eclipse Solar España 2026 — Proyecto de Divulgación Astronómica', w / 2, 1635);
     }
 

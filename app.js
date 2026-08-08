@@ -720,15 +720,24 @@ document.addEventListener("DOMContentLoaded", () => {
             // Guardar estado para simuladores y herramientas astronómicas
             lastEclipseData = eclipse;
 
+            const isTotality = Boolean(eclipse.total_begin && eclipse.total_end);
+            let totMs = (isTotality && eclipse.total_begin && eclipse.total_end) ? (eclipse.total_end.time.date - eclipse.total_begin.time.date) : 0;
+            let totSec = Math.round(totMs / 1000);
+            let totM = Math.floor(totSec / 60);
+            let totS = totSec % 60;
+            let totalityDurationFormatted = isTotality ? (totM > 0 ? `${totM}m ${totS}s` : `${totS}s`) : '0m 0s (Sin totalidad)';
+
             window.currentEclipseDetails = {
-                isTotality: Boolean(eclipse.total_begin && eclipse.total_end),
+                isTotality: isTotality,
                 c1: eclipse.c1,
                 c2: eclipse.c2 || eclipse.total_begin,
                 c3: eclipse.c3 || eclipse.total_end,
                 c4: eclipse.c4,
                 max: eclipse.peak,
                 c2Date: eclipse.total_begin ? eclipse.total_begin.time.date : null,
-                c3Date: eclipse.total_end ? eclipse.total_end.time.date : null
+                c3Date: eclipse.total_end ? eclipse.total_end.time.date : null,
+                totalityDurationFormatted: totalityDurationFormatted,
+                totalityDurationSec: totSec
             };
 
             const equ_peak = window.Astronomy.Equator('Sun', eclipse.peak.time.date, observer, true, true);
@@ -1212,6 +1221,28 @@ document.addEventListener("DOMContentLoaded", () => {
         const timeC3 = (isLocallyTotal && eclipse.total_end) ? timeFmt.format(eclipse.total_end.time.date) : '--:--:--';
         const timeC4 = eclipse.partial_end ? timeFmt.format(eclipse.partial_end.time.date) : '--:--:--';
 
+        // Calculate durations
+        let phaseDurationObj = { m: '--', s: '--' };
+        let totalityDurationFormatted = '0m 0s (Sin totalidad)';
+        let totalityDurationSec = 0;
+        if (isLocallyTotal && eclipse.total_begin && eclipse.total_end) {
+            let diffMs = eclipse.total_end.time.date - eclipse.total_begin.time.date;
+
+            phaseDurationObj = formatDuration(diffMs);
+            totalityDurationSec = Math.round(diffMs / 1000);
+            totalityDurationFormatted = phaseDurationObj.m > 0 ? `${phaseDurationObj.m}m ${phaseDurationObj.s}s` : `${phaseDurationObj.s}s`;
+
+            // Si la duración cae a 0, actualizar las horas C2/C3 para coincidir con CMax
+            if (diffMs === 0 && eclipse.peak) {
+                const timeFmt = new Intl.DateTimeFormat('es-ES', {
+                    hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/Madrid'
+                });
+                const peakStr = timeFmt.format(eclipse.peak.time.date);
+                document.getElementById('time-c2').textContent = peakStr;
+                document.getElementById('time-c3').textContent = peakStr;
+            }
+        }
+
         // Sincronizar datos oficiales exactos para las herramientas astronómicas (Reloj Día D y Pase de Observación)
         window.currentEclipseDetails = {
             isTotality: isLocallyTotal,
@@ -1224,26 +1255,10 @@ document.addEventListener("DOMContentLoaded", () => {
             c2Date: (isLocallyTotal && eclipse.total_begin) ? eclipse.total_begin.time.date : null,
             maxDate: eclipse.peak ? eclipse.peak.time.date : null,
             c3Date: (isLocallyTotal && eclipse.total_end) ? eclipse.total_end.time.date : null,
-            c4Date: eclipse.partial_end ? eclipse.partial_end.time.date : null
+            c4Date: eclipse.partial_end ? eclipse.partial_end.time.date : null,
+            totalityDurationFormatted: totalityDurationFormatted,
+            totalityDurationSec: totalityDurationSec
         };
-
-        // Calculate durations
-        let phaseDurationObj = { m: '--', s: '--' };
-        if (isLocallyTotal && eclipse.total_begin && eclipse.total_end) {
-            let diffMs = eclipse.total_end.time.date - eclipse.total_begin.time.date;
-
-            phaseDurationObj = formatDuration(diffMs);
-
-            // Si la duración cae a 0, actualizar las horas C2/C3 para coincidir con CMax
-            if (diffMs === 0 && eclipse.peak) {
-                const timeFmt = new Intl.DateTimeFormat('es-ES', {
-                    hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/Madrid'
-                });
-                const peakStr = timeFmt.format(eclipse.peak.time.date);
-                document.getElementById('time-c2').textContent = peakStr;
-                document.getElementById('time-c3').textContent = peakStr;
-            }
-        }
 
         let totalDurationObj = { h: '--', m: '--' };
         if (eclipse.partial_begin && eclipse.partial_end) {
