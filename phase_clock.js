@@ -338,18 +338,10 @@
 
         const bindClick = (el, fn) => {
             if (!el) return;
-            const handler = (e) => {
-                if (e.type === 'touchstart') {
-                    el._touchFired = true;
-                } else if (e.type === 'click' && el._touchFired) {
-                    el._touchFired = false;
-                    return;
-                }
+            el.addEventListener('click', (e) => {
                 unlockMobileAudio();
                 fn(e);
-            };
-            el.addEventListener('click', handler);
-            el.addEventListener('touchstart', handler, { passive: true });
+            });
         };
 
         if (openBtn && modal) {
