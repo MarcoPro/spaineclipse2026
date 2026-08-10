@@ -248,7 +248,7 @@
         const contacts = [
             { code: 'C1', name: 'Inicio Eclipse Parcial', time: getFormattedContactTime(data && data.c1), note: 'Gafas solares PUESTAS' },
             { code: 'C2', name: 'Inicio de la Totalidad', time: isTotal ? getFormattedContactTime(data && data.c2) : 'No aplica (Parcial)', note: '¡QUITAR GAFAS SOLARES!' },
-            { code: 'MAX', name: 'Eclipse Máximo (Corona)', time: getFormattedContactTime(data && data.max), note: 'Oscuridad total / Vía Láctea' },
+            { code: 'MAX', name: 'Eclipse Máximo (Corona)', time: getFormattedContactTime(data && data.max), note: 'Oscuridad total y Corona' },
             { code: 'C3', name: 'Fin de la Totalidad', time: isTotal ? getFormattedContactTime(data && data.c3) : 'No aplica (Parcial)', note: '¡PONER GAFAS SOLARES!' },
             { code: 'C4', name: 'Fin Eclipse Parcial', time: getFormattedContactTime(data && data.c4), note: 'Puesta de sol solapada' }
         ];
