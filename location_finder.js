@@ -1,51 +1,21 @@
 /**
- * Eclipse Solar España 2026 - Recomendador Inteligente por Radio de Kilómetros
+ * Eclipse Solar España - Recomendador Inteligente por Radio de Kilómetros
  */
 (function () {
     let finderMarkersGroup = null;
 
-    // Municipios y ciudades comunes enriquecidas en España
-    const KNOWN_ORIGINS = [
-        { name: "Palencia", lat: 42.0096, lng: -4.5288, province: "Palencia" },
-        { name: "Valladolid", lat: 41.6523, lng: -4.7245, province: "Valladolid" },
-        { name: "Burgos", lat: 42.3440, lng: -3.6969, province: "Burgos" },
-        { name: "Arévalo", lat: 41.0625, lng: -4.7208, province: "Ávila" },
-        { name: "Medina del Campo", lat: 41.3142, lng: -4.9145, province: "Valladolid" },
-        { name: "Aranda de Duero", lat: 41.6704, lng: -3.6892, province: "Burgos" },
-        { name: "Guardo", lat: 42.7885, lng: -4.8436, province: "Palencia" },
-        { name: "Aguilar de Campoo", lat: 42.7933, lng: -4.2608, province: "Palencia" },
-        { name: "Paredes de Nava", lat: 42.1558, lng: -4.6942, province: "Palencia" },
-        { name: "Osorno la Mayor", lat: 42.4108, lng: -4.3608, province: "Palencia" },
-        { name: "Frómista", lat: 42.2675, lng: -4.4069, province: "Palencia" },
-        { name: "Saldaña", lat: 42.5208, lng: -4.7408, province: "Palencia" },
-        { name: "Cervera de Pisuerga", lat: 42.8647, lng: -4.4986, province: "Palencia" },
-        { name: "Peñaranda de Bracamonte", lat: 40.9017, lng: -5.2008, province: "Salamanca" },
-        { name: "Salamanca", lat: 40.9688, lng: -5.6639, province: "Salamanca" },
-        { name: "Zamora", lat: 41.5063, lng: -5.7446, province: "Zamora" },
-        { name: "Toro", lat: 41.5236, lng: -5.3944, province: "Zamora" },
-        { name: "Benavente", lat: 42.0028, lng: -5.6783, province: "Zamora" },
-        { name: "León", lat: 42.5987, lng: -5.5671, province: "León" },
-        { name: "Ponferrada", lat: 42.5466, lng: -6.5908, province: "León" },
-        { name: "Astorga", lat: 42.4578, lng: -6.0561, province: "León" },
-        { name: "Soria", lat: 41.7640, lng: -2.4688, province: "Soria" },
-        { name: "El Burgo de Osma", lat: 41.5861, lng: -3.0678, province: "Soria" },
-        { name: "Segovia", lat: 40.9429, lng: -4.1088, province: "Segovia" },
-        { name: "Cuéllar", lat: 41.4014, lng: -4.3153, province: "Segovia" },
-        { name: "Ávila", lat: 40.6565, lng: -4.6818, province: "Ávila" },
-        { name: "Oviedo", lat: 43.3619, lng: -5.8494, province: "Asturias" },
-        { name: "Gijón", lat: 43.5322, lng: -5.6611, province: "Asturias" },
-        { name: "Avilés", lat: 43.5547, lng: -5.9248, province: "Asturias" },
-        { name: "Santander", lat: 43.4623, lng: -3.8099, province: "Cantabria" },
-        { name: "Torrelavega", lat: 43.3494, lng: -4.0478, province: "Cantabria" },
-        { name: "A Coruña", lat: 43.3623, lng: -8.4115, province: "A Coruña" },
-        { name: "Santiago de Compostela", lat: 42.8782, lng: -8.5448, province: "A Coruña" },
-        { name: "Lugo", lat: 43.0097, lng: -7.5568, province: "Lugo" },
-        { name: "Ourense", lat: 42.3364, lng: -7.8636, province: "Ourense" },
-        { name: "Madrid", lat: 40.4168, lng: -3.7038, province: "Madrid" },
-        { name: "Zaragoza", lat: 41.6561, lng: -0.8773, province: "Zaragoza" },
-        { name: "Teruel", lat: 40.3456, lng: -1.1072, province: "Teruel" },
-        { name: "Logroño", lat: 42.4650, lng: -2.4456, province: "La Rioja" }
-    ];
+    // Municipios y ciudades: se cargan desde origins.json o se usa fallback
+    let KNOWN_ORIGINS = [];
+
+    // Cargar orígenes de forma asíncrona desde origins.json
+    fetch('origins.json')
+        .then(r => r.json())
+        .then(data => { KNOWN_ORIGINS = data; })
+        .catch(() => {
+            // Fallback: ubicación por defecto de la configuración
+            const dl = window.EclipseConfig.default_location;
+            KNOWN_ORIGINS = [{ name: dl.name, lat: dl.lat, lng: dl.lng }];
+        });
 
     function initLocationFinderModal() {
         const modal = document.getElementById('modal-location-finder');
@@ -68,9 +38,9 @@
                     if (activeLoc && activeLoc.name && activeLoc.name !== 'Ubicación Seleccionada' && !activeLoc.name.startsWith('Lat:')) {
                         inputOrigin.value = activeLoc.name;
                     } else if (activeLoc && activeLoc.lat && activeLoc.lat !== 0) {
-                        inputOrigin.value = activeLoc.name || 'Palencia';
+                        inputOrigin.value = activeLoc.name || window.EclipseConfig.default_location.name;
                     } else if (!inputOrigin.value.trim()) {
-                        inputOrigin.value = 'Palencia';
+                        inputOrigin.value = window.EclipseConfig.default_location.name;
                     }
                 }
                 executeLocationSearch();
@@ -445,8 +415,9 @@
                     let sunAlt = 10.5;
                     if (window.Astronomy) {
                         const obs = new window.Astronomy.Observer(pt.lat, pt.lng, 250);
-                        const equ = window.Astronomy.Equator('Sun', new Date('2026-08-12T18:28:00Z'), obs, true, true);
-                        const hor = window.Astronomy.Horizon(new Date('2026-08-12T18:28:00Z'), obs, equ.ra, equ.dec, 'normal');
+                        const _peakDate = new Date(window.EclipseConfig.peak_utc);
+                        const equ = window.Astronomy.Equator('Sun', _peakDate, obs, true, true);
+                        const hor = window.Astronomy.Horizon(_peakDate, obs, equ.ra, equ.dec, 'normal');
                         if (hor && hor.altitude !== undefined) {
                             sunAlt = Math.round(hor.altitude * 10) / 10;
                         }
@@ -461,7 +432,7 @@
                         totalWeight += 4.0;
                     }
                     if (useDuration) {
-                        const dScore = Math.min(100, (durationSec / 104) * 100);
+                        const dScore = Math.min(100, (durationSec / window.EclipseConfig.scoring.max_duration_sec) * 100);
                         totalScore += dScore * 3.0;
                         totalWeight += 3.0;
                     }

@@ -1,7 +1,7 @@
 {
-    "name": "Eclipse Solar España 2026",
-    "short_name": "Eclipse 2026",
-    "description": "Mapa interactivo de alta precisión para el eclipse solar total del 12 de agosto de 2026 en España.",
+    "name": "Eclipse Solar España 2027",
+    "short_name": "Eclipse 2027",
+    "description": "Mapa interactivo de alta precisión para el eclipse solar total del 2 de agosto de 2027 en España.",
     "start_url": "./index.html",
     "display": "standalone",
     "background_color": "#0a0b10",

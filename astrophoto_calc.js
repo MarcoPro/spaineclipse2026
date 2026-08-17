@@ -1,5 +1,5 @@
 /**
- * Eclipse Solar España 2026 - Calculador & Simulador de Encuadre Fotográfico Solar
+ * Eclipse Solar España - Calculador & Simulador de Encuadre Fotográfico Solar
  */
 (function () {
     const SENSOR_FACTORS = {

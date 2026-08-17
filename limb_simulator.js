@@ -2,9 +2,9 @@
  * Baily's Beads Simulator v2 — Scientific + Photorealistic
  * =========================================================
  * 
- * Usa perfil LOLA/SLDEM2015 con libración del eclipse 12-Ago-2026.
+ * Usa perfil LOLA/SLDEM2015 con libración del eclipse configurado.
  * 
- * Perspectiva Visual (Alt-Azimut) para España al atardecer:
+ * Perspectiva Visual (Alt-Azimut) para España:
  * La luna entra desde el cuadrante inferior-derecho.
  */
 
@@ -14,14 +14,14 @@ window.LimbSimulator = (() => {
     let limbData = [], limbNorm = [];
     let animId = null, playing = false;
 
-    // Constantes visuales (Alt-Az) para el eclipse 2026 en España (~17:30 UTC)
-    // El eclipse ocurre hacia el Oeste. El Norte Celeste está rotado respecto al cénit.
-    const PARALLACTIC_ANGLE_DEG = 52; // Rotación del Norte (sentido horario desde Cénit)
-    const CONTACT_V_DEG = 122;        // Ángulo de Vértice de entrada C1 (desde Cénit)
+    // Constantes visuales (Alt-Az) leídas de la configuración centralizada
+    const _sl = window.EclipseConfig.solar_lunar;
+    const PARALLACTIC_ANGLE_DEG = _sl.parallactic_angle_deg;
+    const CONTACT_V_DEG = _sl.contact_v_deg;
     const CONTACT_V_RAD = CONTACT_V_DEG * Math.PI / 180;
     const PARALLACTIC_RAD = PARALLACTIC_ANGLE_DEG * Math.PI / 180;
-    const MOON_RATIO = 1.0386;      // Magnitud 2026
-    const MEAN_SOLAR_R = 959.63;    // arcsec
+    const MOON_RATIO = _sl.moon_ratio;
+    const MEAN_SOLAR_R = _sl.mean_solar_r;
     const VISUAL_SCALE = 5;
     const SMOOTH_WINDOW = 7;
 

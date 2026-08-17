@@ -1,10 +1,10 @@
 /**
- * Service Worker para Eclipse Solar España 2026.
+ * Service Worker para Eclipse Solar España 2027.
  * Cachea todos los recursos esenciales para funcionamiento offline
  * el día del eclipse (zonas rurales sin cobertura).
  */
 
-const CACHE_NAME = 'eclipse-2026-v2.7.0';
+const CACHE_NAME = 'eclipse-2027-v3.0.0';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',

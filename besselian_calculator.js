@@ -15,8 +15,8 @@ window.BesselianCalculator = (function() {
     const L2_CORRECTION_BASE = BC.limb_correction.frontend.base;
     const L2_CORRECTION_SLOPE = BC.limb_correction.frontend.slope;
     
-    const TAN_F1 = 0.00461410;
-    const TAN_F2 = 0.00459110;
+    const TAN_F1 = BC.TAN_F1;
+    const TAN_F2 = BC.TAN_F2;
 
     // Constantes de la Tierra (WGS84)
     const FLATTENING = 1.0 / 298.257223563;

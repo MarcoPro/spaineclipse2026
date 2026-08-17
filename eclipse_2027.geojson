@@ -1,4 +1,4 @@
-const eclipseGeoJSON = {
+{
   "type": "FeatureCollection",
   "features": [
     {
@@ -64884,4 +64884,4 @@ const eclipseGeoJSON = {
     9.029916666666368,
     9.031305555555257
   ]
-};
+}

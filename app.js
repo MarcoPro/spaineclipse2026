@@ -1,14 +1,14 @@
 document.addEventListener("DOMContentLoaded", () => {
     // Configuración global para Astronomy Engine: 
-    // Forzar el valor Delta T para agosto de 2026 (69.10s) para sincronizar con el script de Python y Jubier
+    // Forzar el valor Delta T para sincronizar con el script de Python y Jubier
     if (window.Astronomy) {
         window.Astronomy.SetDeltaTFunction(function () {
-            return 69.1;
+            return window.EclipseConfig.besselian.DELTA_T;
         });
     }
 
     // --- COUNTDOWN TIMER ---
-    const ECLIPSE_DATE = new Date('2026-08-12T18:28:00Z'); // Approximate peak UTC
+    const ECLIPSE_DATE = new Date(window.EclipseConfig.peak_utc);
     const countdownText = document.getElementById('countdown-text');
     const countdownBadge = document.getElementById('countdown-badge');
 
@@ -102,13 +102,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // State for simulations
     let lastEclipseData = null;
-    let lastLocation = { name: 'Palencia', lat: 42.0096, lng: -4.5288, alt: 0, az: 0 };
+    let lastLocation = { name: window.EclipseConfig.default_location.name, lat: window.EclipseConfig.default_location.lat, lng: window.EclipseConfig.default_location.lng, alt: 0, az: 0 };
     window.lastLocation = lastLocation;
     let lastScoreState = null;
 
     // --- LEAFLET MAP INITIALIZATION ---
     // Madrid center as default
-    const map = L.map('map', { zoomControl: false }).setView([40.4168, -3.7038], 6);
+    const map = L.map('map', { zoomControl: false }).setView(window.EclipseConfig.map.center, window.EclipseConfig.map.zoom);
     window.map = map;
     window.eclipseMap = map;
     L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -505,7 +505,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const utHoursB = eclipseGeoJSON.shadow_times[Math.min(i + 1, eclipseGeoJSON.shadow_times.length - 1)];
 
         const utHours = utHoursA + t * (utHoursB - utHoursA);
-        const cestHours = utHours + 2; // CEST = UTC+2 in August
+        const cestHours = utHours + window.EclipseConfig.timezone_offset_hours; // Hora local en agosto
         const h = Math.floor(cestHours);
         const m = Math.floor((cestHours - h) * 60);
         const s = Math.floor(((cestHours - h) * 60 - m) * 60);
@@ -1797,7 +1797,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // --- FORECAST & WEATHER MODE STATE ---
-    let currentForecastMode = 'forecast'; // 'forecast' | 'historical' (Default: Real Forecast)
+    const _weatherCfg = window.EclipseConfig.weather || {};
+    let currentForecastMode = _weatherCfg.default_mode || 'historical';
+    const forecastEnabled = _weatherCfg.forecast_enabled !== false && !!window.weatherForecastData;
 
     function getWeatherForecast(lat, lng) {
         if (!window.weatherForecastData || !window.weatherForecastData.points || window.weatherForecastData.points.length === 0) {
@@ -1949,11 +1951,30 @@ document.addEventListener("DOMContentLoaded", () => {
     function initWeatherModeTabs() {
         const tabHist = document.getElementById('tab-mode-historical');
         const tabFore = document.getElementById('tab-mode-forecast');
+        const modeSelector = document.getElementById('weather-mode-selector');
+
+        // Si la previsión no está habilitada, ocultar el toggle y forzar modo histórico
+        if (!forecastEnabled) {
+            if (modeSelector) modeSelector.style.display = 'none';
+            currentForecastMode = 'historical';
+            return;
+        }
+
         if (window.weatherForecastData && window.weatherForecastData.generated_at) {
             const d = new Date(window.weatherForecastData.generated_at);
             const dStr = d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
             const tStr = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
             tabFore.title = `Previsión meteorológica calculada el ${dStr} a las ${tStr}`;
+        }
+
+        // Sincronizar estado visual con el modo por defecto de config
+        if (currentForecastMode === 'historical') {
+            tabHist.classList.add('active');
+            tabHist.style.background = 'rgba(255, 204, 0, 0.2)';
+            tabHist.style.color = '#ffcc00';
+            tabFore.classList.remove('active');
+            tabFore.style.background = 'transparent';
+            tabFore.style.color = '#a4b0be';
         }
 
         tabHist.addEventListener('click', () => {
@@ -2273,7 +2294,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const results = [];
         const BATCH_SIZE = 5;
-        const searchDate = new Date('2026-08-01');
+        const searchDate = new Date(window.EclipseConfig.besselian.eclipse_date + 'T00:00:00Z');
 
         for (let i = 0; i < gridPoints.length; i += BATCH_SIZE) {
             const batch = gridPoints.slice(i, i + BATCH_SIZE);
@@ -2439,7 +2460,7 @@ document.addEventListener("DOMContentLoaded", () => {
         cloudHeatmapLegend.innerHTML = `
             <h4><i class="fa-solid fa-cloud"></i> Mapa de Nubosidad</h4>
             
-            <div class="mode-toggle-pill" style="display: flex; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 2px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.08);">
+            <div class="mode-toggle-pill" style="display: flex; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 2px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.08); ${!forecastEnabled ? 'display:none;' : ''}">
                 <button id="map-mode-forecast" class="forecast-tab-btn ${currentForecastMode === 'forecast' ? 'active' : ''}" style="flex: 1; border: none; padding: 4px 6px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; cursor: pointer;">
                     <i class="fa-solid fa-bolt"></i> Previsión Real
                 </button>
@@ -2461,7 +2482,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <input type="range" id="cloud-year-slider" class="cloud-year-slider" min="${minYear - 1}" max="${maxYear}" step="1" value="${minYear - 1}">
             </div>
             <div id="map-forecast-info-box" style="font-size: 0.65rem; color: #a4b0be; margin-top: 6px; text-align: center;" class="${currentForecastMode === 'historical' ? 'hidden' : ''}">
-                <i class="fa-solid fa-check" style="color: #2ecc71;"></i> Previsión numérico-climática en vivo (12 Ago 18:00 UTC)
+                <i class="fa-solid fa-check" style="color: #2ecc71;"></i> ${window.EclipseConfig.ui_strings.weather_label}
             </div>
         `;
         document.querySelector('.ui-container').appendChild(cloudHeatmapLegend);
@@ -2572,8 +2593,8 @@ document.addEventListener("DOMContentLoaded", () => {
         btnGenPass.addEventListener('click', () => {
             if (window.EclipseObservationCard) {
                 const details = window.currentEclipseDetails || {};
-                const locLat = (lastLocation && lastLocation.lat) ? lastLocation.lat : 42.0096;
-                const locLng = (lastLocation && lastLocation.lng) ? lastLocation.lng : -4.5288;
+                const locLat = (lastLocation && lastLocation.lat) ? lastLocation.lat : window.EclipseConfig.default_location.lat;
+                const locLng = (lastLocation && lastLocation.lng) ? lastLocation.lng : window.EclipseConfig.default_location.lng;
                 window.EclipseObservationCard.openObservationPass({
                     ...details,
                     name: (lastLocation && lastLocation.name) ? lastLocation.name : 'Ubicación Seleccionada',

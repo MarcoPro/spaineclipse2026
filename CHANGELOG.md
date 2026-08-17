@@ -1,8 +1,48 @@
 # Changelog
 
-Todos los cambios notables del proyecto Eclipse Solar España 2026.
+Todos los cambios notables del proyecto Eclipse Solar España.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
+
+## [3.0.0] — 2026-08-17
+
+### 🔄 Migración Eclipse 2026 → 2027
+- **Transición completa al eclipse solar total del 2 de agosto de 2027** (sur de España: Cádiz, Málaga, Gibraltar, Granada, Almería).
+- Archivado completo del eclipse 2026 en el directorio `eclipse 2026/` (7 ficheros, ~7 MB).
+
+### ✨ Añadido
+- **Configuración centralizada `config.js` v3.0.0 (`window.EclipseConfig`)**
+  - Objeto global único con 15 secciones: identidad, versión, cronología, elementos besselianos (Espenak + Jubier ΔT=69.3s), geometría solar/lunar, perfil de limbo lunar, contactos por defecto, ubicación por defecto (Tarifa), mapa, heatmap, topografía, scoring, textos dinámicos, y **flags de meteorología**.
+  - Todos los módulos JS (`app.js`, `phase_clock.js`, `limb_simulator.js`, `lunar_limb_profile.js`, `observation_card.js`, `besselian_calculator.js`, `location_finder.js`, `astrophoto_calc.js`) ahora leen de `window.EclipseConfig` en lugar de valores hardcodeados.
+- **Control de meteorología configurable (`weather.forecast_enabled` / `weather.default_mode`)**
+  - Nuevo flag `forecast_enabled: false` que oculta automáticamente los toggles de "Previsión Real" en el panel lateral y en el mapa de nubes.
+  - La web muestra solo el perfil climatológico histórico ERA5 por defecto.
+  - Para activar la previsión NWP en vivo, basta con cambiar `forecast_enabled: true` y `default_mode: 'forecast'` en `config.js`.
+- **Catálogo de municipios del sur de España (`origins.json`)**: 35 municipios clave de Cádiz, Málaga, Granada, Almería, Ceuta, Melilla, Gibraltar, Sevilla y Córdoba.
+
+### 🔧 Cambiado
+- **Refactorización completa de los 8 scripts Python de generación de datos**:
+  - Todos los scripts ahora leen parámetros (fecha, hora, coordenadas, GeoJSON, libración lunar) desde `config.js` en lugar de tener valores hardcodeados.
+  - Parser robusto de `config.js` con soporte para comentarios JS (`//`) mediante `re.sub()`.
+  - `generate_eclipse_geojson.py`: rangos geográficos ajustados al sur de España, ventana temporal 7h-13h TDT, salida dinámica `eclipse_{year}.geojson`.
+  - `generate_limb_profile.py`: lee libración (l, b, c), timestamp y radio medio desde `config.js`.
+  - `generate_cloud_heatmap_gee.py`, `generate_topography_gee.py`: paths dinámicos desde config.
+  - `generate_cloud_heatmap-open-meto.py`: añadida lectura de `config.js`, paths absolutos.
+  - `generate_weather_forecast_models.py`, `generate_weather_forecast.py`, `generate_weather_forecast(openMeteo).py`: leen fecha/hora/GeoJSON de `config.js`.
+- **Elementos besselianos actualizados** para el eclipse del 2 de agosto de 2027 (T0=10.0, ΔT=69.3s, γ=0.1421, magnitud=1.079).
+- **Ubicación por defecto** cambiada de Palencia → Tarifa (36.0143°N, 5.6044°W).
+- **Centro del mapa** reposicionado al sur de España (36.75°N, 5.0°W).
+- **Metadata del sitio** (`index.html`, `manifest.json`, `sw.js`, `sitemap.xml`, `robots.txt`) actualizada para 2027.
+
+### ⚠️ Pendiente
+- Regenerar `eclipse_2027.geojson` y `eclipse_data.js` con la trayectoria final del eclipse 2027.
+- Regenerar `cloud_heatmap.js` (heatmap climático para 2 de agosto, zona sur).
+- Regenerar `topography_data.js` (SRTM corredor sur Cádiz-Málaga-Granada).
+- Regenerar `lunar_limb_profile.js` con libración 2027.
+- Crear catálogo `aemet_path_municipalities.json` para municipios del sur de España.
+- Poblar `events.json` con eventos de observación del eclipse 2027.
+
+---
 
 ## [2.7.0] — 2026-08-04
 

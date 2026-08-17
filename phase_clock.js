@@ -1,5 +1,5 @@
 /**
- * Eclipse Solar España 2026 - Módulo de Reloj de Fases en Tiempo Real & Alertas Sonoras (Día D)
+ * Eclipse Solar España - Módulo de Reloj de Fases en Tiempo Real & Alertas Sonoras (Día D)
  * Incluye Modo Test (Simulación Acelerada y Pruebas Individuales por Fase),
  * Selección Inteligente de Voces HD (Google/Apple/Microsoft Naturales)
  * y Preavisos de Seguridad Adaptativos no Solapados (Totality vs Parcialidad)
@@ -21,14 +21,15 @@
     let availableVoices = [];
     let selectedVoiceURI = null;
 
-    // Contactos por defecto para el Día del Eclipse (12 de agosto de 2026 en UTC / España)
+    // Contactos por defecto leídos de la configuración centralizada
+    const _dc = window.EclipseConfig.default_contacts;
     const DEFAULT_CONTACTS = {
-        isTotality: true,
-        c1Date: new Date(Date.UTC(2026, 7, 12, 17, 30, 0)),  // 19:30 CEST
-        c2Date: new Date(Date.UTC(2026, 7, 12, 18, 27, 0)),  // 20:27 CEST
-        maxDate: new Date(Date.UTC(2026, 7, 12, 18, 27, 45)),// 20:27:45 CEST
-        c3Date: new Date(Date.UTC(2026, 7, 12, 18, 28, 30)), // 20:28:30 CEST
-        c4Date: new Date(Date.UTC(2026, 7, 12, 19, 22, 0))   // 21:22 CEST
+        isTotality: _dc.is_totality,
+        c1Date: new Date(_dc.c1_utc),
+        c2Date: new Date(_dc.c2_utc),
+        maxDate: new Date(_dc.max_utc),
+        c3Date: new Date(_dc.c3_utc),
+        c4Date: new Date(_dc.c4_utc)
     };
 
     // Cargar y filtrar voces del sistema operativo / navegador

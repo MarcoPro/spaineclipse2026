@@ -1,5 +1,5 @@
 /**
- * Eclipse Solar España 2026 - Generador de Tarjeta / Pase de Observación Exportable
+ * Eclipse Solar España - Generador de Tarjeta / Pase de Observación Exportable
  */
 (function () {
     function initObservationCardModal() {
@@ -163,7 +163,7 @@
 
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 50px Outfit, sans-serif';
-        ctx.fillText('ESPAÑA — 12 DE AGOSTO DE 2026', w / 2, 160);
+        ctx.fillText(window.EclipseConfig.ui_strings.card_title, w / 2, 160);
 
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
         ctx.lineWidth = 2;
@@ -172,10 +172,11 @@
         ctx.stroke();
 
         // --- DATOS DE UBICACIÓN Y DURACIÓN ---
-        const locName = (data && data.name) ? data.name : 'España (Franja de Totalidad)';
-        const lat = (data && data.lat) ? data.lat.toFixed(4) : '42.0000';
-        const lng = (data && data.lng) ? data.lng.toFixed(4) : '-4.5000';
-        const ele = (data && data.elevation) ? `${Math.round(data.elevation)}m` : '250m';
+        const _defLoc = window.EclipseConfig.default_location;
+        const locName = (data && data.name) ? data.name : _defLoc.name;
+        const lat = (data && data.lat) ? data.lat.toFixed(4) : _defLoc.lat.toFixed(4);
+        const lng = (data && data.lng) ? data.lng.toFixed(4) : _defLoc.lng.toFixed(4);
+        const ele = (data && data.elevation) ? `${Math.round(data.elevation)}m` : '0m';
         const isTotal = Boolean(data && data.isTotality);
         const totalityInfo = getTotalityDurationFormatted(data);
 
@@ -314,7 +315,7 @@
             ' Filtro solar ND5.0 para cámaras, telescopios o prismáticos',
             ' Trípode y cámara con batería de repuesto cargada al 100%',
             ' Agua, protección solar de piel y ropa de abrigo ligera para el bajón térmico',
-            ' App Eclipse Solar España 2026 cargada en modo offline PWA'
+            ` ${window.EclipseConfig.ui_strings.pwa_label}`
         ];
 
         let itemY = 1255;
@@ -341,14 +342,14 @@
         ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
         ctx.font = '17px Outfit, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Generado por Eclipse Solar España 2026 — Proyecto de Divulgación Astronómica', w / 2, 1635);
+        ctx.fillText(window.EclipseConfig.ui_strings.card_footer, w / 2, 1635);
     }
 
     function downloadPassAsImage() {
         const canvas = document.getElementById('pass-canvas');
         if (!canvas) return;
         const link = document.createElement('a');
-        link.download = 'Pase_Observacion_Eclipse_2026.png';
+        link.download = window.EclipseConfig.ui_strings.card_filename;
         link.href = canvas.toDataURL('image/png');
         link.click();
     }

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://marcopro.github.io/spaineclipse2026/sitemap.xml
+Sitemap: https://marcopro.github.io/spaineclipse2027/sitemap.xml
